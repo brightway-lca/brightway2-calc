@@ -1,0 +1,5 @@
+include *.txt
+include bw2calc/*.py
+include bw2calc/indexer/*.py
+include bw2calc/indexer/_indexer.pyx
+include bw2calc/indexer/_indexer.c

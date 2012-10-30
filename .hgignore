@@ -1,0 +1,6 @@
+syntax:glob
+*.so
+dist
+build
+MANIFEST
+*.pyc

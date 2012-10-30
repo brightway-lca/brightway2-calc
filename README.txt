@@ -1,0 +1,1 @@
+The calculation engine for the Brightway2 life cycle assessment framework.
