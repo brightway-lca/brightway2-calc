@@ -96,7 +96,7 @@ class LCA(object):
             np.zeros(len(self.technosphere_dict)),
             self.technosphere_dict)
         for key in demand:
-            self.demand_array[mapping[key]] = self.demand[key]
+            self.demand_array[mapping[key]] = demand[key]
 
     def build_characterization_matrix(self, vector=None):
         vector = self.cf_params['amount'] if vector is None else vector
@@ -181,4 +181,4 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
     @property
     def score(self):
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        return self.characterized_inventory.sum()
+        return float(self.characterized_inventory.sum())
