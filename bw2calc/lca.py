@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 from __future__ import division
 from brightway2 import config as base_config
-from brightway2 import meta, methods, mapping
+from brightway2 import databases, methods, mapping
 from brightway2.proxies import OneDimensionalArrayProxy, \
     CompressedSparseMatrixProxy
 from brightway2.utils import MAX_INT_32
@@ -29,7 +29,7 @@ class LCA(object):
 
     def get_databases(self):
         """Get list of databases for functional unit"""
-        return set.union(*[set(meta[key[0]]["depends"] + [key[0]]) for key \
+        return set.union(*[set(databases[key[0]]["depends"] + [key[0]]) for key \
             in self.demand])
 
     def load_databases(self):
@@ -182,3 +182,12 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
     def score(self):
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
         return float(self.characterized_inventory.sum())
+
+    def reverse_dict(self):
+        """Construct reverse dicts from row and col indices to processes"""
+        rev_mapping = dict([(v, k) for k, v in mapping.iteritems()])
+        rev_tech = dict([(v, rev_mapping[k]) for k, v in \
+            self.technosphere_dict.iteritems()])
+        rev_bio = dict([(v, rev_mapping[k]) for k, v in \
+            self.biosphere_dict.iteritems()])
+        return rev_tech, rev_bio

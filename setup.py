@@ -7,5 +7,6 @@ setup(
   author="Chris Mutel",
   author_email="cmutel@gmail.com",
   license=open('LICENSE.txt').read(),
+  url="https://bitbucket.org/cmutel/brightway2-calc",
   long_description=open('README.txt').read(),
 )
