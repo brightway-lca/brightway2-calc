@@ -23,6 +23,8 @@ except ImportError:
 class LCA(object):
     def __init__(self, demand, method=None, config=None):
         self.config = config or base_config
+        if isinstance(demand, (basestring, tuple, list)):
+            raise ValueError("Demand must be a dictionary")
         self.demand = demand
         self.method = method
         self.databases = self.get_databases()
