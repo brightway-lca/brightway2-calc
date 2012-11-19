@@ -1,6 +1,7 @@
 syntax:glob
 *.so
 dist
+docs/_build
 build
 MANIFEST
 *.pyc
