@@ -55,13 +55,13 @@ class MonteCarloLCA(LCA):
 
 class ComparativeMonteCarlo(LCA):
     """First draft approach at comparative LCA"""
-    def __init__(self, demand1, demand2, method=None, iter_solver=iterative.cgs,
+    def __init__(self, demands, method=None, iter_solver=iterative.cgs,
             seed=None, *args, **kwargs):
-        self.demand1 = demand1
-        self.demand2 = demand2
+        self.demands = demands
         # Get all possibilities for database retrieval
-        demand_all = demand1.copy()
-        demand_all.update(demand2)
+        demand_all = demands[0].copy()
+        for other in demands[1:]:
+            demand_all.update(other)
         super(ComparativeMonteCarlo, self).__init__(demand_all, method)
         self.seed = seed
         self.iter_solver = iter_solver
@@ -76,14 +76,13 @@ class ComparativeMonteCarlo(LCA):
         self.build_technosphere_matrix(self.tech_rng.next())
         self.build_biosphere_matrix(self.bio_rng.next())
         self.build_characterization_matrix(self.cf_rng.next())
-        self.build_demand_array(self.demand1)
-        self.lci_calculation()
-        self.lcia_calculation()
-        score1 = self.score
-        self.build_demand_array(self.demand2)
-        self.lci_calculation()
-        self.lcia_calculation()
-        return (score1, self.score)
+        results = []
+        for demand in self.demands:
+            self.build_demand_array(demand)
+            self.lci_calculation()
+            self.lcia_calculation()
+            results.append(self.score)
+        return results
 
     def solve_linear_system(self):
         if not self.iter_solver or self.guess == None:
