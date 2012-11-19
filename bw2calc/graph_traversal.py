@@ -4,6 +4,7 @@ from . import LCA
 from brightway2 import mapping
 from heapq import heappush, heappop
 import numpy as np
+from scipy import sparse
 
 
 class GraphTraversal(object):
@@ -37,7 +38,8 @@ class GraphTraversal(object):
             index = self.lca.technosphere_dict[mapping[activity]]
             heappush(self.heap, (1, index))
             # -1 is a special index for total demand, which can be
-            # composite
+            # composite. Initial edges are inputs to the
+            # functional unit.
             self.edges.append((-1, index, value))
 
         # Create matrix of LCIA CFs times biosphere flows, as these don't
@@ -71,6 +73,7 @@ and traverse the graph using an "importance-first" search.
                 # Skip diagonal values
                 if activity == pindex:
                     continue
+                # Edge format is (to, from, amount)
                 self.edges.append((pindex, activity, amount))
                 if activity in self.nodes:
                     continue
@@ -80,3 +83,60 @@ and traverse the graph using an "importance-first" search.
                     continue
                 self.nodes[activity] = score
                 heappush(self.heap, (1. / score, activity))
+
+    def rationalize(self):
+        """
+Take the raw data and turn it a structured graph.
+
+1. Create a list of nodes
+
+2. Create a list of edges
+
+3. Parse through the list of edges, eliminating nodes which have small individual impacts.
+        """
+        rev_mapping = dict([(v, k) for k, v in mapping.data.iteritems()])
+        rev_tech = dict([(v, k) for k, v in self.lca.technosphere_dict.iteritems()])
+        self.nodes = dict([(k, {
+            "cum_score": v,
+            "ind_score": float(self.characterized_biosphere[k] * \
+                self.supply[k]),
+            "id": "Functional unit" if k == -1 else rev_mapping[rev_tech[k]]
+            }) for k, v in self.nodes.iteritems() if k >= 0])
+        to_delete = set([key for key, value in self.nodes.iteritems(
+            ) if value["ind_score"] < 0.01 * self.score])
+        self.nodes = dict([(k, v) for k, v in self.nodes.iteritems() \
+            if k not in to_delete])
+        # Edge format is (to, from, amount)
+        count = self.characterized_biosphere.shape[0]
+        # Ignore functional unit for now
+        edges = [x for x in self.edges if x[0] >= 0]
+        matrix = sparse.coo_matrix((
+            [x[2] for x in edges],
+            ([x[1] for x in edges], [x[0] for x in edges])),
+            (count, count))
+        for node in to_delete:
+            col = matrix.tocsc()[:, node].tocoo()
+            row = matrix.tocsr()[node, :].tocoo()
+            rows = [matrix.row]
+            cols = [matrix.col]
+            data = [matrix.data]
+
+            for i in xrange(col.data.shape[0]):
+                cols.append(row.col)
+                rows.append(row.row)
+                data.append(col.data[i] * row.data)
+
+            cols = np.hstack(cols)
+            mask = cols != node
+            matrix = sparse.coo_matrix((np.hstack(data)[mask],
+                (np.hstack(rows)[mask], cols[mask])), (count, count)
+                ).tocsr().tocoo()
+
+        self.edges = [{
+            "source": int(matrix.row[i]),
+            "target": int(matrix.col[i]),
+            "value": float(self.characterized_biosphere[matrix.row[i]] * \
+                matrix.data[i])
+            } for i in xrange(matrix.data.shape[0])]
+        return matrix
+        # TODO: Append functional unit
