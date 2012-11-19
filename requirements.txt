@@ -1,0 +1,7 @@
+numpy
+nose
+progressbar
+voluptuous
+numpy>=1.6
+scipy
+bw-stats-toolkit>=0.7
