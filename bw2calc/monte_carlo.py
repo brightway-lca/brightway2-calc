@@ -4,6 +4,7 @@ from lca import LCA
 from scipy.sparse.linalg import iterative, spsolve
 from stats_toolkit.random import MCRandomNumberGenerator
 import multiprocessing
+import numpy as np
 
 
 class MonteCarloLCA(LCA):
@@ -50,6 +51,57 @@ class MonteCarloLCA(LCA):
         # TODO: use yield or __iter__? What is most pythonic?
         self.next()
         return self.score
+
+
+class ComparativeMonteCarlo(LCA):
+    """First draft approach at comparative LCA"""
+    def __init__(self, demand1, demand2, method=None, iter_solver=iterative.cgs,
+            seed=None, *args, **kwargs):
+        self.demand1 = demand1
+        self.demand2 = demand2
+        # Get all possibilities for database retrieval
+        demand_all = demand1.copy()
+        demand_all.update(demand2)
+        super(ComparativeMonteCarlo, self).__init__(demand_all, method)
+        self.seed = seed
+        self.iter_solver = iter_solver
+        self.guess = None
+        self.load_databases()
+        self.load_method()
+        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
+        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
+        self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
+
+    def next(self):
+        self.build_technosphere_matrix(self.tech_rng.next())
+        self.build_biosphere_matrix(self.bio_rng.next())
+        self.build_characterization_matrix(self.cf_rng.next())
+        self.build_demand_array(self.demand1)
+        self.lci_calculation()
+        self.lcia_calculation()
+        score1 = self.score
+        self.build_demand_array(self.demand2)
+        self.lci_calculation()
+        self.lcia_calculation()
+        return (score1, self.score)
+
+    def solve_linear_system(self):
+        if not self.iter_solver or self.guess == None:
+            self.guess = spsolve(
+                self.technosphere_matrix.data,
+                self.demand_array.data)
+            return self.guess
+        else:
+            solution, status = self.iter_solver(
+                self.technosphere_matrix.data,
+                self.demand_array.data,
+                x0=self.guess)
+            if status != 0:
+                raise
+            return solution
+
+    def iterate(self):
+        raise NotImplemented
 
 
 class ParallelMonteCarlo(object):
