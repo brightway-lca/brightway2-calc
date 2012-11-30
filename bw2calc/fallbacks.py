@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*
-from brightway2.utils import MAX_INT_32
+from bw2data.utils import MAX_INT_32
 import numpy as np
 import itertools
 

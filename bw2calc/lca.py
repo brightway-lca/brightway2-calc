@@ -2,9 +2,9 @@
 from __future__ import division
 from brightway2 import config as base_config
 from brightway2 import databases, methods, mapping
-from brightway2.proxies import OneDimensionalArrayProxy, \
+from bw2data.proxies import OneDimensionalArrayProxy, \
     CompressedSparseMatrixProxy
-from brightway2.utils import MAX_INT_32
+from bw2data.utils import MAX_INT_32
 from fallbacks import dicter
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
