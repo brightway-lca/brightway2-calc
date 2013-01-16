@@ -1,8 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
   name='bw2calc',
-  version="0.8",
+  version="0.8.1",
   packages=["bw2calc"],
   author="Chris Mutel",
   author_email="cmutel@gmail.com",
