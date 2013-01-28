@@ -5,3 +5,5 @@ docs/_build
 build
 MANIFEST
 *.pyc
+cover
+.coverage
