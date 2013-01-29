@@ -7,3 +7,4 @@ MANIFEST
 *.pyc
 cover
 .coverage
+bw2calc.egg-info
