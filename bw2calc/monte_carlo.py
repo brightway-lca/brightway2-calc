@@ -105,7 +105,7 @@ class ComparativeMonteCarlo(LCA):
 
 class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
-    def __init__(self, demand, method, iterations=1000, chunk_size=None):
+    def __init__(self, demand, method, iterations=1000, chunk_size=None, cpus=None):
         self.demand = demand
         self.method = method
         if chunk_size:
@@ -114,7 +114,7 @@ class ParallelMonteCarlo(object):
             if iterations % self.chunk_size:
                 self.num_jobs += 1
         else:
-            self.num_jobs = max(multiprocessing.cpu_count() - 1, 1)
+            self.num_jobs = cpus or multiprocessing.cpu_count()
             self.chunk_size = (iterations // self.num_jobs) + 1
 
     def calculate(self):
