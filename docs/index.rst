@@ -7,7 +7,7 @@ Brightway2-calc
 This is the technical documentation for Brightway2-calc, part of the `Brightway2 <http://brightwaylca.org>`_ life cycle assessment calculation framework. The following online resources are available:
 
 * `Source code <https://bitbucket.org/cmutel/brightway2-calc>`_
-* `Documentation on Read the Docs <http://bw2calc.readthedocs.org>`_
+* `Documentation on Read the Docs <https://brightway2-calc.readthedocs.org/en/latest/>`_
 * `Test coverage <http://coverage.brightwaylca.org/calc/index.html>`_
 
 Running tests
