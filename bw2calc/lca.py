@@ -4,7 +4,7 @@ from brightway2 import config as base_config
 from brightway2 import databases, methods, mapping
 from bw2data.proxies import OneDimensionalArrayProxy, \
     CompressedSparseMatrixProxy
-from bw2data.utils import MAX_INT_32
+from bw2data.utils import MAX_INT_32, TYPE_DICTIONARY
 from fallbacks import dicter
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
@@ -39,11 +39,18 @@ class LCA(object):
             self.config.dir, "processed", "%s.pickle" % name), "rb")
             ) for name in self.databases])
         # Technosphere
-        self.tech_params = params[np.where(params['technosphere'] == True)]
-        self.bio_params = params[np.where(params['technosphere'] == False)]
+        self.tech_params = params[
+            np.hstack((
+                np.where(params['type'] == TYPE_DICTIONARY["technosphere"])[0],
+                np.where(params['type'] == TYPE_DICTIONARY["production"])[0]
+                ))
+            ]
+        self.bio_params = params[np.where(params['type'] == TYPE_DICTIONARY["biosphere"])]
         self.technosphere_dict = self.build_dictionary(np.hstack((
-            self.tech_params['input'], self.tech_params['output'],
-            self.bio_params['output'])))
+            self.tech_params['input'],
+            self.tech_params['output'],
+            self.bio_params['output']
+            )))
         self.add_matrix_indices(self.tech_params['input'], self.tech_params['row'],
             self.technosphere_dict)
         self.add_matrix_indices(self.tech_params['output'], self.tech_params['col'],
@@ -65,17 +72,19 @@ class LCA(object):
         self.cf_params = params[np.where(params['index'] != MAX_INT_32)]
 
     def build_technosphere_matrix(self, vector=None):
-        vector = self.tech_params['amount'] if vector is None else vector
+        vector = self.tech_params['amount'].copy() \
+            if vector is None else vector
         count = len(self.technosphere_dict)
-        indices = range(count)
-        # Add ones along the diagonal
-        data = np.hstack((-1 * vector, np.ones((count,))))
-        rows = np.hstack((self.tech_params['row'], indices))
-        cols = np.hstack((self.tech_params['col'], indices))
+        technosphere_mask = np.where(self.tech_params["type"] == \
+            TYPE_DICTIONARY["technosphere"])
+        # Inputs are consumed, so are negative
+        vector[technosphere_mask] = -1 * vector[technosphere_mask]
         # coo_matrix construction is coo_matrix((values, (rows, cols)),
         # (row_count, col_count))
         self.technosphere_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((data, (rows, cols)), (count, count)).tocsr(),
+            sparse.coo_matrix((vector.astype(np.float64),
+            (self.tech_params['row'], self.tech_params['col'])),
+            (count, count)).tocsr(),
             self.technosphere_dict, self.technosphere_dict)
 
     def build_biosphere_matrix(self, vector=None):
@@ -85,8 +94,9 @@ class LCA(object):
         # coo_matrix construction is coo_matrix((values, (rows, cols)),
         # (row_count, col_count))
         self.biosphere_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((vector, (self.bio_params['row'],
-            self.bio_params['col'])), (row_count, col_count)).tocsr(),
+            sparse.coo_matrix((vector.astype(np.float64),
+            (self.bio_params['row'], self.bio_params['col'])),
+            (row_count, col_count)).tocsr(),
             self.biosphere_dict, self.technosphere_dict)
 
     def decompose_technosphere(self):
@@ -104,7 +114,8 @@ class LCA(object):
         vector = self.cf_params['amount'] if vector is None else vector
         count = len(self.biosphere_dict)
         self.characterization_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((vector, (self.cf_params['index'], self.cf_params['index'])),
+            sparse.coo_matrix((vector.astype(np.float64),
+            (self.cf_params['index'], self.cf_params['index'])),
             (count, count)).tocsr(),
             self.biosphere_dict, self.biosphere_dict)
 

@@ -16,13 +16,13 @@ class SimpleRegionalizedLCA(LCA):
 
         We do this by first retrieving the regionalized characterization factors for each location where characterization factors are avaiable. The intermediate data structure ``regionalized_dict`` has the following structure:
 
-        .. code:: python
+        .. code-block:: python
 
             {location_id: (biosphere matrix row number, cf value)}
 
         We then use the ``np.unique`` function to retrieve all technosphere processes, and an index into ``self.tech_params`` for each of them. We can then use this index to get a location for each technosphere process.
 
-        The characterization matrix has dimensions (number of biosphere flows, number of technosphere flows). For each column, we lookup the location code, and then retrieve the cf amounts and row indices from the ``regionalized_dict``. We can then build the ``characterization_matrix``. 
+        The characterization matrix has dimensions (number of biosphere flows, number of technosphere flows). For each column, we lookup the location code, and then retrieve the cf amounts and row indices from the ``regionalized_dict``. We can then build the ``characterization_matrix``.
 
         .. note:: There is a lot of duplicate data in ``characterization_matrix``, as characterization factors are provided for each technosphere process, regardless of whether that technosphere location has been seen already.
 
