@@ -1,6 +1,4 @@
 include *.txt
 include README.rst
 include bw2calc/*.py
-include bw2calc/indexer/*.py
-include bw2calc/indexer/_indexer.pyx
-include bw2calc/indexer/_indexer.c
+include bw2calc/tests/*.py
