@@ -50,7 +50,7 @@ class LCACalculationTestCase(BW2DataTest):
         answer = np.zeros((2,))
         answer[lca.technosphere_dict[mapping[("t", 1)]]] = 1
         answer[lca.technosphere_dict[mapping[("t", 2)]]] = 0.5
-        self.assertTrue(np.allclose(answer, lca.supply_array.data))
+        self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_production_values(self):
         test_data = {
@@ -87,7 +87,7 @@ class LCACalculationTestCase(BW2DataTest):
         answer = np.zeros((2,))
         answer[lca.technosphere_dict[mapping[("t", 1)]]] = 0.5
         answer[lca.technosphere_dict[mapping[("t", 2)]]] = 0.25
-        self.assertTrue(np.allclose(answer, lca.supply_array.data))
+        self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_substitution(self):
         test_data = {
@@ -120,7 +120,7 @@ class LCACalculationTestCase(BW2DataTest):
         answer = np.zeros((2,))
         answer[lca.technosphere_dict[mapping[("t", 1)]]] = 1
         answer[lca.technosphere_dict[mapping[("t", 2)]]] = -1
-        self.assertTrue(np.allclose(answer, lca.supply_array.data))
+        self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_circular_chains(self):
         test_data = {
@@ -157,7 +157,7 @@ class LCACalculationTestCase(BW2DataTest):
         answer = np.zeros((2,))
         answer[lca.technosphere_dict[mapping[("t", 1)]]] = 20 / 19.
         answer[lca.technosphere_dict[mapping[("t", 2)]]] = 10 / 19.
-        self.assertTrue(np.allclose(answer, lca.supply_array.data))
+        self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_dependent_databases(self):
         pass

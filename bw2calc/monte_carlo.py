@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*
-import itertools
-from lca import LCA
+from __future__ import division
+from .lca import LCA
+from .matrices import MatrixBuilder
+from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from scipy.sparse.linalg import iterative, spsolve
 from stats_toolkit.random import MCRandomNumberGenerator
+import itertools
 import multiprocessing
 import numpy as np
 
@@ -15,16 +18,16 @@ class MonteCarloLCA(LCA):
         self.seed = seed
         self.iter_solver = iter_solver
         self.guess = None
-        self.load_databases()
-        self.load_method()
+        self.load_lci_data()
+        self.load_lcia_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
 
     def next(self):
-        self.build_technosphere_matrix(self.tech_rng.next())
-        self.build_biosphere_matrix(self.bio_rng.next())
-        self.build_characterization_matrix(self.cf_rng.next())
+        self.rebuild_technosphere_matrix(self.tech_rng.next())
+        self.rebuild_biosphere_matrix(self.bio_rng.next())
+        self.rebuild_characterization_matrix(self.cf_rng.next())
 
         if not hasattr(self, "demand_array"):
             self.build_demand_array()
@@ -35,13 +38,13 @@ class MonteCarloLCA(LCA):
     def solve_linear_system(self):
         if not self.iter_solver or self.guess == None:
             self.guess = spsolve(
-                self.technosphere_matrix.data,
-                self.demand_array.data)
+                self.technosphere_matrix,
+                self.demand_array)
             return self.guess
         else:
             solution, status = self.iter_solver(
-                self.technosphere_matrix.data,
-                self.demand_array.data,
+                self.technosphere_matrix,
+                self.demand_array,
                 x0=self.guess)
             if status != 0:
                 raise
@@ -66,16 +69,17 @@ class ComparativeMonteCarlo(LCA):
         self.seed = seed
         self.iter_solver = iter_solver
         self.guess = None
-        self.load_databases()
-        self.load_method()
+        self.load_lci_data()
+        self.load_lcia_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
 
     def next(self):
-        self.build_technosphere_matrix(self.tech_rng.next())
-        self.build_biosphere_matrix(self.bio_rng.next())
-        self.build_characterization_matrix(self.cf_rng.next())
+        self.rebuild_technosphere_matrix(self.tech_rng.next())
+        self.rebuild_biosphere_matrix(self.bio_rng.next())
+        self.rebuild_characterization_matrix(self.cf_rng.next())
+
         results = []
         for demand in self.demands:
             self.build_demand_array(demand)
@@ -87,13 +91,13 @@ class ComparativeMonteCarlo(LCA):
     def solve_linear_system(self):
         if not self.iter_solver or self.guess == None:
             self.guess = spsolve(
-                self.technosphere_matrix.data,
-                self.demand_array.data)
+                self.technosphere_matrix,
+                self.demand_array)
             return self.guess
         else:
             solution, status = self.iter_solver(
-                self.technosphere_matrix.data,
-                self.demand_array.data,
+                self.technosphere_matrix,
+                self.demand_array,
                 x0=self.guess)
             if status != 0:
                 raise
@@ -160,12 +164,15 @@ def single_worker(demand, method, iterations):
 
 def multi_worker(demands, method):
     lca = LCA(demands[0], method)
-    lca.load_databases()
-    lca.load_method()
+    lca.load_lci_data()
+    lca.load_lcia_data()
     # Create new matrices
-    lca.build_technosphere_matrix(MCRandomNumberGenerator(lca.tech_params).next())
-    lca.build_biosphere_matrix(MCRandomNumberGenerator(lca.bio_params).next())
-    lca.build_characterization_matrix(MCRandomNumberGenerator(lca.cf_params).next())
+    lca.rebuild_technosphere_matrix(
+        MCRandomNumberGenerator(lca.tech_params).next())
+    lca.rebuild_biosphere_matrix(
+        MCRandomNumberGenerator(lca.bio_params).next())
+    lca.rebuild_characterization_matrix(
+        MCRandomNumberGenerator(lca.cf_params).next())
     lca.decompose_technosphere()
     lca.lci()
     lca.lcia()

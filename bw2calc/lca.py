@@ -2,130 +2,36 @@
 from __future__ import division
 from brightway2 import config as base_config
 from brightway2 import databases, methods, mapping
-from bw2data.proxies import OneDimensionalArrayProxy, \
-    CompressedSparseMatrixProxy
-from bw2data.utils import MAX_INT_32, TYPE_DICTIONARY
-from fallbacks import dicter
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
 import os
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-try:
-    from bw2speedups import indexer
-except ImportError:
-    from fallbacks import indexer
+from .matrices import MatrixBuilder
+from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 
 
 class LCA(object):
     def __init__(self, demand, method=None, config=None):
-        self.config = config or base_config
+        self.dirpath = (config or base_config).dir
         if isinstance(demand, (basestring, tuple, list)):
             raise ValueError("Demand must be a dictionary")
         self.demand = demand
         self.method = method
-        self.databases = self.get_databases()
+        self.databases = self.get_databases(demand)
 
-    def get_databases(self):
+    def get_databases(self, demand):
         """Get list of databases for functional unit"""
-        return set.union(*[set(databases[key[0]]["depends"] + [key[0]]) for key \
-            in self.demand])
-
-    def load_databases(self):
-        params = np.hstack([pickle.load(open(os.path.join(
-            self.config.dir, "processed", "%s.pickle" % name), "rb")
-            ) for name in self.databases])
-        # Technosphere
-        self.tech_params = params[
-            np.hstack((
-                np.where(params['type'] == TYPE_DICTIONARY["technosphere"])[0],
-                np.where(params['type'] == TYPE_DICTIONARY["production"])[0]
-                ))
-            ]
-        self.bio_params = params[np.where(params['type'] == TYPE_DICTIONARY["biosphere"])]
-        self.technosphere_dict = self.build_dictionary(np.hstack((
-            self.tech_params['input'],
-            self.tech_params['output'],
-            self.bio_params['output']
-            )))
-        self.add_matrix_indices(self.tech_params['input'], self.tech_params['row'],
-            self.technosphere_dict)
-        self.add_matrix_indices(self.tech_params['output'], self.tech_params['col'],
-            self.technosphere_dict)
-        # Biosphere
-        self.biosphere_dict = self.build_dictionary(self.bio_params['input'])
-        self.add_matrix_indices(self.bio_params['input'], self.bio_params['row'],
-            self.biosphere_dict)
-        self.add_matrix_indices(self.bio_params['output'], self.bio_params['col'],
-            self.technosphere_dict)
-
-    def load_method(self):
-        params = pickle.load(open(os.path.join(self.config.dir, "processed",
-            "%s.pickle" % methods[self.method]['abbreviation']), "rb"))
-        self.add_matrix_indices(params['flow'], params['index'],
-            self.biosphere_dict)
-        # Eliminate references to biosphere flows that don't appear in this
-        # assessment; they are masked with MAX_INT_32 values
-        self.cf_params = params[np.where(params['index'] != MAX_INT_32)]
-
-    def build_technosphere_matrix(self, vector=None):
-        vector = self.tech_params['amount'].copy() \
-            if vector is None else vector
-        count = len(self.technosphere_dict)
-        technosphere_mask = np.where(self.tech_params["type"] == \
-            TYPE_DICTIONARY["technosphere"])
-        # Inputs are consumed, so are negative
-        vector[technosphere_mask] = -1 * vector[technosphere_mask]
-        # coo_matrix construction is coo_matrix((values, (rows, cols)),
-        # (row_count, col_count))
-        self.technosphere_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((vector.astype(np.float64),
-            (self.tech_params['row'], self.tech_params['col'])),
-            (count, count)).tocsr(),
-            self.technosphere_dict, self.technosphere_dict)
-
-    def build_biosphere_matrix(self, vector=None):
-        vector = self.bio_params['amount'] if vector is None else vector
-        row_count = len(self.biosphere_dict)
-        col_count = len(self.technosphere_dict)
-        # coo_matrix construction is coo_matrix((values, (rows, cols)),
-        # (row_count, col_count))
-        self.biosphere_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((vector.astype(np.float64),
-            (self.bio_params['row'], self.bio_params['col'])),
-            (row_count, col_count)).tocsr(),
-            self.biosphere_dict, self.technosphere_dict)
+        return set.union(*[set(databases[key[0]]["depends"] + [key[0]]
+            ) for key in demand])
 
     def decompose_technosphere(self):
-        self.solver = factorized(self.technosphere_matrix.data.tocsc())
+        self.solver = factorized(self.technosphere_matrix.tocsc())
 
     def build_demand_array(self, demand=None):
         demand = demand or self.demand
-        self.demand_array = OneDimensionalArrayProxy(
-            np.zeros(len(self.technosphere_dict)),
-            self.technosphere_dict)
+        self.demand_array = np.zeros(len(self.technosphere_dict))
         for key in demand:
-            self.demand_array[mapping[key]] = demand[key]
-
-    def build_characterization_matrix(self, vector=None):
-        vector = self.cf_params['amount'] if vector is None else vector
-        count = len(self.biosphere_dict)
-        self.characterization_matrix = CompressedSparseMatrixProxy(
-            sparse.coo_matrix((vector.astype(np.float64),
-            (self.cf_params['index'], self.cf_params['index'])),
-            (count, count)).tocsr(),
-            self.biosphere_dict, self.biosphere_dict)
-
-    def build_dictionary(self, array):
-        """Build a dictionary from the sorted, unique elements of an array"""
-        return dicter(array)
-
-    def add_matrix_indices(self, array_from, array_to, mapping):
-        """Map ``array_from`` keys to ``array_to`` values using ``mapping``"""
-        indexer(array_from, array_to, mapping)
+            self.demand_array[self.technosphere_dict[mapping[key]]] = demand[key]
 
     def solve_linear_system(self):
         """
@@ -140,31 +46,53 @@ are quick. "To most numerical analysts, matrix inversion is a sin." - Nicolas
 Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
         """
         if hasattr(self, "solver"):
-            return self.solver(self.demand_array.data)
+            return self.solver(self.demand_array)
         else:
             return spsolve(
-                self.technosphere_matrix.data,
-                self.demand_array.data)
+                self.technosphere_matrix,
+                self.demand_array)
 
-    def lci(self, factorize=False):
+    def load_lci_data(self, builder=TBMBuilder):
+        self.bio_params, self.tech_params, \
+            self.biosphere_dict, self.technosphere_dict, \
+            self.biosphere_matrix, self.technosphere_matrix = \
+            builder.build(self.dirpath, self.databases)
+
+    def load_lcia_data(self, builder=MatrixBuilder):
+        self.cf_params, dummy, dummy, self.characterization_matrix = \
+            builder.build(self.dirpath, [methods[self.method]['abbreviation']
+                ], "amount", "flow", "index", row_dict=self.biosphere_dict,
+                one_d=True)
+
+    def rebuild_technosphere_matrix(self, vector):
+        self.technosphere_matrix = MatrixBuilder.build_matrix(self.tech_params, self.technosphere_dict, self.technosphere_dict, "row", "col", new_data=vector)
+
+    def rebuild_biosphere_matrix(self, vector):
+        self.biosphere_matrix = MatrixBuilder.build_matrix(self.bio_params, self.biosphere_dict, self.technosphere_dict, "row", "col", new_data=vector)
+
+    def rebuild_characterization_matrix(self, vector):
+        self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(self.cf_params, self.biosphere_dict, "index", new_data=vector)
+
+    def lci(self, factorize=False,
+            builder=TBMBuilder):
         """Life cycle inventory"""
-        self.load_databases()
-        self.build_technosphere_matrix()
-        self.build_biosphere_matrix()
+        self.load_lci_data(builder)
         self.build_demand_array()
         if factorize:
             self.decompose_technosphere()
         self.lci_calculation()
 
+    def fix_dictionaries(self):
+        # TODO: Explain this
+        rev_mapping = {v: k for k, v in mapping.iteritems()}
+        self.technosphere_dict = {rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
+        self.biosphere_dict = {rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
+
     def lci_calculation(self):
-        self.supply_array = OneDimensionalArrayProxy(
-            self.solve_linear_system(),
-            self.technosphere_dict)
+        self.supply_array = self.solve_linear_system()
         count = len(self.technosphere_dict)
-        self.inventory = CompressedSparseMatrixProxy(
-            self.biosphere_matrix.data * \
-            sparse.spdiags([self.supply_array.data], [0], count, count),
-            self.biosphere_dict, self.technosphere_dict)
+        self.inventory = self.biosphere_matrix * \
+            sparse.spdiags([self.supply_array], [0], count, count)
 
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand"""
@@ -172,18 +100,16 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
         self.build_demand_array(demand)
         self.lci_calculation()
 
-    def lcia(self):
+    def lcia(self, builder=MatrixBuilder):
         """Life cycle impact assessment"""
         assert hasattr(self, "inventory"), "Must do lci first"
         assert self.method, "Must specify a method to perform LCIA"
-        self.load_method()
-        self.build_characterization_matrix()
+        self.load_lcia_data(builder)
         self.lcia_calculation()
 
     def lcia_calculation(self):
-        self.characterized_inventory = CompressedSparseMatrixProxy(
-            self.characterization_matrix.data * self.inventory.data,
-            self.biosphere_dict, self.technosphere_dict)
+        self.characterized_inventory = \
+            self.characterization_matrix * self.inventory
 
     def redo_lcia(self, demand=None):
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
@@ -198,9 +124,6 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
 
     def reverse_dict(self):
         """Construct reverse dicts from row and col indices to processes"""
-        rev_mapping = dict([(v, k) for k, v in mapping.iteritems()])
-        rev_tech = dict([(v, rev_mapping[k]) for k, v in \
-            self.technosphere_dict.iteritems()])
-        rev_bio = dict([(v, rev_mapping[k]) for k, v in \
-            self.biosphere_dict.iteritems()])
+        rev_tech = {v: k for k, v in self.technosphere_dict.iteritems()}
+        rev_bio = {v: k for k, v in self.biosphere_dict.iteritems()}
         return rev_tech, rev_bio
