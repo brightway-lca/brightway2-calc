@@ -21,6 +21,9 @@ class MonteCarloLCA(LCA):
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
 
+    def __iter__(self):
+        return self
+
     def next(self):
         self.build_technosphere_matrix(self.tech_rng.next())
         self.build_biosphere_matrix(self.bio_rng.next())
@@ -31,6 +34,7 @@ class MonteCarloLCA(LCA):
 
         self.lci_calculation()
         self.lcia_calculation()
+        return self.score
 
     def solve_linear_system(self):
         if not self.iter_solver or self.guess == None:
@@ -46,11 +50,6 @@ class MonteCarloLCA(LCA):
             if status != 0:
                 raise
             return solution
-
-    def iterate(self):
-        # TODO: use yield or __iter__? What is most pythonic?
-        self.next()
-        return self.score
 
 
 class ComparativeMonteCarlo(LCA):
@@ -71,6 +70,9 @@ class ComparativeMonteCarlo(LCA):
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
+
+    def __iter__(self):
+        return self
 
     def next(self):
         self.build_technosphere_matrix(self.tech_rng.next())
