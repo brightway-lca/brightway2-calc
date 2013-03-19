@@ -10,4 +10,4 @@ except ImportError:
 def load_arrays(dirpath, names):
     return np.hstack([pickle.load(open(os.path.join(
         dirpath, "processed", "%s.pickle" % name), "rb")
-        ) for name in names])
+    ) for name in names])

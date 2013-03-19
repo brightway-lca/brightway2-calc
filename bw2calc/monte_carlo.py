@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*
 from __future__ import division
 from .lca import LCA
-from .matrices import MatrixBuilder
-from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from scipy.sparse.linalg import iterative, spsolve
 from stats_toolkit.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
-import numpy as np
 
 
 class MonteCarloLCA(LCA):
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
-            seed=None, *args, **kwargs):
+                 seed=None, *args, **kwargs):
         super(MonteCarloLCA, self).__init__(demand, method=method, *args,
-            **kwargs)
+                                            **kwargs)
         self.seed = seed
         self.iter_solver = iter_solver
         self.guess = None
@@ -40,7 +37,7 @@ class MonteCarloLCA(LCA):
         return self.score
 
     def solve_linear_system(self):
-        if not self.iter_solver or self.guess == None:
+        if not self.iter_solver or self.guess is None:
             self.guess = spsolve(
                 self.technosphere_matrix,
                 self.demand_array)
@@ -58,7 +55,7 @@ class MonteCarloLCA(LCA):
 class ComparativeMonteCarlo(LCA):
     """First draft approach at comparative LCA"""
     def __init__(self, demands, method=None, iter_solver=iterative.cgs,
-            seed=None, *args, **kwargs):
+                 seed=None, *args, **kwargs):
         self.demands = demands
         # Get all possibilities for database retrieval
         demand_all = demands[0].copy()
@@ -91,7 +88,7 @@ class ComparativeMonteCarlo(LCA):
         return results
 
     def solve_linear_system(self):
-        if not self.iter_solver or self.guess == None:
+        if not self.iter_solver or self.guess is None:
             self.guess = spsolve(
                 self.technosphere_matrix,
                 self.demand_array)
@@ -111,7 +108,8 @@ class ComparativeMonteCarlo(LCA):
 
 class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
-    def __init__(self, demand, method, iterations=1000, chunk_size=None, cpus=None):
+    def __init__(self, demand, method, iterations=1000, chunk_size=None,
+                 cpus=None):
         self.demand = demand
         self.method = method
         if chunk_size:
@@ -124,9 +122,10 @@ class ParallelMonteCarlo(object):
             self.chunk_size = (iterations // self.num_jobs) + 1
 
     def calculate(self):
-        pool = multiprocessing.Pool(processes=max(multiprocessing.cpu_count() - 1, 1))
+        pool = multiprocessing.Pool(processes=max(
+            multiprocessing.cpu_count() - 1, 1))
         results = [pool.apply_async(single_worker, (self.demand, self.method,
-            self.chunk_size)) for x in xrange(self.num_jobs)]
+                   self.chunk_size)) for x in xrange(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         return list(itertools.chain(*[x.get() for x in results]))
@@ -152,7 +151,7 @@ each Monte Carlo iteration.
     def calculate(self):
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
         results = [pool.apply_async(multi_worker, (self.demands, self.method)
-            ) for x in xrange(self.iterations)]
+                                    ) for x in xrange(self.iterations)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         return self.merge_dictionaries(*[x.get() for x in results])

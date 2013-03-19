@@ -17,14 +17,15 @@ class GraphTraversal(object):
 
         # Create matrix of LCIA CFs times biosphere flows, as these don't
         # change. This is also the unit score of each activity.
-        characterized_biosphere = np.array(
-            (lca.characterization_matrix.data * \
+        characterized_biosphere = np.array((
+            lca.characterization_matrix.data *
             lca.biosphere_matrix.data).sum(axis=0)).ravel()
 
-        heap, nodes, edges = self.initialize_heap(demand, lca, supply,
-            characterized_biosphere)
-        nodes, edges, counter = self.traverse(heap, nodes, edges, counter,
-            max_calc, cutoff, score, supply, characterized_biosphere, lca)
+        heap, nodes, edges = self.initialize_heap(
+            demand, lca, supply, characterized_biosphere)
+        nodes, edges, counter = self.traverse(
+            heap, nodes, edges, counter, max_calc, cutoff, score, supply,
+            characterized_biosphere, lca)
         nodes = self.add_metadata(nodes, lca)
 
         return {
@@ -32,7 +33,7 @@ class GraphTraversal(object):
             'edges': edges,
             'lca': lca,
             'counter': counter,
-            }
+        }
 
     def initialize_heap(self, demand, lca, supply, characterized_biosphere):
         heap, nodes, edges = [], {}, []
@@ -41,10 +42,10 @@ class GraphTraversal(object):
             heappush(heap, (1, index))
             nodes[index] = {
                 "amount": supply[index],
-                "cum": self.cumulative_score(index, supply,
-                    characterized_biosphere, lca),
+                "cum": self.cumulative_score(
+                    index, supply, characterized_biosphere, lca),
                 "ind": self.unit_score(index, supply, characterized_biosphere)
-                }
+            }
             # -1 is a special index for total demand, which can be
             # composite. Initial edges are inputs to the
             # functional unit.
@@ -53,7 +54,7 @@ class GraphTraversal(object):
                 "from": index,
                 "amount": value,
                 "impact": lca.score,
-                })
+            })
         return heap, nodes, edges
 
     def build_lca(self, demand, method):
@@ -72,7 +73,7 @@ class GraphTraversal(object):
         return float(characterized_biosphere[index] * supply[index])
 
     def traverse(self, heap, nodes, edges, counter, max_calc, cutoff,
-            total_score, supply, characterized_biosphere, lca):
+                 total_score, supply, characterized_biosphere, lca):
         """
 Build a directed graph of the supply chain.
 
@@ -92,8 +93,8 @@ and traverse the graph using an "importance-first" search.
                 if activity == parent_index or amount <= 0:
                     continue
                 counter += 1
-                cumulative_score = self.cumulative_score(activity, supply,
-                    characterized_biosphere, lca)
+                cumulative_score = self.cumulative_score(
+                    activity, supply, characterized_biosphere, lca)
                 if abs(cumulative_score) < abs(total_score * cutoff):
                     continue
                 # Edge format is (to, from, mass amount, cumulative impact)
@@ -104,10 +105,10 @@ and traverse the graph using an "importance-first" search.
                     # Amount of this link * amount of parent demanding link
                     "amount": amount * nodes[parent_index]["amount"],
                     # Amount of this input
-                    "impact": amount * nodes[parent_index]["amount"] \
+                    "impact": amount * nodes[parent_index]["amount"]
                     # times impact per unit of this input
-                        * cumulative_score / supply[activity]
-                    })
+                    * cumulative_score / supply[activity]
+                })
                 # Want multiple incoming edges, but don't add existing node
                 if activity in nodes:
                     continue
@@ -119,8 +120,8 @@ and traverse the graph using an "importance-first" search.
                     # Individual score attributable to environmental flows
                     # coming directory from or to this activity
                     "ind": self.unit_score(activity, supply,
-                        characterized_biosphere)
-                    }
+                                           characterized_biosphere)
+                }
                 heappush(heap, (1 / cumulative_score, activity))
 
         return nodes, edges, counter
@@ -136,7 +137,7 @@ and traverse the graph using an "importance-first" search.
             "amount": 1,
             "name": "Functional unit",
             "cat": "Functional unit"
-            })]
+        })]
         for key, value in nodes.iteritems():
             if key == -1:
                 continue
@@ -146,7 +147,7 @@ and traverse the graph using an "importance-first" search.
                 "code": code,
                 "name": db_data[code]["name"],
                 "cat": db_data[code]["categories"][0],
-                })
+            })
             new_nodes.append((key, value))
         return dict(new_nodes)
 
@@ -191,8 +192,8 @@ def rationalize_supply_chain(nodes, edges, total, limit=0.005):
     """
 This class takes nodes and edges, and removes nodes to edges with low individual scores and reroutes the edges.
     """
-    nodes_to_delete = [key for key, value in nodes.iteritems() if \
-        value["ind"] < (total * limit) and key != -1]
+    nodes_to_delete = [key for key, value in nodes.iteritems() if
+                       value["ind"] < (total * limit) and key != -1]
     size = len(nodes)
     arr = np.zeros((size, size), dtype=np.float32)
     arr_map = dict([(key, index) for index, key in enumerate(sorted(nodes.keys()))])
@@ -219,6 +220,6 @@ def d3_fd_graph_formatter(nodes, edges, total):
             "source": lookup[e["to"]],
             "target": lookup[e["from"]],
             "amount": e["impact"]
-            } for e in edges]
+        } for e in edges]
         return {"edges": new_edges, "nodes": new_nodes,
-            "total": total}
+                "total": total}

@@ -32,12 +32,12 @@ class SimpleRegionalizedLCA(LCA):
         regionalized_dict = {}
         for index in vector.shape[0]:
             regionalized_dict.setdefault(
-                int(self.cf_params["geo"][index]), []).append(
-                (int(self.cf_params["index"][index]), vector[index]))
+                int(self.cf_params["geo"][index]), []).append((
+                    int(self.cf_params["index"][index]), vector[index]))
         for key, data in regionalized_dict.iteritems():
             regionalized_dict[key] = (
-            np.array([x[0] for x in regionalized_dict]),
-            np.array([x[1] for x in regionalized_dict]))
+                np.array([x[0] for x in regionalized_dict]),
+                np.array([x[1] for x in regionalized_dict]))
         # Get location codes for technosphere processes
         tech_columns, tech_param_indices = np.unique(
             self.tech_params["col"], return_index=True)
@@ -52,7 +52,7 @@ class SimpleRegionalizedLCA(LCA):
         self.characterization_matrix = sparse.coo_matrix(
             (np.hstack(cfs), (np.hstack(rows), np.hstack(cols))),
             (len(self.biosphere_dict), len(self.technosphere_dict))
-            ).tocsr()
+        ).tocsr()
 
     def lcia_calculation(self):
         """Multiply the characterization matrix by the life cycle inventory. Uses ``.multiply`` for point-wise multiplication, as both matrices have the same dimensions."""

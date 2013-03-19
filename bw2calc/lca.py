@@ -25,14 +25,15 @@ class LCA(object):
 
     def get_databases(self, demand):
         """Get list of databases for functional unit"""
-        return set.union(*[set(databases[key[0]]["depends"] + [key[0]]
-            ) for key in demand])
+        return set.union(
+            *[set(databases[key[0]]["depends"] + [key[0]]) for key in demand])
 
     def build_demand_array(self, demand=None):
         demand = demand or self.demand
         self.demand_array = np.zeros(len(self.technosphere_dict))
         for key in demand:
-            self.demand_array[self.technosphere_dict[mapping[key]]] = demand[key]
+            self.demand_array[self.technosphere_dict[mapping[key]]] = \
+                demand[key]
 
     #########################
     ### Data manipulation ###
@@ -54,8 +55,10 @@ To this:
 
         """
         rev_mapping = {v: k for k, v in mapping.iteritems()}
-        self.technosphere_dict = {rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
-        self.biosphere_dict = {rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
+        self.technosphere_dict = {
+            rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
+        self.biosphere_dict = {
+            rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
 
     def reverse_dict(self):
         """Construct reverse dicts from row and col indices to processes"""
@@ -74,10 +77,10 @@ To this:
             builder.build(self.dirpath, self.databases)
 
     def load_lcia_data(self, builder=MatrixBuilder):
-        self.cf_params, dummy, dummy, self.characterization_matrix = \
-            builder.build(self.dirpath, [methods[self.method]['abbreviation']
-                ], "amount", "flow", "index", row_dict=self.biosphere_dict,
-                one_d=True)
+        self.cf_params, d, d, self.characterization_matrix = builder.build(
+            self.dirpath, [methods[self.method]['abbreviation']],
+            "amount", "flow", "index", row_dict=self.biosphere_dict,
+            one_d=True)
 
     ####################
     ### Calculations ###
@@ -141,13 +144,18 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
     #########################
 
     def rebuild_technosphere_matrix(self, vector):
-        self.technosphere_matrix = MatrixBuilder.build_matrix(self.tech_params, self.technosphere_dict, self.technosphere_dict, "row", "col", new_data=vector)
+        self.technosphere_matrix = MatrixBuilder.build_matrix(
+            self.tech_params, self.technosphere_dict, self.technosphere_dict,
+            "row", "col", new_data=vector)
 
     def rebuild_biosphere_matrix(self, vector):
-        self.biosphere_matrix = MatrixBuilder.build_matrix(self.bio_params, self.biosphere_dict, self.technosphere_dict, "row", "col", new_data=vector)
+        self.biosphere_matrix = MatrixBuilder.build_matrix(
+            self.bio_params, self.biosphere_dict, self.technosphere_dict,
+            "row", "col", new_data=vector)
 
     def rebuild_characterization_matrix(self, vector):
-        self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(self.cf_params, self.biosphere_dict, "index", new_data=vector)
+        self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(
+            self.cf_params, self.biosphere_dict, "index", new_data=vector)
 
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand"""

@@ -33,9 +33,9 @@ class MatrixBuilder(object):
 
     @classmethod
     def build(cls, dirpath, names, data_label,
-            row_id_label, row_index_label,
-            col_id_label=None, col_index_label=None,
-            row_dict=None, col_dict=None, one_d=False):
+              row_id_label, row_index_label,
+              col_id_label=None, col_index_label=None,
+              row_dict=None, col_dict=None, one_d=False):
         """Build a sparse matrix from NumPy structured array(s).
 
         This method does the following:
@@ -51,7 +51,7 @@ class MatrixBuilder(object):
         if not row_dict:
             row_dict = cls.build_dictionary(array[row_id_label])
         cls.add_matrix_indices(array[row_id_label], array[row_index_label],
-            row_dict)
+                               row_dict)
         if one_d:
             # Eliminate references to row data which isn't used;
             # Unused data remains MAX_INT_32 values because it isn't mapped
@@ -62,14 +62,15 @@ class MatrixBuilder(object):
             if not col_dict:
                 col_dict = cls.build_dictionary(array[col_id_label])
             cls.add_matrix_indices(array[col_id_label],
-                array[col_index_label], col_dict)
-            matrix = cls.build_matrix(array, row_dict, col_dict,
-                row_index_label, col_index_label, data_label)
+                                   array[col_index_label], col_dict)
+            matrix = cls.build_matrix(
+                array, row_dict, col_dict, row_index_label, col_index_label,
+                data_label)
         return array, row_dict, col_dict, matrix
 
     @classmethod
     def build_matrix(cls, array, row_dict, col_dict, row_index_label,
-            col_index_label, data_label=None, new_data=None):
+                     col_index_label, data_label=None, new_data=None):
         """Build sparse matrix."""
         vector = array[data_label] if new_data is None else new_data
         assert vector.shape[0] == array.shape[0], "Incompatible data & indices"
@@ -82,7 +83,7 @@ class MatrixBuilder(object):
 
     @classmethod
     def build_diagonal_matrix(cls, array, row_dict, index_label,
-            data_label=None, new_data=None):
+                              data_label=None, new_data=None):
         """Build diagonal sparse matrix."""
         return cls.build_matrix(array, row_dict, row_dict, index_label, index_label, data_label)
 
@@ -98,19 +99,19 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
             np.hstack((
                 np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
                 np.where(array['type'] == TYPE_DICTIONARY["production"])[0]
-                ))
-            ]
+            ))
+        ]
         bio_array = array[np.where(array['type'] == TYPE_DICTIONARY["biosphere"])]
         tech_dict = cls.build_dictionary(np.hstack((
             tech_array['input'],
             tech_array['output'],
             bio_array['output']
-            )))
+        )))
         bio_dict = cls.build_dictionary(bio_array["input"])
         cls.add_matrix_indices(tech_array['input'], tech_array['row'],
-            tech_dict)
+                               tech_dict)
         cls.add_matrix_indices(tech_array['output'], tech_array['col'],
-            tech_dict)
+                               tech_dict)
         cls.add_matrix_indices(bio_array['input'], bio_array['row'], bio_dict)
         cls.add_matrix_indices(bio_array['output'], bio_array['col'], tech_dict)
         technosphere = cls.build_technosphere_matrix(tech_array, tech_dict)
@@ -121,8 +122,8 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
     @classmethod
     def get_technosphere_inputs_mask(cls, array):
         """Get mask of technosphere inputs from ``array``"""
-        return np.where(array["type"] == \
-            TYPE_DICTIONARY["technosphere"])
+        return np.where(array["type"] ==
+                        TYPE_DICTIONARY["technosphere"])
 
     @classmethod
     def fix_supply_use(cls, array, vector):
