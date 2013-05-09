@@ -155,7 +155,8 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
 
     def rebuild_characterization_matrix(self, vector):
         self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(
-            self.cf_params, self.biosphere_dict, "index", new_data=vector)
+            self.cf_params, self.biosphere_dict,
+            "index", "index", new_data=vector)
 
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand"""

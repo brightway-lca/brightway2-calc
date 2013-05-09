@@ -85,7 +85,7 @@ class MatrixBuilder(object):
     def build_diagonal_matrix(cls, array, row_dict, index_label,
                               data_label=None, new_data=None):
         """Build diagonal sparse matrix."""
-        return cls.build_matrix(array, row_dict, row_dict, index_label, index_label, data_label)
+        return cls.build_matrix(array, row_dict, row_dict, index_label, index_label, data_label, new_data)
 
 
 class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
@@ -129,12 +129,12 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
     def fix_supply_use(cls, array, vector):
         """Make technosphere inputs negative."""
         # Inputs are consumed, so are negative
-        # Operates in place
         mask = cls.get_technosphere_inputs_mask(array)
         vector[mask] = -1 * vector[mask]
+        return vector
 
     @classmethod
     def build_technosphere_matrix(cls, array, tech_dict, new_data=None):
         vector = array["amount"] if new_data is None else new_data
-        cls.fix_supply_use(array, vector)
+        vector = cls.fix_supply_use(array, vector.copy())
         return cls.build_matrix(array, tech_dict, tech_dict, "row", "col", "amount", vector)
