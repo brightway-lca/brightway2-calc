@@ -16,10 +16,14 @@ class MonteCarloLCA(LCA):
         self.iter_solver = iter_solver
         self.guess = None
         self.load_lci_data()
-        self.load_lcia_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
-        self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
+        if method is None:
+            self.lcia = False
+        else:
+            self.lcia = True
+            self.load_lcia_data()
+            self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
 
     def __iter__(self):
         return self
@@ -27,14 +31,18 @@ class MonteCarloLCA(LCA):
     def next(self):
         self.rebuild_technosphere_matrix(self.tech_rng.next())
         self.rebuild_biosphere_matrix(self.bio_rng.next())
-        self.rebuild_characterization_matrix(self.cf_rng.next())
+        if self.lcia:
+            self.rebuild_characterization_matrix(self.cf_rng.next())
 
         if not hasattr(self, "demand_array"):
             self.build_demand_array()
 
         self.lci_calculation()
-        self.lcia_calculation()
-        return self.score
+        if self.lcia:
+            self.lcia_calculation()
+            return self.score
+        else:
+            return self.supply_array
 
     def solve_linear_system(self):
         if not self.iter_solver or self.guess is None:
@@ -106,6 +114,12 @@ class ComparativeMonteCarlo(LCA):
         raise NotImplemented
 
 
+def single_worker(demand, method, iterations):
+    # demand, method, iterations = args
+    mc = MonteCarloLCA(demand=demand, method=method)
+    return [mc.next() for x in range(iterations)]
+
+
 class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
     def __init__(self, demand, method, iterations=1000, chunk_size=None,
@@ -121,10 +135,10 @@ class ParallelMonteCarlo(object):
             self.num_jobs = cpus or multiprocessing.cpu_count()
             self.chunk_size = (iterations // self.num_jobs) + 1
 
-    def calculate(self):
+    def calculate(self, worker=single_worker):
         pool = multiprocessing.Pool(processes=max(
             multiprocessing.cpu_count() - 1, 1))
-        results = [pool.apply_async(single_worker, (self.demand, self.method,
+        results = [pool.apply_async(worker, (self.demand, self.method,
                    self.chunk_size)) for x in xrange(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
@@ -155,12 +169,6 @@ each Monte Carlo iteration.
         pool.close()
         pool.join()  # Blocks until calculation is finished
         return self.merge_dictionaries(*[x.get() for x in results])
-
-
-def single_worker(demand, method, iterations):
-    # demand, method, iterations = args
-    mc = MonteCarloLCA(demand=demand, method=method)
-    return [mc.iterate() for x in range(iterations)]
 
 
 def multi_worker(demands, method):
