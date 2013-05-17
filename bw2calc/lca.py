@@ -146,7 +146,9 @@ Higham, Accuracy and Stability of Numerical Algorithms, 2002, p. 260.
     def rebuild_technosphere_matrix(self, vector):
         self.technosphere_matrix = MatrixBuilder.build_matrix(
             self.tech_params, self.technosphere_dict, self.technosphere_dict,
-            "row", "col", new_data=vector)
+            "row", "col",
+            new_data=TBMBuilder.fix_supply_use(self.tech_params, vector)
+        )
 
     def rebuild_biosphere_matrix(self, vector):
         self.biosphere_matrix = MatrixBuilder.build_matrix(
