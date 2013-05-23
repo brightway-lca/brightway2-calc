@@ -1,14 +1,29 @@
 Technical guide
 ***************
 
-Static calculations
-===================
+.. _LCA:
+
+Static LCA
+==========
 
 .. autoclass:: bw2calc.LCA
     :members:
 
-Uncertainty analysis
-====================
+.. _matrixbuilders:
+
+Matrix builders
+===============
+
+.. autoclass:: bw2calc.MatrixBuilder
+    :members:
+
+.. autoclass:: bw2calc.TechnosphereBiosphereMatrixBuilder
+    :members:
+
+.. _montecarlo:
+
+Monte Carlo uncertainty analysis
+================================
 
 .. autoclass:: bw2calc.MonteCarloLCA
     :members:
