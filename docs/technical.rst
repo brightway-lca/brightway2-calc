@@ -1,6 +1,8 @@
 Technical guide
 ***************
 
+Currently, there is no overview documentation, only class-specific stuff.
+
 .. _LCA:
 
 Static LCA
