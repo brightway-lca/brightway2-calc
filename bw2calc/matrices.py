@@ -12,23 +12,96 @@ except ImportError:
 
 
 class MatrixBuilder(object):
-    """Load a structured array from a file, manipulate it. Generates a sparse matrix."""
+    """
+The class, and its subclasses, loads structured arrays, manipulates them, and generates sparse matrices.
+
+See the following for more information on structured arrays:
+
+* `NumPy structured arrays <http://docs.scipy.org/doc/numpy/reference/generated/numpy.recarray.html#numpy.recarray>`_
+* `Intermediate and processed data <http://brightway2.readthedocs.org/en/latest/key-concepts.html#intermediate-and-processed-data>`_
+* `Inventory database structured arrays <https://bw2data.readthedocs.org/en/latest/database.html#bw2data.Database.process>`_
+* `Impact assessment method structured arrays <https://bw2data.readthedocs.org/en/latest/method.html#bw2data.Method.process>`_
+
+These classes serve as a container for common functionality, and are not intended to be instantiated. In other words, you should use:
+
+.. code-block:: python
+
+    MatrixBuilder.build(args)
+
+and not:
+
+.. code-block:: python
+
+    mb = MatrixBuilder()
+    mb.build(args)
+
+    """
 
     @classmethod
-    def load(self, dirpath, names):
-        """Load a structured array from a file."""
+    def load(cls, dirpath, names):
+        """Load a structured array from a file.
+
+        Args:
+            * *dirpath* (string): Directory path of file
+            * *names* (list of strings): Filenames to load
+
+        Returns:
+            A NumPy structured array
+
+        """
         return load_arrays(dirpath, names)
 
     @classmethod
-    def add_matrix_indices(self, array_from, array_to, mapping):
-        """Map ``array_from`` keys to ``array_to`` values using ``mapping``.
+    def add_matrix_indices(cls, array_from, array_to, mapping):
+        """
+Map ``array_from`` keys to ``array_to`` values using the dictionary ``mapping``.
 
-        Operates in place. Doesn't return anything."""
+This is needed to take the ``flow``, ``input``, and ``output`` columns, which can be arbitrarily large integers, and transform them to matrix indices, which start from zero.
+
+Here is an example:
+
+.. code-block:: python
+
+    import numpy as np
+    a_f = np.array((1, 2, 3, 4))
+    a_t = np.zeros(4)
+    mapping = {1: 5, 2: 6, 3: 7, 4: 8}
+    MatrixBuilder.add_matrix_indices(a_f, a_t, mapping)
+    # => a_t is now [5, 6, 7, 8]
+
+This is a relatively computationally expensive method, and therefore a Cython version of ``indexer`` is used if present.
+
+Args:
+    * *array_from* (array): 1-dimensional integer numpy array.
+    * *array_to* (array): 1-dimensional integer numpy array.
+    * *mapping* (dict): Dictionary that links ``mapping`` indices to ``row`` or ``col`` indices, e.g. ``{34: 3}``.
+
+Operates in place. Doesn't return anything.
+
+        """
         indexer(array_from, array_to, mapping)
 
     @classmethod
-    def build_dictionary(self, array):
-        """Build a dictionary from the sorted, unique elements of an array"""
+    def build_dictionary(cls, array):
+        """
+Build a dictionary from the sorted, unique elements of an array.
+
+Here is an example:
+
+.. code-block:: python
+
+    import numpy as np
+    array = np.array((4, 8, 6, 2))
+    MatrixBuilder.build_dictionary(array)
+    # => returns {2: 0, 4: 1, 6: 2, 8: 3}
+
+Args:
+    * *array* (array): A numpy array of integers
+
+Returns:
+    A dictionary that maps the sorted elements of ``array`` to integers starting with zero.
+
+        """
         return dicter(array)
 
     @classmethod
@@ -36,16 +109,19 @@ class MatrixBuilder(object):
               row_id_label, row_index_label,
               col_id_label=None, col_index_label=None,
               row_dict=None, col_dict=None, one_d=False):
-        """Build a sparse matrix from NumPy structured array(s).
+        """
+Build a sparse matrix from NumPy structured array(s).
 
-        This method does the following:
+This method does the following:
 
-        #. Load and concatenate some structured arrays.
-        #. Using the ``row_id_label``, and the ``row_dict`` if available, add matrix indices to the ``row_index_label`` column.
-        #. If not ``ond_d``, do the same to ``col_index_label`` using ``col_id_label`` and ``col_dict``.
-        #. If not ``ond_d``, build a sparse matrix using ``data_label`` for the matrix data, and ``row_index_label`` and ``col_index_label`` as indices.
-        #. Else if ``ond_d``, build a diagonal matrix using only ``data_label`` for values and ``row_index_label`` as indices.
-        #. Return the loaded parameter arrays, row and column dicts, and matrix."""
+#. Load and concatenate some structured arrays.
+#. Using the ``row_id_label``, and the ``row_dict`` if available, add matrix indices to the ``row_index_label`` column.
+#. If not ``ond_d``, do the same to ``col_index_label`` using ``col_id_label`` and ``col_dict``.
+#. If not ``ond_d``, build a sparse matrix using ``data_label`` for the matrix data, and ``row_index_label`` and ``col_index_label`` as indices.
+#. Else if ``ond_d``, build a diagonal matrix using only ``data_label`` for values and ``row_index_label`` as indices.
+#. Return the loaded parameter arrays, row and column dicts, and matrix.
+
+        """
         assert isinstance(names, (tuple, list, set)), "names must be a list"
         array = load_arrays(dirpath, names)
         if not row_dict:
