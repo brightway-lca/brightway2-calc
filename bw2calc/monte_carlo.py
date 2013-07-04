@@ -2,7 +2,7 @@
 from __future__ import division
 from .lca import LCA
 from scipy.sparse.linalg import iterative, spsolve
-from stats_toolkit.random import MCRandomNumberGenerator
+from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
 
