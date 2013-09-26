@@ -34,4 +34,7 @@ Already more than fast enough. Setup code for other approaches::
         dict(zip(np.sort(np.unique(array)), itertools.count()))
 
     """
-    return dict(zip(np.sort(np.unique(array)), itertools.count()))
+    return dict(zip(
+        (int(x) for x in np.sort(np.unique(array))),
+        itertools.count()
+    ))
