@@ -3,6 +3,6 @@ numpy>=1.6
 progressbar
 scipy
 voluptuous
-bw2data>=0.9.1
-bw2analyzer>=0.3.1.1
+bw2data>=0.10.1
+bw2analyzer>=0.4
 bw-stats-toolkit>=0.7

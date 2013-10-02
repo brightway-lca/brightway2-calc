@@ -6,43 +6,25 @@ from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
 
-
-class MonteCarloLCA(LCA):
+class IterativeMonteCarlo(LCA):
+    """Base class to use iterative techniques instead of LU factorization in Monte Carlo."""
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
                  seed=None, *args, **kwargs):
-        super(MonteCarloLCA, self).__init__(demand, method=method, *args,
-                                            **kwargs)
+        super(IterativeMonteCarlo, self).__init__(demand, method=method, *args,
+                                                  **kwargs)
         self.seed = seed
         self.iter_solver = iter_solver
         self.guess = None
-        self.load_lci_data()
-        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
-        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
-        if method is None:
-            self.lcia = False
-        else:
-            self.lcia = True
-            self.load_lcia_data()
-            self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
+        self.lcia = method is not None
 
     def __iter__(self):
         return self
 
+    def __call__(self):
+        return self.next()
+
     def next(self):
-        self.rebuild_technosphere_matrix(self.tech_rng.next())
-        self.rebuild_biosphere_matrix(self.bio_rng.next())
-        if self.lcia:
-            self.rebuild_characterization_matrix(self.cf_rng.next())
-
-        if not hasattr(self, "demand_array"):
-            self.build_demand_array()
-
-        self.lci_calculation()
-        if self.lcia:
-            self.lcia_calculation()
-            return self.score
-        else:
-            return self.supply_array
+        raise NotImplemented
 
     def solve_linear_system(self):
         if not self.iter_solver or self.guess is None:
@@ -54,33 +36,66 @@ class MonteCarloLCA(LCA):
             solution, status = self.iter_solver(
                 self.technosphere_matrix,
                 self.demand_array,
-                x0=self.guess)
+                x0=self.guess,
+                maxiter=1000)
             if status != 0:
-                raise
+                return spsolve(
+                    self.technosphere_matrix,
+                    self.demand_array
+                )
             return solution
 
 
-class ComparativeMonteCarlo(LCA):
+class MonteCarloLCA(IterativeMonteCarlo):
+    """Monte Carlo uncertainty analysis with separate RNGs for each set of parameters."""
+    def load_data(self):
+        self.load_lci_data()
+        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)
+        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=self.seed)
+        if self.lcia:
+            self.load_lcia_data()
+            self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
+        if self.weighting:
+            self.load_weighting_data()
+            self.weighting_rng = MCRandomNumberGenerator(self.weighting_params, seed=self.seed)
+
+    def next(self):
+        self.rebuild_technosphere_matrix(self.tech_rng.next())
+        self.rebuild_biosphere_matrix(self.bio_rng.next())
+        if self.lcia:
+            self.rebuild_characterization_matrix(self.cf_rng.next())
+        if self.weighting:
+            self.weighting_value = self.weighting_rng.next()
+
+        if not hasattr(self, "demand_array"):
+            self.build_demand_array()
+
+        self.lci_calculation()
+        if self.lcia:
+            self.lcia_calculation()
+            if self.weighting:
+                self.weighting_calculation()
+            return self.score
+        else:
+            return self.supply_array
+
+
+class ComparativeMonteCarlo(IterativeMonteCarlo):
     """First draft approach at comparative LCA"""
-    def __init__(self, demands, method=None, iter_solver=iterative.cgs,
-                 seed=None, *args, **kwargs):
+    def __init__(self, demands, *args, **kwargs):
         self.demands = demands
         # Get all possibilities for database retrieval
         demand_all = demands[0].copy()
         for other in demands[1:]:
             demand_all.update(other)
-        super(ComparativeMonteCarlo, self).__init__(demand_all, method)
-        self.seed = seed
-        self.iter_solver = iter_solver
-        self.guess = None
+        super(ComparativeMonteCarlo, self).__init__(demand_all, *args, **kwargs)
+
+    def load_data(self):
         self.load_lci_data()
         self.load_lcia_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
-
-    def __iter__(self):
-        return self
 
     def next(self):
         self.rebuild_technosphere_matrix(self.tech_rng.next())
@@ -95,28 +110,11 @@ class ComparativeMonteCarlo(LCA):
             results.append(self.score)
         return results
 
-    def solve_linear_system(self):
-        if not self.iter_solver or self.guess is None:
-            self.guess = spsolve(
-                self.technosphere_matrix,
-                self.demand_array)
-            return self.guess
-        else:
-            solution, status = self.iter_solver(
-                self.technosphere_matrix,
-                self.demand_array,
-                x0=self.guess)
-            if status != 0:
-                raise
-            return solution
-
-    def iterate(self):
-        raise NotImplemented
-
 
 def single_worker(demand, method, iterations):
     # demand, method, iterations = args
     mc = MonteCarloLCA(demand=demand, method=method)
+    mc.load_data()
     return [mc.next() for x in range(iterations)]
 
 

@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name='bw2calc',
-    version="0.9.3",
-    packages=["bw2calc", "bw2calc.tests"],
+    version="0.10.1",
+    packages=["bw2calc", "bw2calc.tests", "bw2calc.sensitivity"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
     license=open('LICENSE.txt').read(),

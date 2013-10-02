@@ -18,8 +18,8 @@ class GraphTraversal(object):
         # Create matrix of LCIA CFs times biosphere flows, as these don't
         # change. This is also the unit score of each activity.
         characterized_biosphere = np.array((
-            lca.characterization_matrix.data *
-            lca.biosphere_matrix.data).sum(axis=0)).ravel()
+            lca.characterization_matrix *
+            lca.biosphere_matrix).sum(axis=0)).ravel()
 
         heap, nodes, edges = self.initialize_heap(
             demand, lca, supply, characterized_biosphere)
@@ -83,7 +83,7 @@ and traverse the graph using an "importance-first" search.
         while heap and counter < max_calc:
             parent_score_inverted, parent_index = heappop(heap)
             # parent_score = 1 / parent_score_inverted
-            col = lca.technosphere_matrix.data[:, parent_index].tocoo()
+            col = lca.technosphere_matrix[:, parent_index].tocoo()
             # Multiply by -1 because technosphere values are negative
             # (consumption of inputs)
             children = [(col.row[i], -1 * col.data[i]) for i in xrange(

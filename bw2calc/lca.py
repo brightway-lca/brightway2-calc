@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*
 from __future__ import division
 from brightway2 import config as base_config
-from brightway2 import databases, methods, mapping
+from brightway2 import databases, methods, mapping, weightings
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
 import os
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
+from .utils import load_arrays
 
 
 class LCA(object):
@@ -21,7 +22,7 @@ class LCA(object):
     ### Setup ###
     #############
 
-    def __init__(self, demand, method=None, config=None):
+    def __init__(self, demand, method=None, weighting=None, config=None):
         """Create a new LCA calculation.
 
         Args:
@@ -38,6 +39,7 @@ class LCA(object):
             raise ValueError("Demand must be a dictionary")
         self.demand = demand
         self.method = method
+        self.weighting = weighting
         self.databases = self.get_databases(demand)
 
     def get_databases(self, demand):
@@ -92,6 +94,9 @@ This isn't needed for the LCA calculation itself, but is helpful when interpreti
 Doesn't require any arguments or return anything, but changes ``self.technosphere_dict`` and ``self.biosphere_dict``.
 
         """
+        if not isinstance(self.technosphere_dict.keys()[0], int):
+            # Already reversed - should be idempotent
+            return
         rev_mapping = {v: k for k, v in mapping.iteritems()}
         self.technosphere_dict = {
             rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
@@ -125,6 +130,14 @@ Doesn't require any arguments or return anything, but changes ``self.technospher
             self.dirpath, [methods[self.method]['abbreviation']],
             "amount", "flow", "index", row_dict=self.biosphere_dict,
             one_d=True)
+
+    def load_weighting_data(self):
+        """Load weighting data, a 1-element array."""
+        self.weighting_params = load_arrays(
+            self.dirpath,
+            [weightings[self.weighting]['abbreviation']]
+        )
+        self.weighting_value = self.weighting_params['amount']
 
     ####################
     ### Calculations ###
@@ -222,6 +235,12 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         self.characterized_inventory = \
             self.characterization_matrix * self.inventory
 
+    def weighting_calculation(self):
+        if not hasattr(self, "weighting_value"):
+            self.load_weighting_data()
+        self.weighted_inventory = \
+            self.weighting_value[0] * self.characterized_inventory
+
     @property
     def score(self):
         """
@@ -230,6 +249,9 @@ The LCIA score as a ``float``.
 Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
+        if self.weighting:
+            assert hasattr(self, "weighted_inventory"), "Must do weighting first"
+            return float(self.weighted_inventory.sum())
         return float(self.characterized_inventory.sum())
 
     #########################
