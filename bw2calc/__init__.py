@@ -7,4 +7,4 @@ from .graph_traversal import GraphTraversal, edge_cutter, node_pruner, \
     d3_fd_graph_formatter
 from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
 
-__version__ = (0, 10, 1)
+__version__ = (0, 10, 2)
