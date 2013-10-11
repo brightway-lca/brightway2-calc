@@ -7,8 +7,32 @@ import numpy as np
 
 
 class GraphTraversal(object):
-    """Master class for graph traversal."""
+    """
+Traverse a supply chain, following paths of greatest impact.
+
+This implementation uses a queue of datasets to assess. As the supply chain is traversed, datasets inputs are added to a list sorted by LCA score. Each activity in the sorted list is assessed, and added to the supply chain graph, as long as its impact is above a certain threshold, and the maximum number of calculations has not been exceeded.
+
+Because the next dataset assessed is chosen by its impact, not it position in the graph, this is neither a breadth-first nor a depth-first search, but rather "importance-first".
+
+This class is written in a functional style - no variables are stored in *self*, only methods.
+
+Should be used by calling the ``calculate`` method.
+
+    """
     def calculate(self, demand, method, cutoff=0.005, max_calc=1e5):
+        """
+Traverse the supply chain graph.
+
+Args:
+    * *demand* (dict): The functional unit. Same format as in LCA class.
+    * *method* (tuple): LCIA method. Same format as in LCA class.
+    * *cutoff* (float, default=0.005): Cutoff criteria to stop LCA calculations. Relative score of total, i.e. 0.005 will cutoff if a dataset has a score less than 0.5 percent of the total.
+    * *max_calc* (int, default=10000): Maximum number of LCA calculations to perform.
+
+Returns:
+    Dictionary of nodes, edges, LCA object, and number of LCA calculations.
+
+        """
         counter = 0
 
         lca, supply, score = self.build_lca(demand, method)
@@ -36,6 +60,14 @@ class GraphTraversal(object):
         }
 
     def initialize_heap(self, demand, lca, supply, characterized_biosphere):
+        """
+Create a `priority queue <http://docs.python.org/2/library/heapq.html>`_ or ``heap`` to store inventory datasets, sorted by LCA score.
+
+Populates the heap with each activity in ``demand``. Initial nodes are the *functional unit*, i.e. the complete demand, and each activity in the *functional unit*. Initial edges are inputs from each activity into the *functional unit*.
+
+The *functional unit* is an abstract dataset (as it doesn't exist in the matrix), and is assigned the index ``-1``.
+
+        """
         heap, nodes, edges = [], {}, []
         for activity, value in demand.iteritems():
             index = lca.technosphere_dict[mapping[activity]]
@@ -46,9 +78,6 @@ class GraphTraversal(object):
                     index, supply, characterized_biosphere, lca),
                 "ind": self.unit_score(index, supply, characterized_biosphere)
             }
-            # -1 is a special index for total demand, which can be
-            # composite. Initial edges are inputs to the
-            # functional unit.
             edges.append({
                 "to": -1,
                 "from": index,
@@ -58,6 +87,7 @@ class GraphTraversal(object):
         return heap, nodes, edges
 
     def build_lca(self, demand, method):
+        """Build LCA object from *demand* and *method*."""
         lca = LCA(demand, method)
         lca.lci()
         lca.lcia()
@@ -65,20 +95,23 @@ class GraphTraversal(object):
         return lca, lca.solve_linear_system(), lca.score
 
     def cumulative_score(self, index, supply, characterized_biosphere, lca):
+        """Compute cumulative LCA score for a given activity"""
         demand = np.zeros((supply.shape[0],))
         demand[index] = supply[index]
         return float((characterized_biosphere * lca.solver(demand)).sum())
 
     def unit_score(self, index, supply, characterized_biosphere):
+        """Compute the LCA impact caused by the direct emissions and resource consumption of a given activity"""
         return float(characterized_biosphere[index] * supply[index])
 
     def traverse(self, heap, nodes, edges, counter, max_calc, cutoff,
                  total_score, supply, characterized_biosphere, lca):
         """
-Build a directed graph of the supply chain.
+Build a directed graph by traversing the supply chain.
 
-Use a heap queue to store a sorted list of processes that need to be examined,
-and traverse the graph using an "importance-first" search.
+Returns:
+    (nodes, edges, number of calculations)
+
         """
         while heap and counter < max_calc:
             parent_score_inverted, parent_index = heappop(heap)
@@ -127,6 +160,7 @@ and traverse the graph using an "importance-first" search.
         return nodes, edges, counter
 
     def add_metadata(self, nodes, lca):
+        """Add metadata to nodes, like name and category."""
         rm = dict([(v, k) for k, v in mapping.data.iteritems()])
         rt = dict([(v, k) for k, v in lca.technosphere_dict.iteritems()])
         lookup = dict([(index, self.get_code(index, rm, rt)) for index in nodes if index != -1])
@@ -152,21 +186,13 @@ and traverse the graph using an "importance-first" search.
         return dict(new_nodes)
 
     def get_code(self, index, rev_mapping, rev_tech):
+        """Turn technosphere index into database identifier."""
         return rev_mapping[rev_tech[index]]
 
 
 def edge_cutter(nodes, edges, total, limit=0.0025):
     """The default graph traversal includes links which might be of small magnitude. This function cuts links that have small cumulative impact."""
-    to_delete = []
-    for i, e in enumerate(edges):
-        if e["impact"] < (total * limit):
-            to_delete.append(i)
-        else:
-            continue
-            # print e
-            # print nodes[e[1]]
-            # print (e[2] / nodes[e[1]]["amount"] * nodes[e[1]]["cum"]) / (total * limit)
-    return [e for i, e in enumerate(edges) if i not in to_delete]
+    return [e for e in edges if e["impact"] >= (total * limit)]
 
 
 def node_pruner(nodes, edges):

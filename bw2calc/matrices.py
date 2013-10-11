@@ -13,7 +13,9 @@ except ImportError:
 
 class MatrixBuilder(object):
     """
-The class, and its subclasses, loads structured arrays, manipulates them, and generates sparse matrices.
+The class, and its subclasses, loads structured arrays, manipulates them, and generates `SciPy sparse matrices <http://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
+
+Matrix builders use an array of row indices, an array of column indices, and an array of values to create a `coordinate (coo) matrix <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html>`_, which is then converted to a `compressed sparse row (csr) matrix <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_.
 
 See the following for more information on structured arrays:
 

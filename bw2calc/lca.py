@@ -144,9 +144,12 @@ Doesn't require any arguments or return anything, but changes ``self.technospher
     ####################
 
     def decompose_technosphere(self):
-        """Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
+        """
+Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
 
-        Doesn't return anything, but creates ``self.solver``.
+Doesn't return anything, but creates ``self.solver``.
+
+.. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
 
         """
         self.solver = factorized(self.technosphere_matrix.tocsc())
@@ -161,9 +164,7 @@ Master solution function for linear system :math:`Ax=B`.
 
 We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
 
-If the technosphere matrix has already been factorized, then the decomposed technosphere is reused. Otherwise the calculation is redone completely.
-
-.. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
+If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
 
         """
         if hasattr(self, "solver"):

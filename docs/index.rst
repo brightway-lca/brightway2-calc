@@ -26,7 +26,11 @@ Table of Contents
 .. toctree::
    :maxdepth: 2
 
-   technical
+   matrix
+   lca
+   monte_carlo
+   graph_traversal
+   regio
 
 Indices and tables
 ==================
