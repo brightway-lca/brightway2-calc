@@ -71,21 +71,23 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
             'cum': lca.score,
             'ind': 1e-6 * lca.score
         }}
-        for activity, value in demand.iteritems():
-            index = lca.technosphere_dict[activity]
-            heappush(heap, (1, index))
+        for activity_key, activity_amount in demand.iteritems():
+            index = lca.technosphere_dict[activity_key]
+            cum_score = self.cumulative_score(
+                index, supply, characterized_biosphere, lca
+            )
+            heappush(heap, (abs(1 / cum_score), index))
             nodes[index] = {
                 "amount": float(supply[index]),
-                "cum": self.cumulative_score(
-                    index, supply, characterized_biosphere, lca),
+                "cum": cum_score,
                 "ind": self.unit_score(index, supply, characterized_biosphere)
             }
             edges.append({
                 "to": -1,
                 "from": index,
-                "amount": value,
-                "exc_amount": value,
-                "impact": lca.score,
+                "amount": activity_amount,
+                "exc_amount": activity_amount,
+                "impact": cum_score * activity_amount / float(supply[index]),
             })
         return heap, nodes, edges
 
@@ -162,6 +164,6 @@ Returns:
                     "ind": self.unit_score(activity, supply,
                                            characterized_biosphere)
                 }
-                heappush(heap, (1 / cumulative_score, activity))
+                heappush(heap, (abs(1 / cumulative_score), activity))
 
         return nodes, edges, counter
