@@ -43,8 +43,10 @@ and not:
     def load(cls, dirpath, names):
         """Load a structured array from a file.
 
+        .. note: The actual filepath will be `dirpath``/processed/``name``.pickle. The ``load_arrays`` functions adds *processed* and *.pickle* automatically.
+
         Args:
-            * *dirpath* (string): Directory path of file
+            * *dirpath* (string): Root directory path of file, i.e. ``config.dir``.
             * *names* (list of strings): Filenames to load
 
         Returns:
