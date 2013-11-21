@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*
 from ..mc_vector import ParameterVectorLCA
-from bw2data import Database
+from bw2data import Database, config
 
 
 class ParameterNaming(object):
     """Translate parameter indices into something meaningful to humans."""
     def __init__(self, lca):
         assert isinstance(lca, ParameterVectorLCA)
-        self.databases = {"biosphere": Database("biosphere").load()}
+        self.databases = {"biosphere": Database(config.biosphere).load()}
         self.lca = lca
         self.positions = self.lca.positions
         self.lca.fix_dictionaries()
@@ -20,7 +20,7 @@ class ParameterNaming(object):
         elif kind == "bio":
             offset = self.positions['tech'][1]
             row_key = self.rb[self.lca.bio_params[index - offset]['row']]
-            input_ds = self.databases["biosphere"][row_key]
+            input_ds = self.databases[config.biosphere][row_key]
             col_key = self.rt[self.lca.bio_params[index - offset]['col']]
             if col_key[0] not in self.databases:
                 self.databases[col_key[0]] = Database(col_key[0]).load()
@@ -48,7 +48,7 @@ class ParameterNaming(object):
         elif kind == "cf":
             offset = self.positions['bio'][1]
             row_key = self.rb[self.lca.cf_params[index - offset]['index']]
-            ds = self.databases["biosphere"][row_key]
+            ds = self.databases[config.biosphere][row_key]
             return "CF: %s (%s)" % (ds['name'], "-".join(ds['categories']))
 
     def get_kind(self, index):
