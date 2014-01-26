@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='bw2calc',
-    version="0.10.2",
+    version="0.11",
     packages=["bw2calc", "bw2calc.tests", "bw2calc.sensitivity"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
@@ -11,7 +11,7 @@ setup(
     install_requires=["brightway2"],
     long_description=open('README.rst').read(),
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',

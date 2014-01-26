@@ -7,11 +7,10 @@ import numpy as np
 class LCACalculationTestCase(BW2DataTest):
     def add_basic_biosphere(self):
         biosphere = Database("biosphere")
-        biosphere.register("Made for tests", [], 1)
+        biosphere.register(depends=[])
         biosphere.write({
             ("biosphere", 1): {
                 'categories': ['things'],
-                'code': 1,
                 'exchanges': [],
                 'name': 'an emission',
                 'type': 'emission',
@@ -42,7 +41,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register("Made for tests", ["biosphere"], 2)
+        test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", 1): 1})
@@ -79,7 +78,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register("Made for tests", ["biosphere"], 2)
+        test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", 1): 1})
@@ -112,7 +111,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register("Made for tests", ["biosphere"], 2)
+        test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", 1): 1})
@@ -149,7 +148,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register("Made for tests", ["biosphere"], 2)
+        test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", 1): 1})
@@ -193,7 +192,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register("Made for tests", ["biosphere"], 2)
+        test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", 1): 1})

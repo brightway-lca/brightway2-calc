@@ -60,6 +60,8 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.weighting_rng = MCRandomNumberGenerator(self.weighting_params, seed=self.seed)
 
     def next(self):
+        if not hasattr(self, "tech_rng"):
+            raise NameError("Must run `load_data` before making calculations")
         self.rebuild_technosphere_matrix(self.tech_rng.next())
         self.rebuild_biosphere_matrix(self.bio_rng.next())
         if self.lcia:
