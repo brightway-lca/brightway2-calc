@@ -5,5 +5,7 @@ Changelog
 =======
 
 - BREAKING CHANGE: Graph traversal was reworked, and some functionality for interpreting the output was moved to ``bw2analyzer``.
+- BREAKING CHANGE: Deleted ``SimpleRegionalizedLCA`` class. Regionalization will be provided in bw2regional.
+- BREAKING CHANGE: Deleted initial sensitivity work, moved for now to branch, as it was not yet usable.
 - FEATURE: Much better and more thorough documentation.
 - FEATURE: Improved testing and test coverage
