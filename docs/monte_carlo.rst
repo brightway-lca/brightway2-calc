@@ -1,13 +1,22 @@
 .. _montecarlo:
 
-Monte Carlo uncertainty analysis
+Stochastic Life Cycle Assessment
 ================================
 
-Technical reference
--------------------
+Monte Carlo LCA
+---------------
 
 .. autoclass:: bw2calc.MonteCarloLCA
     :members:
+
+Vector Monte Carlo LCA
+----------------------
+
+.. autoclass:: bw2calc.ParameterVectorLCA
+    :members:
+
+Parallel Monte Carlo LCA
+------------------------
 
 .. autoclass:: bw2calc.ParallelMonteCarlo
     :members:

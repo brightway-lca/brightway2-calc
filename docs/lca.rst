@@ -1,10 +1,7 @@
-.. _LCA:
+.. _lca:
 
 Static life cycle assessment
 ============================
-
-Technical reference
--------------------
 
 .. autoclass:: bw2calc.LCA
     :members:

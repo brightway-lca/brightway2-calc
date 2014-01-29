@@ -6,6 +6,7 @@ from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
 
+
 class IterativeMonteCarlo(LCA):
     """Base class to use iterative techniques instead of LU factorization in Monte Carlo."""
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
