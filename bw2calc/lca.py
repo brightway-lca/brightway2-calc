@@ -128,7 +128,7 @@ Doesn't require any arguments or return anything, but changes ``self.technospher
         """Load data and create characterization matrix."""
         self.cf_params, d, d, self.characterization_matrix = builder.build(
             self.dirpath, [methods[self.method]['abbreviation']],
-            "amount", "flow", "index", row_dict=self.biosphere_dict,
+            "amount", "flow", "row", row_dict=self.biosphere_dict,
             one_d=True)
 
     def load_weighting_data(self):
@@ -298,7 +298,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         """
         self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(
             self.cf_params, self.biosphere_dict,
-            "index", "index", new_data=vector)
+            "row", "row", new_data=vector)
 
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand.
