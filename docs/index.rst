@@ -30,7 +30,6 @@ Table of Contents
    lca
    monte_carlo
    graph_traversal
-   regio
 
 Indices and tables
 ==================
