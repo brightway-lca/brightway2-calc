@@ -19,7 +19,7 @@ The following online resources are available:
 
 * `Source code <https://bitbucket.org/cmutel/brightway2-calc>`_
 * `Documentation on Read the Docs <https://brightway2-calc.readthedocs.org/en/latest/>`_
-* `Test coverage <http://coverage.brightwaylca.org/calc/index.html>`_
+* `Report on how well the tests cover the code base <http://coverage.brightwaylca.org/calc/index.html>`_
 
 Building matrices
 =================

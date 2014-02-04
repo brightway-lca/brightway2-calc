@@ -1,8 +1,13 @@
 Changelog
 *********
 
-0.11 ()
-=======
+0.11.1 (2014-01-29)
+===================
+
+- BUGFIX: Change column names in method matrix building to be consistent with bw2data 0.11
+
+0.11 (2014-01-26)
+=================
 
 - BREAKING CHANGE: Graph traversal was reworked, and some functionality for interpreting the output was moved to ``bw2analyzer``.
 - BREAKING CHANGE: Deleted ``SimpleRegionalizedLCA`` class. Regionalization will be provided in bw2regional.
