@@ -112,7 +112,7 @@ Returns:
     def build(cls, dirpath, names, data_label,
               row_id_label, row_index_label,
               col_id_label=None, col_index_label=None,
-              row_dict=None, col_dict=None, one_d=False):
+              row_dict=None, col_dict=None, one_d=False, drop_missing=True):
         """
 Build a sparse matrix from NumPy structured array(s).
 
@@ -136,13 +136,17 @@ This method does the following:
             # Eliminate references to row data which isn't used;
             # Unused data remains MAX_INT_32 values because it isn't mapped
             # by ``add_matrix_indices``.
-            array = array[np.where(array[row_index_label] != MAX_INT_32)]
+            if drop_missing:
+                array = array[np.where(array[row_index_label] != MAX_INT_32)]
             matrix = cls.build_diagonal_matrix(array, row_dict, row_index_label, data_label)
         else:
             if not col_dict:
                 col_dict = cls.build_dictionary(array[col_id_label])
             cls.add_matrix_indices(array[col_id_label],
                                    array[col_index_label], col_dict)
+            if drop_missing:
+                array = array[np.where(array[row_index_label] != MAX_INT_32)]
+                array = array[np.where(array[col_index_label] != MAX_INT_32)]
             matrix = cls.build_matrix(
                 array, row_dict, col_dict, row_index_label, col_index_label,
                 data_label)
