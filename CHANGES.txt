@@ -1,6 +1,11 @@
 Changelog
 *********
 
+0.12 (2014-02-13)
+=================
+
+- BREAKING CHANGE: Matrix builder will only include parameter array rows that are correctly mapped, instead of raising an error when unmapped rows occur. This behaviour can be turned off by passing ``drop_missing=False``.
+
 0.11.1 (2014-01-29)
 ===================
 
