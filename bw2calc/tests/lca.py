@@ -200,3 +200,43 @@ class LCACalculationTestCase(BW2DataTest):
         # Indirect test because no easy way to test a function is called
         lca.technosphere_matrix = None
         self.assertEqual(float(lca.solve_linear_system().sum()), 1.5)
+
+    def test_fix_dictionaries(self):
+        test_data = {
+            ("t", 1): {
+                'exchanges': [{
+                    'amount': 0.5,
+                    'input': ('t', 2),
+                    'type': 'technosphere',
+                    'uncertainty type': 0},
+                    {'amount': 1,
+                    'input': ('biosphere', 1),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            ("t", 2): {
+                'exchanges': [],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register(depends=["biosphere"])
+        test_db.write(test_data)
+        test_db.process()
+        lca = LCA({("t", 1): 1})
+        lca.lci()
+
+        supply = lca.supply_array.sum()
+
+        self.assertTrue(lca._mapped_dict)
+        self.assertTrue(lca.fix_dictionaries())
+        self.assertFalse(lca._mapped_dict)
+        # Second time doesn't do anything
+        self.assertFalse(lca.fix_dictionaries())
+        self.assertFalse(lca._mapped_dict)
+        lca.redo_lci({("t", 1): 2})
+        self.assertEqual(lca.supply_array.sum(), supply * 2)

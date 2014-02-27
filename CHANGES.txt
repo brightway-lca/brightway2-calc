@@ -1,6 +1,12 @@
 Changelog
 *********
 
+0.13 (2014-XX-XX)
+=================
+
+- BREAKING CHANGE: LCA.fix_dictionaries now sets/uses ``_mapped_dict`` to determine if ``fix_dictionaries`` has been called.
+- BUGFIX: LCA.build_demand_array doesn't break if ``fix_dictionaries`` has been called.
+
 0.12 (2014-02-13)
 =================
 

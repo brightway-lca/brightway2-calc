@@ -34,6 +34,7 @@ class LCA(object):
             A new LCA object
 
         """
+        self._mapped_dict = True
         self.dirpath = (config or base_config).dir
         if isinstance(demand, (basestring, tuple, list)):
             raise ValueError("Demand must be a dictionary")
@@ -68,8 +69,12 @@ class LCA(object):
         demand = demand or self.demand
         self.demand_array = np.zeros(len(self.technosphere_dict))
         for key in demand:
-            self.demand_array[self.technosphere_dict[mapping[key]]] = \
+            if self._mapped_dict:
+                self.demand_array[self.technosphere_dict[mapping[key]]] = \
                 demand[key]
+            else:
+                self.demand_array[self.technosphere_dict[key]] = demand[key]
+
 
     #########################
     ### Data manipulation ###
@@ -94,14 +99,16 @@ This isn't needed for the LCA calculation itself, but is helpful when interpreti
 Doesn't require any arguments or return anything, but changes ``self.technosphere_dict`` and ``self.biosphere_dict``.
 
         """
-        if not isinstance(self.technosphere_dict.keys()[0], int):
+        if not self._mapped_dict:
             # Already reversed - should be idempotent
-            return
+            return False
         rev_mapping = {v: k for k, v in mapping.iteritems()}
         self.technosphere_dict = {
             rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
         self.biosphere_dict = {
             rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
+        self._mapped_dict = False
+        return True
 
     def reverse_dict(self):
         """Construct reverse dicts from technosphere and biosphere row and col indices to technosphere_dict/biosphere_dict keys.
