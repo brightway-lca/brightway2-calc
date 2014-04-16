@@ -1,7 +1,7 @@
 Changelog
 *********
 
-0.13 (2014-XX-XX)
+0.13 (2014-04-16)
 =================
 
 - BREAKING CHANGE: LCA.fix_dictionaries now sets/uses ``_mapped_dict`` to determine if ``fix_dictionaries`` has been called.
