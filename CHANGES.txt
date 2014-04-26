@@ -1,6 +1,11 @@
 Changelog
 *********
 
+0.14 (2014-XX-XX)
+=================
+
+- BREAKING CHANGE: Use ``Database.filename`` for processed data. Requires update to bw2data version 0.16 or greater.
+
 0.13 (2014-04-16)
 =================
 

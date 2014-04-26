@@ -1,9 +1,8 @@
 from .. import *
-from bw2data import config
+from bw2data import config, Database
 from bw2data.tests import BW2DataTest
 from bw2data.utils import MAX_INT_32
 import numpy as np
-import os
 try:
     import cPickle as pickle
 except ImportError:
@@ -14,12 +13,16 @@ TBM = TechnosphereBiosphereMatrixBuilder
 
 class MatrixBuilderTestCase(BW2DataTest):
     def test_load(self):
+        a_db = Database("a")
+        a_db.register()
+        b_db = Database("b")
+        b_db.register()
         a = np.ones(10)
         b = np.arange(10)
         c = np.hstack((a, b))
-        with open(os.path.join(config.dir, "processed", "a.pickle"), "wb") as f:
+        with open(a_db.filepath_processed(), "wb") as f:
             pickle.dump(a, f, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(os.path.join(config.dir, "processed", "b.pickle"), "wb") as f:
+        with open(b_db.filepath_processed(), "wb") as f:
             pickle.dump(b, f, protocol=pickle.HIGHEST_PROTOCOL)
         self.assertTrue(np.allclose(
             a,
@@ -35,6 +38,8 @@ class MatrixBuilderTestCase(BW2DataTest):
         ))
 
     def test_build_one_d(self):
+        database = Database("sour")
+        database.register()
         dtype = [
             ('a', np.uint32),
             ('row', np.uint32),
@@ -46,10 +51,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0, 2: 1}
-        with open(os.path.join(
-                config.dir,
-                "processed",
-                "sour.pickle"), "wb") as f:
+        with open(database.filepath_processed(), "wb") as f:
             pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
         matrix = MatrixBuilder.build(config.dir, ["sour"], "values", "a",
             "row", row_dict=row_dict, one_d=True)[3]
@@ -59,6 +61,8 @@ class MatrixBuilderTestCase(BW2DataTest):
         ))
 
     def test_build_one_d_drop_missing(self):
+        database = Database("ghost")
+        database.register()
         dtype = [
             ('a', np.uint32),
             ('row', np.uint32),
@@ -71,16 +75,15 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0, 2: 1}
-        with open(os.path.join(
-                config.dir,
-                "processed",
-                "ghost.pickle"), "wb") as f:
+        with open(database.filepath_processed(), "wb") as f:
             pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
         values = MatrixBuilder.build(config.dir, ["ghost"], "values", "a",
             "row", row_dict=row_dict, one_d=True)[0]
         self.assertEqual(values.shape, (2,))
 
     def test_one_d_missing_in_row_dict_raise_valueerror(self):
+        database = Database("ghost")
+        database.register()
         dtype = [
             ('a', np.uint32),
             ('row', np.uint32),
@@ -92,16 +95,15 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0}
-        with open(os.path.join(
-                config.dir,
-                "processed",
-                "ghost.pickle"), "wb") as f:
+        with open(database.filepath_processed(), "wb") as f:
             pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
         with self.assertRaises(ValueError):
             MatrixBuilder.build(config.dir, ["ghost"], "values", "a",
                 "row", row_dict=row_dict, one_d=True, drop_missing=False)
 
     def test_build_drop_missing(self):
+        database = Database("boo")
+        database.register()
         dtype = [
             ('a', np.uint32),
             ('b', np.uint32),
@@ -118,16 +120,15 @@ class MatrixBuilderTestCase(BW2DataTest):
         )
         row_dict = {1: 0, 3: 1}
         col_dict = {2: 0, 6: 1}
-        with open(os.path.join(
-                config.dir,
-                "processed",
-                "boo.pickle"), "wb") as f:
+        with open(database.filepath_processed(), "wb") as f:
             pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
         values = MatrixBuilder.build(config.dir, ["boo"], "values", "a", "row",
             "b", "col", row_dict, col_dict)[0]
         self.assertEqual(values.shape, (2,))
 
     def test_missing_in_row_dict_raise_valueerror(self):
+        database = Database("whoah")
+        database.register()
         dtype = [
             ('a', np.uint32),
             ('b', np.uint32),
@@ -142,10 +143,7 @@ class MatrixBuilderTestCase(BW2DataTest):
         )
         row_dict = {1: 0}
         col_dict = {2: 0}
-        with open(os.path.join(
-                config.dir,
-                "processed",
-                "whoah.pickle"), "wb") as f:
+        with open(database.filepath_processed(), "wb") as f:
             pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
         with self.assertRaises(ValueError):
             MatrixBuilder.build(config.dir, ["whoah"], "values", "a",

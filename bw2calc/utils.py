@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*
+from bw2data.database import Database
 import numpy as np
 import os
 try:
@@ -9,7 +10,7 @@ except ImportError:
 
 def load_arrays(dirpath, names):
     return np.hstack([pickle.load(open(os.path.join(
-        dirpath, "processed", "%s.pickle" % name), "rb")
+        dirpath, u"processed", u"%s.pickle" % Database(name).filename), "rb")
     ) for name in names])
 
 
