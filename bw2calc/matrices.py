@@ -3,6 +3,7 @@ from __future__ import division
 from .fallbacks import dicter
 from .utils import load_arrays
 from bw2data.utils import MAX_INT_32, TYPE_DICTIONARY
+from bw2data import Database
 from scipy import sparse
 import numpy as np
 try:
@@ -173,12 +174,17 @@ This method does the following:
 
 
 class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
-    """Subclass of ``MatrixBuilder`` that separates technosphere and biosphere parameters."""
+    """Subclass of ``MatrixBuilder`` that separates technosphere and biosphere parameters.
+
+    Also knows how to get correct Database filenames."""
     @classmethod
     def build(cls, dirpath, names):
         """Build the technosphere and biosphere sparse matrices."""
         assert isinstance(names, (tuple, list, set)), "names must be a list"
-        array = load_arrays(dirpath, names)
+        array = load_arrays(
+            dirpath,
+            [Database(name).filename for name in names]
+        )
         tech_array = array[
             np.hstack((
                 np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
