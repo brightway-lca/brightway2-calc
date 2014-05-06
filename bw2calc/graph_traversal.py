@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*
 from __future__ import division
 from . import LCA
-from brightway2 import Database
 from heapq import heappush, heappop
 import numpy as np
 
