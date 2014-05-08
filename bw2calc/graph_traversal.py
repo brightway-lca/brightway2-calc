@@ -3,6 +3,7 @@ from __future__ import division
 from . import LCA
 from heapq import heappush, heappop
 import numpy as np
+import warnings
 
 
 class GraphTraversal(object):
@@ -120,7 +121,10 @@ Returns:
     (nodes, edges, number of calculations)
 
         """
-        while heap and counter < max_calc:
+        while heap:
+            if counter >= max_calc:
+                warnings.warn("Stopping traversal due to calculation count.")
+                break
             parent_score_inverted, parent_index = heappop(heap)
             # parent_score = 1 / parent_score_inverted
             col = lca.technosphere_matrix[:, parent_index].tocoo()
