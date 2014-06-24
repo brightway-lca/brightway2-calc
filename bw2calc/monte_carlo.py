@@ -96,9 +96,9 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
     def load_data(self):
         self.load_lci_data()
         self.load_lcia_data()
-        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=seed)
-        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=seed)
-        self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=seed)
+        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)
+        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=self.seed)
+        self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
 
     def next(self):
         self.rebuild_technosphere_matrix(self.tech_rng.next())
