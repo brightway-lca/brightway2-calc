@@ -1,4 +1,5 @@
-from .. import LCA
+from ..errors import OutsideTechnosphere
+from ..lca import LCA
 from bw2data import *
 from bw2data.tests import BW2DataTest
 import numpy as np
@@ -50,6 +51,29 @@ class LCACalculationTestCase(BW2DataTest):
         answer[lca.technosphere_dict[mapping[("t", 1)]]] = 1
         answer[lca.technosphere_dict[mapping[("t", 2)]]] = 0.5
         self.assertTrue(np.allclose(answer, lca.supply_array))
+
+    def test_redo_lci_fails_if_activity_outside_technosphere(self):
+        self.add_basic_biosphere()
+        test_data = {("t", 1): {
+            'exchanges': [
+                {'amount': 1, 'input': ('biosphere', 1), 'type': 'biosphere'}
+        ]}}
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+        test_db.process()
+        more_test_data = {("z", 1): {
+            'exchanges': [
+                {'amount': 1, 'input': ('t', 1), 'type': 'technosphere'}
+        ]}}
+        more_test_db = Database("z")
+        more_test_db.register()
+        more_test_db.write(more_test_data)
+        more_test_db.process()
+        lca = LCA({("t", 1): 1})
+        lca.lci()
+        with self.assertRaises(OutsideTechnosphere):
+            lca.redo_lci({("z", 1): 1})
 
     def test_production_values(self):
         test_data = {

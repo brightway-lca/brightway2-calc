@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*
 from __future__ import division
 from brightway2 import config as base_config
-from brightway2 import databases, methods, mapping, weightings
+from brightway2 import databases, mapping, \
+    Method, Weighting, Normalization
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
-import os
+from .errors import OutsideTechnosphere
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import load_arrays
@@ -22,7 +23,8 @@ class LCA(object):
     ### Setup ###
     #############
 
-    def __init__(self, demand, method=None, weighting=None, config=None):
+    def __init__(self, demand, method=None, weighting=None,
+            normalization=None, config=None):
         """Create a new LCA calculation.
 
         Args:
@@ -41,6 +43,7 @@ class LCA(object):
         self.demand = demand
         self.method = method
         self.weighting = weighting
+        self.normalization = normalization
         self.databases = self.get_databases(demand)
 
     def get_databases(self, demand):
@@ -133,16 +136,34 @@ Doesn't require any arguments or return anything, but changes ``self.technospher
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix."""
-        self.cf_params, d, d, self.characterization_matrix = builder.build(
-            self.dirpath, [methods[self.method]['abbreviation']],
-            "amount", "flow", "row", row_dict=self.biosphere_dict,
-            one_d=True)
+        self.cf_params, _, _, self.characterization_matrix = builder.build(
+                self.dirpath,
+                [Method(self.method).filename],
+                "amount",
+                "flow",
+                "row",
+                row_dict=self.biosphere_dict,
+                one_d=True
+            )
+
+    def load_normalization_data(self, builder=MatrixBuilder):
+        """Load normalization data."""
+        self.normalization_params, _, _, self.normalization_matrix = \
+            builder.build(
+                self.dirpath,
+                [Normalization(self.normalization).filename],
+                "amount",
+                "flow",
+                "index",
+                row_dict=self.biosphere_dict,
+                one_d=True
+            )
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""
         self.weighting_params = load_arrays(
             self.dirpath,
-            [weightings[self.weighting]['abbreviation']]
+            [Weighting(self.weighting).filename]
         )
         self.weighting_value = self.weighting_params['amount']
 
@@ -243,11 +264,40 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         self.characterized_inventory = \
             self.characterization_matrix * self.inventory
 
-    def weighting_calculation(self):
+    def normalize(self):
+        """Multiply characterized inventory by flow-specific normalization factors."""
+        assert hasattr(self, "characterized_inventory"), "Must do lcia first"
+        if not hasattr(self, "normalization_matrix"):
+            self.load_normalization_data()
+        self.normalization_calculation()
+
+    def normalization_calculation(self):
+        """The actual normalization calculation.
+
+        Creates ``self.normalized_inventory``."""
+        self.normalized_inventory = \
+            self.normalization_matrix * self.characterized_inventory
+
+    def weight(self):
+        """Multiply characterized inventory by weighting value.
+
+        Can be done with or without normalization."""
+        assert hasattr(self, "characterized_inventory"), "Must do lcia first"
         if not hasattr(self, "weighting_value"):
             self.load_weighting_data()
-        self.weighted_inventory = \
-            self.weighting_value[0] * self.characterized_inventory
+
+    def weighting_calculation(self):
+        """The actual weighting calculation.
+
+        Multiples weighting value by normalized inventory, if available, otherwise by characterized inventory.
+
+        Creates ``self.weighted_inventory``."""
+        if hasattr(self, "normalized_inventory"):
+            self.weighted_inventory = \
+                self.weighting_value[0] * self.normalized_inventory
+        else:
+            self.weighted_inventory = \
+                self.weighting_value[0] * self.characterized_inventory
 
     @property
     def score(self):
@@ -319,7 +369,10 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         assert hasattr(self, "inventory"), "Must do lci first"
-        self.build_demand_array(demand)
+        try:
+            self.build_demand_array(demand)
+        except KeyError:
+            raise OutsideTechnosphere
         self.lci_calculation()
 
     def redo_lcia(self, demand=None):
