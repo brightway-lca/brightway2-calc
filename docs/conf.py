@@ -20,11 +20,11 @@ version = '0.15'
 # The full version, including alpha/beta/rc tags.
 release = '0.15'
 
-import sys
-from os.path import abspath, dirname
+# import sys
+# from os.path import abspath, dirname
 
 # Make sure we use this copy of Brightway2
-sys.path.insert(1, abspath(dirname(dirname(__file__))))
+# sys.path.insert(1, abspath(dirname(dirname(__file__))))
 
 # -- General configuration -----------------------------------------------------
 

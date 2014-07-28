@@ -233,6 +233,7 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
 
         """
         self.supply_array = self.solve_linear_system()
+        # Turn 1-d array into diagonal matrix
         count = len(self.technosphere_dict)
         self.inventory = self.biosphere_matrix * \
             sparse.spdiags([self.supply_array], [0], count, count)
