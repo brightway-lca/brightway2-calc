@@ -127,18 +127,20 @@ class ParallelMonteCarlo(object):
                  cpus=None):
         self.demand = demand
         self.method = method
+        self.cpus = cpus
         if chunk_size:
             self.chunk_size = chunk_size
             self.num_jobs = iterations // chunk_size
             if iterations % self.chunk_size:
                 self.num_jobs += 1
         else:
-            self.num_jobs = cpus or multiprocessing.cpu_count()
+            self.num_jobs = self.cpus or multiprocessing.cpu_count()
             self.chunk_size = (iterations // self.num_jobs) + 1
 
     def calculate(self, worker=single_worker):
-        pool = multiprocessing.Pool(processes=max(
-            multiprocessing.cpu_count() - 1, 1))
+        pool = multiprocessing.Pool(
+            processes=min(self.num_jobs, multiprocessing.cpu_count())
+        )
         results = [pool.apply_async(worker, (self.demand, self.method,
                    self.chunk_size)) for x in xrange(self.num_jobs)]
         pool.close()
