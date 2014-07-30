@@ -8,7 +8,7 @@ import multiprocessing
 
 
 class IterativeMonteCarlo(LCA):
-    """Base class to use iterative techniques instead of LU factorization in Monte Carlo."""
+    """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
                  seed=None, *args, **kwargs):
         super(IterativeMonteCarlo, self).__init__(demand, method=method, *args,
@@ -48,7 +48,7 @@ class IterativeMonteCarlo(LCA):
 
 
 class MonteCarloLCA(IterativeMonteCarlo):
-    """Monte Carlo uncertainty analysis with separate RNGs for each set of parameters."""
+    """Monte Carlo uncertainty analysis with separate `random number generators <http://en.wikipedia.org/wiki/Random_number_generation>`_ (RNGs) for each set of parameters."""
     def load_data(self):
         self.load_lci_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)

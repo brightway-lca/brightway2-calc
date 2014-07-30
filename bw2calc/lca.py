@@ -63,7 +63,7 @@ class LCA(object):
         """Turn the demand dictionary into a *NumPy* array of correct size.
 
         Args:
-            * *demand* (dict, optional): Demand dictionary. Optional, defaules to ``self.demand``.
+            * *demand* (dict, optional): Demand dictionary. Optional, defaults to ``self.demand``.
 
         Returns:
             A 1-dimensional NumPy array
@@ -321,7 +321,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         """Build a new technosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
         Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of technosphere paramters), in same order as ``self.tech_params``.
+            * *vector* (array): 1-dimensional NumPy array with length (# of technosphere parameters), in same order as ``self.tech_params``.
 
         Doesn't return anything, but overwrites ``self.technosphere_matrix``.
 
@@ -336,7 +336,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         """Build a new biosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
         Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of biosphere paramters), in same order as ``self.bio_params``.
+            * *vector* (array): 1-dimensional NumPy array with length (# of biosphere parameters), in same order as ``self.bio_params``.
 
         Doesn't return anything, but overwrites ``self.biosphere_matrix``.
 
@@ -349,7 +349,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         """Build a new characterization matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
         Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of characterization paramters), in same order as ``self.cf_params``.
+            * *vector* (array): 1-dimensional NumPy array with length (# of characterization parameters), in same order as ``self.cf_params``.
 
         Doesn't return anything, but overwrites ``self.characterization_matrix``.
 

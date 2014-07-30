@@ -12,7 +12,7 @@ Traverse a supply chain, following paths of greatest impact.
 
 This implementation uses a queue of datasets to assess. As the supply chain is traversed, datasets inputs are added to a list sorted by LCA score. Each activity in the sorted list is assessed, and added to the supply chain graph, as long as its impact is above a certain threshold, and the maximum number of calculations has not been exceeded.
 
-Because the next dataset assessed is chosen by its impact, not it position in the graph, this is neither a breadth-first nor a depth-first search, but rather "importance-first".
+Because the next dataset assessed is chosen by its impact, not its position in the graph, this is neither a breadth-first nor a depth-first search, but rather "importance-first".
 
 This class is written in a functional style - no variables are stored in *self*, only methods.
 

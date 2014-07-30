@@ -74,7 +74,7 @@ Here is an example:
     MatrixBuilder.add_matrix_indices(a_f, a_t, mapping)
     # => a_t is now [5, 6, 7, 8]
 
-This is a relatively computationally expensive method, and therefore a Cython version of ``indexer`` is used if present.
+This is a relatively computationally expensive method, and therefore a stand-alone library - `bw2speedups <https://pypi.python.org/pypi/bw2speedups>`_ - is used if installed. Install it with ``pip install bw2speedups``.
 
 Args:
     * *array_from* (array): 1-dimensional integer numpy array.
