@@ -1,5 +1,5 @@
 bw2analyzer
-bw2data>=0.16
+bw2data>=1.0
 nose
 numpy>=1.6
 progressbar-ipython
