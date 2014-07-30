@@ -157,8 +157,8 @@ class MatrixBuilderTestCase(BW2DataTest):
                 drop_missing=False)
 
     def test_add_matrix_indices(self):
-        a = np.arange(10)
-        b = np.zeros(10)
+        a = np.arange(10).astype(np.uint32)
+        b = np.zeros(10).astype(np.uint32)
         m = {x: x + 100 for x in range(10)}
         MatrixBuilder.add_matrix_indices(a, b, m)
         self.assertTrue(np.allclose(
@@ -166,7 +166,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             np.arange(100, 110)
         ))
         # Test multiple inputs mapping to same output
-        b = np.zeros(10)
+        b = np.zeros(10).astype(np.uint32)
         m = {x: 42 for x in range(10)}
         MatrixBuilder.add_matrix_indices(a, b, m)
         self.assertTrue(np.allclose(
