@@ -185,13 +185,17 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
             dirpath,
             [Database(name).filename for name in names]
         )
-        tech_array = array[
+        # take ~10 times faster than fancy indexing
+        # http://wesmckinney.com/blog/?p=215
+        tech_array = array.take(
             np.hstack((
                 np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
                 np.where(array['type'] == TYPE_DICTIONARY["production"])[0]
             ))
-        ]
-        bio_array = array[np.where(array['type'] == TYPE_DICTIONARY["biosphere"])]
+        )
+        bio_array = array.take(np.where(
+            array['type'] == TYPE_DICTIONARY["biosphere"]
+        )[0])
         tech_dict = cls.build_dictionary(np.hstack((
             tech_array['input'],
             tech_array['output'],
