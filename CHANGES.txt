@@ -1,6 +1,11 @@
 Changelog
 *********
 
+0.16 (2014-08-03)
+=================
+
+- FEATURE: Changes in MatrixBuilder should make normal static LCA calculations about three times faster.
+
 0.15.1 (2014-07-30)
 ===================
 
