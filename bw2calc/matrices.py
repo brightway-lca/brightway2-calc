@@ -14,7 +14,7 @@ except ImportError:
 
 class MatrixBuilder(object):
     """
-The class, and its subclasses, loads structured arrays, manipulates them, and generates `SciPy sparse matrices <http://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
+The class, and its subclasses, load structured arrays, manipulate them, and generate `SciPy sparse matrices <http://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
 
 Matrix builders use an array of row indices, an array of column indices, and an array of values to create a `coordinate (coo) matrix <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html>`_, which is then converted to a `compressed sparse row (csr) matrix <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_.
 
@@ -25,7 +25,7 @@ See the following for more information on structured arrays:
 * `Inventory database structured arrays <https://bw2data.readthedocs.org/en/latest/database.html#bw2data.Database.process>`_
 * `Impact assessment method structured arrays <https://bw2data.readthedocs.org/en/latest/method.html#bw2data.Method.process>`_
 
-These classes serve as a container for common functionality, and are not intended to be instantiated. In other words, you should use:
+These classes are not instantiated, and have only `classmethods <https://docs.python.org/2/library/functions.html#classmethod>`__. They are not really true classes, but more organizational. In other words, you should use:
 
 .. code-block:: python
 
@@ -96,7 +96,7 @@ Here is an example:
 .. code-block:: python
 
     import numpy as np
-    array = np.array((4, 8, 6, 2))
+    array = np.array((4, 8, 6, 2, 4))
     MatrixBuilder.build_dictionary(array)
     # => returns {2: 0, 4: 1, 6: 2, 8: 3}
 
@@ -104,7 +104,7 @@ Args:
     * *array* (array): A numpy array of integers
 
 Returns:
-    A dictionary that maps the sorted elements of ``array`` to integers starting with zero.
+    A dictionary that maps the sorted, unique elements of ``array`` to integers starting with zero.
 
         """
         return dicter(array)
@@ -117,14 +117,33 @@ Returns:
         """
 Build a sparse matrix from NumPy structured array(s).
 
+See more detailed documentation at :ref:`building-matrices`.
+
 This method does the following:
 
-#. Load and concatenate some structured arrays.
-#. Using the ``row_id_label``, and the ``row_dict`` if available, add matrix indices to the ``row_index_label`` column.
-#. If not ``ond_d``, do the same to ``col_index_label`` using ``col_id_label`` and ``col_dict``.
-#. If not ``ond_d``, build a sparse matrix using ``data_label`` for the matrix data, and ``row_index_label`` and ``col_index_label`` as indices.
-#. Else if ``ond_d``, build a diagonal matrix using only ``data_label`` for values and ``row_index_label`` as indices.
-#. Return the loaded parameter arrays, row and column dicts, and matrix.
+#. Load and concatenate the :ref:`structured arrays files <building-matrices>` ``names`` in ``dirpath`` using the function :func:`.utils.load_arrays` into a parameter array.
+#. If not ``row_dict``, use :meth:`.build_dictionary` to build ``row_dict`` from the parameter array column ``row_id_label``.
+#. Using the ``row_id_label`` and the ``row_dict``, use the method :meth:`.add_matrix_indices` to add matrix indices to the ``row_index_label`` column.
+#. If not ``one_d``, do the same to ``col_dict`` and ``col_index_label``, using ``col_id_label``.
+#. If not ``one_d``, use :meth:`.build_matrix` to build a sparse matrix using ``data_label`` for the matrix data values, and ``row_index_label`` and ``col_index_label`` for row and column indices.
+#. Else if ``one_d``, use :meth:`.build_diagonal_matrix` to build a diagonal matrix using ``data_label`` for diagonal matrix data values and ``row_index_label`` as row/column indices.
+#. Return the loaded parameter arrays from step 1, row and column dicts from steps 2 & 4, and matrix from step 5 or 6.
+
+Args:
+    * *dirpath* (str): Directory path where array files are stored.
+    * *names* (list): List of array filenames to load.
+    * *data_label* (str): Label of column in parameter arrays with matrix data values.
+    * *row_id_label* (str): Label of column in parameter arrays with row ID values, i.e. the integer values returned from ``mapping``.
+    * *row_index_label* (str): Label of column in parameter arrays where matrix row indices will be stored.
+    * *col_id_label* (str, optional): Label of column in parameter arrays with column ID values, i.e. the integer values returned from ``mapping``. Not needed for diagonal matrices.
+    * *col_index_label* (str, optional): Label of column in parameter arrays where matrix column indices will be stored. Not needed for diagonal matrices.
+    * *row_dict* (dict, optional): Mapping dictionary linking ``row_id_label`` values to ``row_index_label`` values. Will be built if not given.
+    * *col_dict* (dict, optional): Mapping dictionary linking ``col_id_label`` values to ``col_index_label`` values. Will be built if not given.
+    * *one_d* (bool): Build diagonal matrix.
+    * *drop_missing* (bool): Remove rows from the parameter array which aren't mapped by ``row_dict`` or ``col_dict``. Default is ``True``. Advanced use only.
+
+Returns:
+    A :ref:`numpy parameter array <building-matrices>`, the row mapping dictionary, the column mapping dictionary, and a COO sparse matrix.
 
         """
         assert isinstance(names, (tuple, list, set)), "names must be a list"
@@ -215,7 +234,7 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
 
     @classmethod
     def get_technosphere_inputs_mask(cls, array):
-        """Get mask of technosphere inputs from ``array``"""
+        """Get boolean mask of technosphere inputs from ``array`` (i.e. the ones to include when building the technosphere matrix)."""
         return np.where(array["type"] ==
                         TYPE_DICTIONARY["technosphere"])
 

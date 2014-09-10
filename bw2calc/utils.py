@@ -8,6 +8,7 @@ except ImportError:
 
 
 def load_arrays(dirpath, names):
+    """Load and concatenate the numpy arrays ``names`` in directory ``dirpath``."""
     return np.hstack([pickle.load(open(os.path.join(
         dirpath,
         u"processed", name if u".pickle" in name else u"%s.pickle" % name
