@@ -19,7 +19,7 @@ This class is written in a functional style - no variables are stored in *self*,
 Should be used by calling the ``calculate`` method.
 
     """
-    def calculate(self, demand, method, cutoff=0.005, max_calc=1e5):
+    def calculate(self, demand, method, cutoff=0.005, max_calc=1e5, skip_coproducts=False):
         """
 Traverse the supply chain graph.
 
@@ -47,7 +47,7 @@ Returns:
             demand, lca, supply, characterized_biosphere)
         nodes, edges, counter = self.traverse(
             heap, nodes, edges, 0, max_calc, cutoff, score, supply,
-            characterized_biosphere, lca)
+            characterized_biosphere, lca, skip_coproducts)
 
         return {
             'nodes': nodes,
@@ -111,7 +111,8 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
         return float(characterized_biosphere[index] * supply[index])
 
     def traverse(self, heap, nodes, edges, counter, max_calc, cutoff,
-                 total_score, supply, characterized_biosphere, lca):
+                 total_score, supply, characterized_biosphere, lca,
+                 skip_coproducts):
         """
 Build a directed graph by traversing the supply chain.
 
@@ -133,8 +134,10 @@ Returns:
             children = [(int(col.row[i]), float(-1 * col.data[i]))
                 for i in xrange(col.row.shape[0])]
             for activity, amount in children:
-                # Skip values on technosphere diagonal or coproducts
-                if activity == parent_index or amount <= 0:
+                # Skip values on technosphere diagonal
+                if activity == parent_index:
+                    continue
+                if skip_coproducts and amount <= 0:
                     continue
                 counter += 1
                 cumulative_score = self.cumulative_score(
