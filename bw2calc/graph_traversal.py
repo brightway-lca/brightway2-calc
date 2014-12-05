@@ -18,6 +18,8 @@ This class is written in a functional style - no variables are stored in *self*,
 
 Should be used by calling the ``calculate`` method.
 
+.. warning:: Graph traversal with multioutput processes only works when other inputs are substituted (see `Multioutput processes in LCA <http://chris.mutel.org/multioutput.html>`__ for a description of multiputput process math in LCA).
+
     """
     def calculate(self, demand, method, cutoff=0.005, max_calc=1e5, skip_coproducts=False):
         """
@@ -126,12 +128,16 @@ Returns:
             if counter >= max_calc:
                 warnings.warn("Stopping traversal due to calculation count.")
                 break
-            parent_score_inverted, parent_index = heappop(heap)
-            # parent_score = 1 / parent_score_inverted
+            parent_index = heappop(heap)[1]
+            # Assume that this activity produces its reference product
+            scale_value = lca.technosphere_matrix[parent_index, parent_index]
+            if scale_value == 0:
+                raise ValueError(u"Can't rescale activities that produce "
+                                 u"zero reference product")
             col = lca.technosphere_matrix[:, parent_index].tocoo()
             # Multiply by -1 because technosphere values are negative
-            # (consumption of inputs)
-            children = [(int(col.row[i]), float(-1 * col.data[i]))
+            # (consumption of inputs) and rescale
+            children = [(int(col.row[i]), float(-1 * col.data[i] / scale_value))
                 for i in xrange(col.row.shape[0])]
             for activity, amount in children:
                 # Skip values on technosphere diagonal
