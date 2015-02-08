@@ -1,10 +1,11 @@
 Changelog
 *********
 
-0.16.1 (2014-XX-XX)
+0.16.1 (2014-12-05)
 ===================
 
 - CHANGE: Better documentation for most code.
+- BUGFIX: Graph traversal handles most coproducts, and raises sensible errors when it can't.
 
 0.16 (2014-08-03)
 =================
