@@ -1,6 +1,12 @@
 Changelog
 *********
 
+0.16.2 (2015-XX-XX)
+===================
+
+- FEATURE: Properly handle `substitution` type exchanges
+- CHANGE: Compatible with bw2data version 2
+
 0.16.1 (2014-12-05)
 ===================
 
