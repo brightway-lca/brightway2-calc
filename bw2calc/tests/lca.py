@@ -10,7 +10,7 @@ class LCACalculationTestCase(BW2DataTest):
         biosphere = Database("biosphere")
         biosphere.register(depends=[])
         biosphere.write({
-            ("biosphere", 1): {
+            ("biosphere", "1"): {
                 'categories': ['things'],
                 'exchanges': [],
                 'name': 'an emission',
@@ -21,20 +21,20 @@ class LCACalculationTestCase(BW2DataTest):
 
     def test_basic(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
                     'amount': 0.5,
-                    'input': ('t', 2),
+                    'input': ('t', "2"),
                     'type': 'technosphere',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
                 'exchanges': [],
                 'type': 'process',
                 'unit': 'kg'
@@ -45,56 +45,56 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.technosphere_dict[mapping[("t", 1)]]] = 1
-        answer[lca.technosphere_dict[mapping[("t", 2)]]] = 0.5
+        answer[lca.technosphere_dict[mapping[("t", "1")]]] = 1
+        answer[lca.technosphere_dict[mapping[("t", "2")]]] = 0.5
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_redo_lci_fails_if_activity_outside_technosphere(self):
         self.add_basic_biosphere()
-        test_data = {("t", 1): {
+        test_data = {("t", "1"): {
             'exchanges': [
-                {'amount': 1, 'input': ('biosphere', 1), 'type': 'biosphere'}
+                {'amount': 1, 'input': ('biosphere', "1"), 'type': 'biosphere'}
         ]}}
         test_db = Database("t")
         test_db.register()
         test_db.write(test_data)
         test_db.process()
-        more_test_data = {("z", 1): {
+        more_test_data = {("z", "1"): {
             'exchanges': [
-                {'amount': 1, 'input': ('t', 1), 'type': 'technosphere'}
+                {'amount': 1, 'input': ('t', "1"), 'type': 'technosphere'}
         ]}}
         more_test_db = Database("z")
         more_test_db.register()
         more_test_db.write(more_test_data)
         more_test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
         with self.assertRaises(OutsideTechnosphere):
-            lca.redo_lci({("z", 1): 1})
+            lca.redo_lci({("z", "1"): 1})
 
     def test_production_values(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
                     'amount': 2,
-                    'input': ('t', 1),
+                    'input': ('t', "1"),
                     'type': 'production',
                     'uncertainty type': 0},
                     {'amount': 0.5,
-                    'input': ('t', 2),
+                    'input': ('t', "2"),
                     'type': 'technosphere',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
                 'exchanges': [],
                 'type': 'process',
                 'unit': 'kg'
@@ -105,29 +105,29 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.technosphere_dict[mapping[("t", 1)]]] = 0.5
-        answer[lca.technosphere_dict[mapping[("t", 2)]]] = 0.25
+        answer[lca.technosphere_dict[mapping[("t", "1")]]] = 0.5
+        answer[lca.technosphere_dict[mapping[("t", "2")]]] = 0.25
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_substitution(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
-                    'amount': -1,  # substitution
-                    'input': ('t', 2),
-                    'type': 'technosphere',
+                    'amount': 1,
+                    'input': ('t', "2"),
+                    'type': 'substitution',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
                 'exchanges': [],
                 'type': 'process',
                 'unit': 'kg'
@@ -138,32 +138,65 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.technosphere_dict[mapping[("t", 1)]]] = 1
-        answer[lca.technosphere_dict[mapping[("t", 2)]]] = -1
+        answer[lca.technosphere_dict[mapping[("t", "1")]]] = 1
+        answer[lca.technosphere_dict[mapping[("t", "2")]]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
-    def test_circular_chains(self):
+    def test_substitution_no_type(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
-                    'amount': 0.5,
-                    'input': ('t', 2),
+                    'amount': -1,  # substitution
+                    'input': ('t', "2"),
                     'type': 'technosphere',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
+                'exchanges': [],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register(depends=["biosphere"])
+        test_db.write(test_data)
+        test_db.process()
+        lca = LCA({("t", "1"): 1})
+        lca.lci()
+        answer = np.zeros((2,))
+        answer[lca.technosphere_dict[mapping[("t", "1")]]] = 1
+        answer[lca.technosphere_dict[mapping[("t", "2")]]] = -1
+        self.assertTrue(np.allclose(answer, lca.supply_array))
+
+    def test_circular_chains(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [{
+                    'amount': 0.5,
+                    'input': ('t', "2"),
+                    'type': 'technosphere',
+                    'uncertainty type': 0},
+                    {'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            ("t", "2"): {
                 'exchanges': [{
                     'amount': 0.1,
-                    'input': ('t', 1),
+                    'input': ('t', "1"),
                     'type': 'technosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
@@ -175,11 +208,11 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.technosphere_dict[mapping[("t", 1)]]] = 20 / 19.
-        answer[lca.technosphere_dict[mapping[("t", 2)]]] = 10 / 19.
+        answer[lca.technosphere_dict[mapping[("t", "1")]]] = 20 / 19.
+        answer[lca.technosphere_dict[mapping[("t", "2")]]] = 10 / 19.
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_dependent_databases(self):
@@ -187,28 +220,28 @@ class LCACalculationTestCase(BW2DataTest):
 
     def test_demand_type(self):
         with self.assertRaises(ValueError):
-            LCA(("foo", 1))
+            LCA(("foo", "1"))
         with self.assertRaises(ValueError):
             LCA("foo")
         with self.assertRaises(ValueError):
-            LCA([{"foo": 1}])
+            LCA([{"foo": "1"}])
 
     def test_decomposed_uses_solver(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
                     'amount': 0.5,
-                    'input': ('t', 2),
+                    'input': ('t', "2"),
                     'type': 'technosphere',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
                 'exchanges': [],
                 'type': 'process',
                 'unit': 'kg'
@@ -219,7 +252,7 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci(factorize=True)
         # Indirect test because no easy way to test a function is called
         lca.technosphere_matrix = None
@@ -227,20 +260,20 @@ class LCACalculationTestCase(BW2DataTest):
 
     def test_fix_dictionaries(self):
         test_data = {
-            ("t", 1): {
+            ("t", "1"): {
                 'exchanges': [{
                     'amount': 0.5,
-                    'input': ('t', 2),
+                    'input': ('t', "2"),
                     'type': 'technosphere',
                     'uncertainty type': 0},
                     {'amount': 1,
-                    'input': ('biosphere', 1),
+                    'input': ('biosphere', "1"),
                     'type': 'biosphere',
                     'uncertainty type': 0}],
                 'type': 'process',
                 'unit': 'kg'
                 },
-            ("t", 2): {
+            ("t", "2"): {
                 'exchanges': [],
                 'type': 'process',
                 'unit': 'kg'
@@ -251,7 +284,7 @@ class LCACalculationTestCase(BW2DataTest):
         test_db.register(depends=["biosphere"])
         test_db.write(test_data)
         test_db.process()
-        lca = LCA({("t", 1): 1})
+        lca = LCA({("t", "1"): 1})
         lca.lci()
 
         supply = lca.supply_array.sum()
@@ -262,5 +295,5 @@ class LCACalculationTestCase(BW2DataTest):
         # Second time doesn't do anything
         self.assertFalse(lca.fix_dictionaries())
         self.assertFalse(lca._mapped_dict)
-        lca.redo_lci({("t", 1): 2})
+        lca.redo_lci({("t", "1"): 2})
         self.assertEqual(lca.supply_array.sum(), supply * 2)
