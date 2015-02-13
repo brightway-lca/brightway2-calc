@@ -1,6 +1,7 @@
 from ..errors import OutsideTechnosphere
 from ..lca import LCA
 from bw2data import *
+from bw2data.utils import TYPE_DICTIONARY
 from bw2data.tests import BW2DataTest
 import numpy as np
 
@@ -113,6 +114,9 @@ class LCACalculationTestCase(BW2DataTest):
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_substitution(self):
+        # bw2data version 1.0 compatibility
+        if 'substitution' not in TYPE_DICTIONARY:
+            return
         test_data = {
             ("t", "1"): {
                 'exchanges': [{

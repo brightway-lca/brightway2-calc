@@ -209,7 +209,7 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         tech_array = array.take(
             np.hstack((
                 np.where(array['type'] == TYPE_DICTIONARY["production"])[0],
-                np.where(array['type'] == TYPE_DICTIONARY["substitution"])[0],
+                np.where(array['type'] == TYPE_DICTIONARY.get("substitution", -999))[0],
                 np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
             ))
         )

@@ -1,6 +1,11 @@
 Changelog
 *********
 
+0.17.1 (2015-02-13)
+===================
+
+- BUGFIX: Don't require substitution in ``TYPE_DICTIONARY``.
+
 0.17 (2015-02-13)
 =================
 
