@@ -8,7 +8,7 @@ import numpy as np
 class LCACalculationTestCase(BW2DataTest):
     def add_basic_biosphere(self):
         biosphere = Database("biosphere")
-        biosphere.register(depends=[])
+        biosphere.register()
         biosphere.write({
             ("biosphere", "1"): {
                 'categories': ['things'],
@@ -42,7 +42,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -102,7 +102,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -135,7 +135,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -168,7 +168,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -205,7 +205,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -216,7 +216,17 @@ class LCACalculationTestCase(BW2DataTest):
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_dependent_databases(self):
-        pass
+        databases['one'] = {'depends': ['two', 'three']}
+        databases['two'] = {'depends': ['four', 'five']}
+        databases['three'] = {'depends': ['four']}
+        databases['four'] = {'depends': ['six']}
+        databases['five'] = {'depends': ['two']}
+        databases['six'] = {'depends': []}
+        lca = LCA({('one', None): 1})
+        self.assertEqual(
+            lca.databases,
+            {'one', 'two', 'three', 'four', 'five', 'six'}
+        )
 
     def test_demand_type(self):
         with self.assertRaises(ValueError):
@@ -249,7 +259,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})
@@ -281,7 +291,7 @@ class LCACalculationTestCase(BW2DataTest):
             }
         self.add_basic_biosphere()
         test_db = Database("t")
-        test_db.register(depends=["biosphere"])
+        test_db.register()
         test_db.write(test_data)
         test_db.process()
         lca = LCA({("t", "1"): 1})

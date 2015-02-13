@@ -56,8 +56,19 @@ class LCA(object):
             A set of database names
 
         """
-        return set.union(
-            *[set(databases[key[0]]["depends"] + [key[0]]) for key in demand])
+        def extend(seeds):
+            return set.union(seeds,
+                             set.union(*[set(databases[obj]['depends'])
+                                         for obj in seeds]))
+
+        seed = {key[0] for key in demand}
+        extended = extend(seed)
+        # depends can have loops, so no simple recursive search; need to check
+        # membership
+        while extended != seed:
+            seed = extended
+            extended = extend(seed)
+        return extended
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
