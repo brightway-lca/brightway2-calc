@@ -1,11 +1,12 @@
 Changelog
 *********
 
-0.16.2 (2015-XX-XX)
-===================
+0.17 (2015-02-13)
+=================
 
 - FEATURE: Properly handle `substitution` type exchanges
 - CHANGE: Compatible with bw2data version 2
+- BUGFIX: Fix handling of nested dependent databases
 
 0.16.1 (2014-12-05)
 ===================
