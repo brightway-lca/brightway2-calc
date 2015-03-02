@@ -6,7 +6,7 @@ from brightway2 import databases, mapping, \
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
-from .errors import OutsideTechnosphere
+from .errors import OutsideTechnosphere, NonsquareTechnosphere
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import load_arrays
@@ -81,13 +81,13 @@ class LCA(object):
 
         """
         demand = demand or self.demand
-        self.demand_array = np.zeros(len(self.technosphere_dict))
+        self.demand_array = np.zeros(len(self.product_dict))
         for key in demand:
             if self._mapped_dict:
-                self.demand_array[self.technosphere_dict[mapping[key]]] = \
+                self.demand_array[self.product_dict[mapping[key]]] = \
                 demand[key]
             else:
-                self.demand_array[self.technosphere_dict[key]] = demand[key]
+                self.demand_array[self.product_dict[key]] = demand[key]
 
 
     #########################
@@ -110,29 +110,32 @@ To this:
 
 This isn't needed for the LCA calculation itself, but is helpful when interpreting results.
 
-Doesn't require any arguments or return anything, but changes ``self.technosphere_dict`` and ``self.biosphere_dict``.
+Doesn't require any arguments or return anything, but changes ``self.activity_dict``, ``self.product_dict`` and ``self.biosphere_dict``.
 
         """
         if not self._mapped_dict:
             # Already reversed - should be idempotent
             return False
         rev_mapping = {v: k for k, v in mapping.iteritems()}
-        self.technosphere_dict = {
-            rev_mapping[k]: v for k, v in self.technosphere_dict.iteritems()}
+        self.activity_dict = {
+            rev_mapping[k]: v for k, v in self.activity_dict.iteritems()}
+        self.product_dict = {
+            rev_mapping[k]: v for k, v in self.product_dict.iteritems()}
         self.biosphere_dict = {
             rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
         self._mapped_dict = False
         return True
 
     def reverse_dict(self):
-        """Construct reverse dicts from technosphere and biosphere row and col indices to technosphere_dict/biosphere_dict keys.
+        """Construct reverse dicts from technosphere and biosphere row and col indices to activity_dict/product_dict/biosphere_dict keys.
 
         Returns:
-            (reversed ``self.technosphere_dict``, reversed ``self.biosphere_dict``)
+            (reversed ``self.activity_dict``, ``self.product_dict`` and ``self.biosphere_dict``)
         """
-        rev_tech = {v: k for k, v in self.technosphere_dict.iteritems()}
+        rev_activity = {v: k for k, v in self.activity_dict.iteritems()}
+        rev_product = {v: k for k, v in self.product_dict.iteritems()}
         rev_bio = {v: k for k, v in self.biosphere_dict.iteritems()}
-        return rev_tech, rev_bio
+        return rev_activity, rev_product, rev_bio
 
     ######################
     ### Data retrieval ###
@@ -141,9 +144,16 @@ Doesn't require any arguments or return anything, but changes ``self.technospher
     def load_lci_data(self, builder=TBMBuilder):
         """Load data and create technosphere and biosphere matrices."""
         self.bio_params, self.tech_params, \
-            self.biosphere_dict, self.technosphere_dict, \
-            self.biosphere_matrix, self.technosphere_matrix = \
+            self.biosphere_dict, self.activity_dict, \
+            self.product_dict, self.biosphere_matrix, \
+            self.technosphere_matrix = \
             builder.build(self.dirpath, self.databases)
+        if len(self.activity_dict) != len(self.product_dict):
+            raise NonsquareTechnosphere((
+                "Technosphere matrix is not square: {} rows and {} products. "
+                "Use LeastSquaresLCA to solve this system, or fix the input "
+                "data").format(len(self.activity_dict), len(self.product_dict))
+            )
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix."""
@@ -245,7 +255,7 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
         """
         self.supply_array = self.solve_linear_system()
         # Turn 1-d array into diagonal matrix
-        count = len(self.technosphere_dict)
+        count = len(self.activity_dict)
         self.inventory = self.biosphere_matrix * \
             sparse.spdiags([self.supply_array], [0], count, count)
 
@@ -338,7 +348,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         self.technosphere_matrix = MatrixBuilder.build_matrix(
-            self.tech_params, self.technosphere_dict, self.technosphere_dict,
+            self.tech_params, self.activity_dict, self.product_dict,
             "row", "col",
             new_data=TBMBuilder.fix_supply_use(self.tech_params, vector)
         )
@@ -353,7 +363,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         self.biosphere_matrix = MatrixBuilder.build_matrix(
-            self.bio_params, self.biosphere_dict, self.technosphere_dict,
+            self.bio_params, self.biosphere_dict, self.activity_dict,
             "row", "col", new_data=vector)
 
     def rebuild_characterization_matrix(self, vector):

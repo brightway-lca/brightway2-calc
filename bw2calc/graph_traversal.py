@@ -74,7 +74,7 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
             'ind': 1e-6 * lca.score
         }}
         for activity_key, activity_amount in demand.iteritems():
-            index = lca.technosphere_dict[activity_key]
+            index = lca.activity_dict[activity_key]
             cum_score = self.cumulative_score(
                 index, supply, characterized_biosphere, lca
             )

@@ -216,22 +216,23 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         bio_array = array.take(np.where(
             array['type'] == TYPE_DICTIONARY["biosphere"]
         )[0])
-        tech_dict = cls.build_dictionary(np.hstack((
-            tech_array['input'],
+        activity_dict = cls.build_dictionary(np.hstack((
             tech_array['output'],
             bio_array['output']
         )))
+        product_dict = cls.build_dictionary(tech_array["input"])
         bio_dict = cls.build_dictionary(bio_array["input"])
         cls.add_matrix_indices(tech_array['input'], tech_array['row'],
-                               tech_dict)
+                               product_dict)
         cls.add_matrix_indices(tech_array['output'], tech_array['col'],
-                               tech_dict)
+                               activity_dict)
         cls.add_matrix_indices(bio_array['input'], bio_array['row'], bio_dict)
-        cls.add_matrix_indices(bio_array['output'], bio_array['col'], tech_dict)
-        technosphere = cls.build_technosphere_matrix(tech_array, tech_dict)
-        biosphere = cls.build_matrix(bio_array, bio_dict, tech_dict, "row", "col", "amount")
-        return bio_array, tech_array, bio_dict, tech_dict, biosphere, \
-            technosphere
+        cls.add_matrix_indices(bio_array['output'], bio_array['col'],
+                               activity_dict)
+        technosphere = cls.build_technosphere_matrix(tech_array, activity_dict, product_dict)
+        biosphere = cls.build_matrix(bio_array, bio_dict, activity_dict, "row", "col", "amount")
+        return (bio_array, tech_array, bio_dict, activity_dict, product_dict,
+                biosphere, technosphere)
 
     @classmethod
     def get_technosphere_inputs_mask(cls, array):
@@ -249,7 +250,8 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         return vector
 
     @classmethod
-    def build_technosphere_matrix(cls, array, tech_dict, new_data=None):
+    def build_technosphere_matrix(cls, array, activity_dict, product_dict, new_data=None):
         vector = array["amount"] if new_data is None else new_data
         vector = cls.fix_supply_use(array, vector.copy())
-        return cls.build_matrix(array, tech_dict, tech_dict, "row", "col", "amount", vector)
+        return cls.build_matrix(array, product_dict, activity_dict, "row",
+                                "col", "amount", vector)
