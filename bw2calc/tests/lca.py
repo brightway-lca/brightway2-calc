@@ -278,6 +278,36 @@ class LCACalculationTestCase(BW2DataTest):
         answer[lca.activity_dict[mapping[("t", "a2")]]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
+    def test_activity_as_fu_raises_error(self):
+        test_data = {
+            ("t", "p1"): {'type': 'product'},
+            ("t", "a1"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "p1"),
+                    'type': 'production',
+                }, {
+                    'amount': 1,
+                    'input': ('t', "a1"),
+                    'type': 'production',
+                }]
+            },
+            ("t", "a2"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "p1"),
+                    'type': 'production',
+                }]
+            }
+        }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+        with self.assertRaises(ValueError):
+            lca = LCA({("t", "a2"): 1})
+            lca.lci()
+
     def test_nonsquare_technosphere_error(self):
         test_data = {
             ("t", "p1"): {'type': 'product'},

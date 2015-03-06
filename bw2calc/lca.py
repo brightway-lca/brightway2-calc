@@ -83,12 +83,21 @@ class LCA(object):
         demand = demand or self.demand
         self.demand_array = np.zeros(len(self.product_dict))
         for key in demand:
-            if self._mapped_dict:
-                self.demand_array[self.product_dict[mapping[key]]] = \
-                demand[key]
-            else:
-                self.demand_array[self.product_dict[key]] = demand[key]
-
+            try:
+                if self._mapped_dict:
+                    self.demand_array[self.product_dict[mapping[key]]] = \
+                        demand[key]
+                else:
+                    self.demand_array[self.product_dict[key]] = demand[key]
+            except KeyError:
+                if (key in self.activity_dict or
+                    mapping[key] in self.activity_dict):
+                    raise ValueError((u"LCA can only be performed on products,"
+                        u" not activities ({} is the wrong dimension)"
+                        ).format(key)
+                    )
+                else:
+                    raise
 
     #########################
     ### Data manipulation ###
