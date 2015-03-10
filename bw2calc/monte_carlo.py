@@ -62,7 +62,7 @@ class MonteCarloLCA(IterativeMonteCarlo):
 
     def next(self):
         if not hasattr(self, "tech_rng"):
-            raise NameError("Must run `load_data` before making calculations")
+            self.load_data()
         self.rebuild_technosphere_matrix(self.tech_rng.next())
         self.rebuild_biosphere_matrix(self.bio_rng.next())
         if self.lcia:
@@ -101,6 +101,8 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
 
     def next(self):
+        if not hasattr(self, "tech_rng"):
+            self.load_data()
         self.rebuild_technosphere_matrix(self.tech_rng.next())
         self.rebuild_biosphere_matrix(self.bio_rng.next())
         self.rebuild_characterization_matrix(self.cf_rng.next())
@@ -117,7 +119,6 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
 def single_worker(demand, method, iterations):
     # demand, method, iterations = args
     mc = MonteCarloLCA(demand=demand, method=method)
-    mc.load_data()
     return [mc.next() for x in range(iterations)]
 
 
