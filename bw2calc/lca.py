@@ -125,13 +125,13 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         if not self._mapped_dict:
             # Already reversed - should be idempotent
             return False
-        rev_mapping = {v: k for k, v in mapping.iteritems()}
+        rev_mapping = {v: k for k, v in mapping.items()}
         self.activity_dict = {
-            rev_mapping[k]: v for k, v in self.activity_dict.iteritems()}
+            rev_mapping[k]: v for k, v in self.activity_dict.items()}
         self.product_dict = {
-            rev_mapping[k]: v for k, v in self.product_dict.iteritems()}
+            rev_mapping[k]: v for k, v in self.product_dict.items()}
         self.biosphere_dict = {
-            rev_mapping[k]: v for k, v in self.biosphere_dict.iteritems()}
+            rev_mapping[k]: v for k, v in self.biosphere_dict.items()}
         self._mapped_dict = False
         return True
 
@@ -141,9 +141,9 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         Returns:
             (reversed ``self.activity_dict``, ``self.product_dict`` and ``self.biosphere_dict``)
         """
-        rev_activity = {v: k for k, v in self.activity_dict.iteritems()}
-        rev_product = {v: k for k, v in self.product_dict.iteritems()}
-        rev_bio = {v: k for k, v in self.biosphere_dict.iteritems()}
+        rev_activity = {v: k for k, v in self.activity_dict.items()}
+        rev_product = {v: k for k, v in self.product_dict.items()}
+        rev_bio = {v: k for k, v in self.biosphere_dict.items()}
         return rev_activity, rev_product, rev_bio
 
     ######################

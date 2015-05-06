@@ -143,7 +143,7 @@ class ParallelMonteCarlo(object):
             processes=min(self.num_jobs, multiprocessing.cpu_count())
         )
         results = [pool.apply_async(worker, (self.demand, self.method,
-                   self.chunk_size)) for x in xrange(self.num_jobs)]
+                   self.chunk_size)) for x in range(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         return list(itertools.chain(*[x.get() for x in results]))
@@ -162,14 +162,14 @@ each Monte Carlo iteration.
     def merge_dictionaries(self, *dicts):
         r = {}
         for dic in dicts:
-            for k, v in dic.iteritems():
+            for k, v in dic.items():
                 r.setdefault(k, []).append(v)
         return r
 
     def calculate(self):
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
         results = [pool.apply_async(multi_worker, (self.demands, self.method)
-                                    ) for x in xrange(self.iterations)]
+                                    ) for x in range(self.iterations)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         return self.merge_dictionaries(*[x.get() for x in results])

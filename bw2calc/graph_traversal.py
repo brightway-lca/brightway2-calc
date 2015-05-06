@@ -73,7 +73,7 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
             'cum': lca.score,
             'ind': 1e-6 * lca.score
         }}
-        for activity_key, activity_amount in demand.iteritems():
+        for activity_key, activity_amount in demand.items():
             index = lca.activity_dict[activity_key]
             cum_score = self.cumulative_score(
                 index, supply, characterized_biosphere, lca
@@ -138,7 +138,7 @@ Returns:
             # Multiply by -1 because technosphere values are negative
             # (consumption of inputs) and rescale
             children = [(int(col.row[i]), float(-1 * col.data[i] / scale_value))
-                for i in xrange(col.row.shape[0])]
+                for i in range(col.row.shape[0])]
             for activity, amount in children:
                 # Skip values on technosphere diagonal
                 if activity == parent_index:

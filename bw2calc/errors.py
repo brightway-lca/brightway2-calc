@@ -1,4 +1,4 @@
-class OutsideTechnosphere(StandardError):
+class OutsideTechnosphere(Exception):
     """The given demand array activity is not in the technosphere matrix"""
     pass
 
@@ -13,6 +13,6 @@ class NoSolutionFound(UserWarning):
     pass
 
 
-class NonsquareTechnosphere(StandardError):
+class NonsquareTechnosphere(Exception):
     """The given data do not form a square technosphere matrix"""
     pass
