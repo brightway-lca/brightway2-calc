@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*
-from __future__ import division
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, division
+from eight import *
+
 from .fallbacks import dicter
 from .utils import load_arrays
 from bw2data.utils import MAX_INT_32, TYPE_DICTIONARY

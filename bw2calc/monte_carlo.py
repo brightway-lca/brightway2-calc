@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*
-from __future__ import division
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, division
+from eight import *
+
 from .lca import LCA
 from scipy.sparse.linalg import iterative, spsolve
 from stats_arrays.random import MCRandomNumberGenerator

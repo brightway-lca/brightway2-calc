@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
+from eight import *
+
 from .lca import LCA
 from .least_squares import LeastSquaresLCA
 from .monte_carlo import MonteCarloLCA, ParallelMonteCarlo, MultiMonteCarlo

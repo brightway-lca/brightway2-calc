@@ -1,7 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
+from eight import *
+
 from .. import *
 from bw2data import config, Database
 from bw2data.tests import BW2DataTest
-from bw2data.utils import MAX_INT_32
+from bw2data.utils import MAX_INT_32, numpy_string
 import numpy as np
 try:
     import cPickle as pickle
@@ -44,9 +48,9 @@ class MatrixBuilderTestCase(BW2DataTest):
         database = Database("sour")
         database.register()
         dtype = [
-            ('a', np.uint32),
-            ('row', np.uint32),
-            ('values', np.float32),
+            (numpy_string('a'), np.uint32),
+            (numpy_string('row'), np.uint32),
+            (numpy_string('values'), np.float32),
         ]
         array = np.array([
             (1, MAX_INT_32, 99),
@@ -68,9 +72,9 @@ class MatrixBuilderTestCase(BW2DataTest):
         database = Database("ghost")
         database.register()
         dtype = [
-            ('a', np.uint32),
-            ('row', np.uint32),
-            ('values', np.float32),
+            (numpy_string('a'), np.uint32),
+            (numpy_string('row'), np.uint32),
+            (numpy_string('values'), np.float32),
         ]
         array = np.array([
             (1, MAX_INT_32, 99),
@@ -90,9 +94,9 @@ class MatrixBuilderTestCase(BW2DataTest):
         database = Database("ghost")
         database.register()
         dtype = [
-            ('a', np.uint32),
-            ('row', np.uint32),
-            ('values', np.float32),
+            (numpy_string('a'), np.uint32),
+            (numpy_string('row'), np.uint32),
+            (numpy_string('values'), np.float32),
         ]
         array = np.array([
             (1, MAX_INT_32, 99),
@@ -111,11 +115,11 @@ class MatrixBuilderTestCase(BW2DataTest):
         database = Database("boo")
         database.register()
         dtype = [
-            ('a', np.uint32),
-            ('b', np.uint32),
-            ('row', np.uint32),
-            ('col', np.uint32),
-            ('values', np.float32),
+            (numpy_string('a'), np.uint32),
+            (numpy_string('b'), np.uint32),
+            (numpy_string('row'), np.uint32),
+            (numpy_string('col'), np.uint32),
+            (numpy_string('values'), np.float32),
         ]
         array = np.array([
             (1, 2, MAX_INT_32, MAX_INT_32, 99),
@@ -136,11 +140,11 @@ class MatrixBuilderTestCase(BW2DataTest):
         database = Database("whoah")
         database.register()
         dtype = [
-            ('a', np.uint32),
-            ('b', np.uint32),
-            ('row', np.uint32),
-            ('col', np.uint32),
-            ('values', np.float32),
+            (numpy_string('a'), np.uint32),
+            (numpy_string('b'), np.uint32),
+            (numpy_string('row'), np.uint32),
+            (numpy_string('col'), np.uint32),
+            (numpy_string('values'), np.float32),
         ]
         array = np.array([
             (1, 2, MAX_INT_32, MAX_INT_32, 99),
@@ -183,9 +187,9 @@ class MatrixBuilderTestCase(BW2DataTest):
 
     def test_build_matrix(self):
         a = np.zeros((4,), dtype=[
-            ('values', np.float64),
-            ('rows', np.uint32),
-            ('cols', np.uint32)
+            (numpy_string('values'), np.float64),
+            (numpy_string('rows'), np.uint32),
+            (numpy_string('cols'), np.uint32)
         ])
         a[0] = (4.2, 0, 2)
         a[1] = (6.6, 1, 1)
@@ -210,9 +214,9 @@ class MatrixBuilderTestCase(BW2DataTest):
     def test_multiple_values_same_exchange(self):
         """Values for same (row, col) should add together"""
         a = np.zeros((2,), dtype=[
-            ('values', np.float64),
-            ('rows', np.uint32),
-            ('cols', np.uint32)
+            (numpy_string('values'), np.float64),
+            (numpy_string('rows'), np.uint32),
+            (numpy_string('cols'), np.uint32)
         ])
         a[0] = (9, 1, 1)
         a[1] = (33, 1, 1)

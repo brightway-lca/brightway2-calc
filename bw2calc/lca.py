@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*
-from __future__ import division
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, division
+from eight import *
+
 from brightway2 import config as base_config
 from brightway2 import databases, mapping, \
     Method, Weighting, Normalization
@@ -38,7 +40,7 @@ class LCA(object):
         """
         self._mapped_dict = True
         self.dirpath = (config or base_config).dir
-        if isinstance(demand, (basestring, tuple, list)):
+        if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
         self.demand = demand
         self.method = method

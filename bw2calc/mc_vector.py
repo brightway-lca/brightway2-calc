@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*
-from __future__ import division
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals, division
+from eight import *
+
 from .monte_carlo import IterativeMonteCarlo
 from .utils import extract_uncertainty_fields as euf
 from stats_arrays.random import MCRandomNumberGenerator
