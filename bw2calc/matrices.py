@@ -49,7 +49,7 @@ and not:
         .. note: The actual filepath will be `dirpath``/processed/``name``.pickle. The ``load_arrays`` functions adds *processed* and *.pickle* automatically.
 
         Args:
-            * *dirpath* (string): Root directory path of file, i.e. ``config.dir``.
+            * *dirpath* (string): Root directory path of file, i.e. ``projects.dir``.
             * *names* (list of strings): Filenames to load
 
         Returns:
