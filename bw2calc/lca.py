@@ -2,7 +2,7 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-from brightway2 import config as base_config
+from brightway2 import config as base_config, projects
 from brightway2 import databases, mapping, \
     Method, Weighting, Normalization
 from scipy.sparse.linalg import factorized, spsolve
@@ -26,20 +26,19 @@ class LCA(object):
     #############
 
     def __init__(self, demand, method=None, weighting=None,
-            normalization=None, config=None):
+            normalization=None):
         """Create a new LCA calculation.
 
         Args:
             * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{("my database", "my process"): 2.5}``. Dictionary keys are the same as `Database <http://brightway2.readthedocs.org/en/latest/key-concepts.html#databases>`_ keys.
             * *method* (tuple, optional): `LCIA Method <http://brightway2.readthedocs.org/en/latest/key-concepts.html#impact-assessment-methods>`_ tuple, e.g. ``("My", "great", "LCIA", "method")``. Can be omitted if only interested in calculating the life cycle inventory.
-            * *config* (``bw2data.config`` object, optional): Specify a different configuration directory to load data. Optional, and not useful 99 percent of the time.
 
         Returns:
             A new LCA object
 
         """
         self._mapped_dict = True
-        self.dirpath = (config or base_config).dir
+        self.dirpath = projects.dir
         if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
         self.demand = demand
