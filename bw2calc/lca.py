@@ -41,6 +41,7 @@ class LCA(object):
         self.dirpath = projects.dir
         if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
+        databases.clean()
         self.demand = demand
         self.method = method
         self.weighting = weighting
