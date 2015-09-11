@@ -4,14 +4,23 @@ from eight import *
 
 from brightway2 import config as base_config, projects
 from brightway2 import databases, mapping, \
-    Method, Weighting, Normalization
+    Method, Weighting, Normalization, get_activity
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
-from .errors import OutsideTechnosphere, NonsquareTechnosphere
+from .errors import (
+    MalformedFunctionalUnit,
+    NonsquareTechnosphere,
+    OutsideTechnosphere,
+)
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import load_arrays
+import numpy as np
+try:
+    import pandas
+except ImportError:
+    pandas = None
 
 
 class LCA(object):
@@ -63,7 +72,12 @@ class LCA(object):
                              set.union(*[set(databases[obj]['depends'])
                                          for obj in seeds]))
 
-        seed = {key[0] for key in demand}
+        try:
+            seed = {key[0] for key in demand}
+        except (IndexError, TypeError):
+            raise MalformedFunctionalUnit(
+                "The given functional unit cannot be understood"
+                )
         extended = extend(seed)
         # depends can have loops, so no simple recursive search; need to check
         # membership
@@ -421,3 +435,30 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         if demand:
             self.redo_lci(demand)
         self.lcia_calculation()
+
+    def to_dataframe(self, cutoff=200):
+        assert pandas, "This method requires the `pandas` (http://pandas.pydata.org/) library"
+        assert hasattr(self, "characterized_inventory"), "Must do LCIA calculation first"
+        self.fix_dictionaries()
+        coo = self.characterized_inventory.tocoo()
+        stacked = np.vstack([np.abs(coo.data), coo.row, coo.col, coo.data])
+        stacked.sort()
+        rev_activity, _, rev_bio = self.reverse_dict()
+        length = stacked.shape[1]
+
+        data = []
+        for x in range(min(cutoff, length)):
+            if stacked[3, length - x - 1] == 0.:
+                continue
+            activity = get_activity(rev_activity[stacked[2, length - x - 1]])
+            flow = get_activity(rev_bio[stacked[1, length - x - 1]])
+            data.append((
+                activity['name'],
+                flow['name'],
+                activity.get('location'),
+                stacked[3, length - x - 1]
+            ))
+        return pandas.DataFrame(
+            data,
+            columns=['Activity', 'Flow', 'Region', 'Amount']
+        )

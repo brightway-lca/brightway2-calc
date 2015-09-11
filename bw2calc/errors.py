@@ -2,7 +2,11 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-class OutsideTechnosphere(Exception):
+class BW2CalcError(Exception):
+    """Base class for bw2calc errors"""
+    pass
+
+class OutsideTechnosphere(BW2CalcError):
     """The given demand array activity is not in the technosphere matrix"""
     pass
 
@@ -17,6 +21,11 @@ class NoSolutionFound(UserWarning):
     pass
 
 
-class NonsquareTechnosphere(Exception):
+class NonsquareTechnosphere(BW2CalcError):
     """The given data do not form a square technosphere matrix"""
+    pass
+
+
+class MalformedFunctionalUnit(BW2CalcError):
+    """The given functional unit cannot be understood"""
     pass
