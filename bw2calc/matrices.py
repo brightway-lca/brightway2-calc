@@ -3,8 +3,7 @@ from __future__ import print_function, unicode_literals, division
 from eight import *
 
 from .fallbacks import dicter
-from .utils import load_arrays
-from bw2data.utils import MAX_INT_32, TYPE_DICTIONARY
+from .utils import load_arrays, MAX_INT_32, TYPE_DICTIONARY
 from bw2data import Database
 from scipy import sparse
 import numpy as np
@@ -41,22 +40,6 @@ and not:
     mb.build(args)
 
     """
-
-    @classmethod
-    def load(cls, dirpath, names):
-        """Load a structured array from a file.
-
-        .. note: The actual filepath will be `dirpath``/processed/``name``.pickle. The ``load_arrays`` functions adds *processed* and *.pickle* automatically.
-
-        Args:
-            * *dirpath* (string): Root directory path of file, i.e. ``projects.dir``.
-            * *names* (list of strings): Filenames to load
-
-        Returns:
-            A NumPy structured array
-
-        """
-        return load_arrays(dirpath, names)
 
     @classmethod
     def add_matrix_indices(cls, array_from, array_to, mapping):
@@ -112,7 +95,7 @@ Returns:
         return dicter(array)
 
     @classmethod
-    def build(cls, dirpath, names, data_label,
+    def build(cls, paths, data_label,
               row_id_label, row_index_label,
               col_id_label=None, col_index_label=None,
               row_dict=None, col_dict=None, one_d=False, drop_missing=True):
@@ -123,7 +106,7 @@ See more detailed documentation at :ref:`building-matrices`.
 
 This method does the following:
 
-#. Load and concatenate the :ref:`structured arrays files <building-matrices>` ``names`` in ``dirpath`` using the function :func:`.utils.load_arrays` into a parameter array.
+#. Load and concatenate the :ref:`structured arrays files <building-matrices>` in filepaths ``paths`` using the function :func:`.utils.load_arrays` into a parameter array.
 #. If not ``row_dict``, use :meth:`.build_dictionary` to build ``row_dict`` from the parameter array column ``row_id_label``.
 #. Using the ``row_id_label`` and the ``row_dict``, use the method :meth:`.add_matrix_indices` to add matrix indices to the ``row_index_label`` column.
 #. If not ``one_d``, do the same to ``col_dict`` and ``col_index_label``, using ``col_id_label``.
@@ -132,8 +115,7 @@ This method does the following:
 #. Return the loaded parameter arrays from step 1, row and column dicts from steps 2 & 4, and matrix from step 5 or 6.
 
 Args:
-    * *dirpath* (str): Directory path where array files are stored.
-    * *names* (list): List of array filenames to load.
+    * *paths* (list): List of array filepaths to load.
     * *data_label* (str): Label of column in parameter arrays with matrix data values.
     * *row_id_label* (str): Label of column in parameter arrays with row ID values, i.e. the integer values returned from ``mapping``.
     * *row_index_label* (str): Label of column in parameter arrays where matrix row indices will be stored.
@@ -148,8 +130,8 @@ Returns:
     A :ref:`numpy parameter array <building-matrices>`, the row mapping dictionary, the column mapping dictionary, and a COO sparse matrix.
 
         """
-        assert isinstance(names, (tuple, list, set)), "names must be a list"
-        array = load_arrays(dirpath, names)
+        assert isinstance(paths, (tuple, list, set)), "names must be a list"
+        array = load_arrays(paths)
         if not row_dict:
             row_dict = cls.build_dictionary(array[row_id_label])
         cls.add_matrix_indices(array[row_id_label], array[row_index_label],
@@ -195,17 +177,12 @@ Returns:
 
 
 class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
-    """Subclass of ``MatrixBuilder`` that separates technosphere and biosphere parameters.
-
-    Also knows how to get correct Database filenames."""
+    """Subclass of ``MatrixBuilder`` that separates technosphere and biosphere parameters"""
     @classmethod
-    def build(cls, dirpath, names):
+    def build(cls, paths):
         """Build the technosphere and biosphere sparse matrices."""
-        assert isinstance(names, (tuple, list, set)), "names must be a list"
-        array = load_arrays(
-            dirpath,
-            [Database(name).filename for name in names]
-        )
+        assert isinstance(names, (tuple, list, set)), "paths must be a list"
+        array = load_arrays(paths)
         # take ~10 times faster than fancy indexing
         # http://wesmckinney.com/blog/?p=215
         tech_array = array.take(

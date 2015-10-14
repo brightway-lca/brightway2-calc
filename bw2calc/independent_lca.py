@@ -2,8 +2,6 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-
-from .independent_lca import IndependentLCA
 from brightway2 import config as base_config, projects
 from brightway2 import databases, mapping, \
     Method, Weighting, Normalization, get_activity
@@ -25,7 +23,7 @@ except ImportError:
     pandas = None
 
 
-class LCA(IndependentLCA):
+class IndependentLCA(object):
     """A static LCI or LCIA calculation.
 
     Following the general philosophy of Brightway2, and good software practices, there is a clear separation of concerns between retrieving and formatting data and doing an LCA. Building the necessary matrices is done with MatrixBuilder objects (:ref:`matrixbuilders`). The LCA class only does the LCA calculations themselves.
@@ -36,7 +34,7 @@ class LCA(IndependentLCA):
     ### Setup ###
     #############
 
-    def __init__(self, demand, method=None, weighting=None,
+    def __init__(self, demand, , mapping_filepath, method=None, weighting=None,
             normalization=None):
         """Create a new LCA calculation.
 
@@ -58,35 +56,6 @@ class LCA(IndependentLCA):
         self.weighting = weighting
         self.normalization = normalization
         self.databases = self.get_databases(demand)
-
-    def get_databases(self, demand):
-        """Get list of databases needed for demand/functional unit.
-
-        Args:
-            * *demand* (dict): Demand dictionary.
-
-        Returns:
-            A set of database names
-
-        """
-        def extend(seeds):
-            return set.union(seeds,
-                             set.union(*[set(databases[obj]['depends'])
-                                         for obj in seeds]))
-
-        try:
-            seed = {key[0] for key in demand}
-        except (IndexError, TypeError):
-            raise MalformedFunctionalUnit(
-                "The given functional unit cannot be understood"
-                )
-        extended = extend(seed)
-        # depends can have loops, so no simple recursive search; need to check
-        # membership
-        while extended != seed:
-            seed = extended
-            extended = extend(seed)
-        return extended
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.

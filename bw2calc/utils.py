@@ -10,13 +10,23 @@ except ImportError:
     import pickle
 
 
-def load_arrays(dirpath, names):
-    """Load and concatenate the numpy arrays ``names`` in directory ``dirpath``."""
-    return np.hstack([pickle.load(open(os.path.join(
-        dirpath,
-        u"processed", name if u".pickle" in name else u"%s.pickle" % name
-    ), "rb")
-    ) for name in names])
+try:
+    from bw2data.utils import TYPE_DICTIONARY, MAX_INT_32
+except ImportError:
+    # Maximum value for unsigned integer stored in 4 bytes
+    MAX_INT_32 = 4294967295
+    TYPE_DICTIONARY = {
+        "unknown": -1,
+        "production": 0,
+        "technosphere": 1,
+        "biosphere": 2,
+        "substitution": 3,
+    }
+
+
+def load_arrays(paths):
+    """Load the numpy arrays in list of filepaths ``paths``."""
+    return np.hstack([pickle.load(open(path), "rb")) for path in paths])
 
 
 def extract_uncertainty_fields(array):

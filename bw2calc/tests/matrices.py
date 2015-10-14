@@ -16,34 +16,6 @@ TBM = TechnosphereBiosphereMatrixBuilder
 
 
 class MatrixBuilderTestCase(BW2DataTest):
-    def test_load(self):
-        a_db = Database("a")
-        a_db.register()
-        b_db = Database("b")
-        b_db.register()
-        a = np.ones(10)
-        b = np.arange(10)
-        c = np.hstack((a, b))
-        with open(a_db.filepath_processed(), "wb") as f:
-            pickle.dump(a, f, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(b_db.filepath_processed(), "wb") as f:
-            pickle.dump(b, f, protocol=pickle.HIGHEST_PROTOCOL)
-        self.assertTrue(np.allclose(
-            a,
-            MatrixBuilder.load(projects.dir, [a_db.filepath_processed()])
-        ))
-        self.assertTrue(np.allclose(
-            b,
-            MatrixBuilder.load(projects.dir, [b_db.filepath_processed()])
-        ))
-        self.assertTrue(np.allclose(
-            c,
-            MatrixBuilder.load(
-                projects.dir,
-                [a_db.filepath_processed(), b_db.filepath_processed()]
-            )
-        ))
-
     def test_build_one_d(self):
         database = Database("sour")
         database.register()

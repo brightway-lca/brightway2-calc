@@ -2,9 +2,9 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-from bw2data.utils import MAX_INT_32
-import numpy as np
+from .utils import MAX_INT_32
 import itertools
+import numpy as np
 
 
 def indexer(array_from, array_to, mapping):

@@ -9,4 +9,4 @@ from .mc_vector import ParameterVectorLCA
 from .graph_traversal import GraphTraversal
 from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
 
-__version__ = (1, 1, "dev0")
+__version__ = (1, 1, "dev1")

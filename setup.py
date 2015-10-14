@@ -2,13 +2,18 @@ from setuptools import setup
 
 setup(
     name='bw2calc',
-    version="1.1.dev0",
+    version="1.1.dev1",
     packages=["bw2calc", "bw2calc.tests"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
     license=open('LICENSE.txt').read(),
     url="https://bitbucket.org/cmutel/brightway2-calc",
-    install_requires=["brightway2>=2.0.dev0", "bw2data>=2.0.dev0"],
+    install_requires=[
+        "eight",
+        "numpy",
+        "scipy",
+        "stats_arrays",
+    ],
     long_description=open('README.rst').read(),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
