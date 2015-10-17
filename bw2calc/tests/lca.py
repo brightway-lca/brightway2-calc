@@ -51,8 +51,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "1")]]] = 1
-        answer[lca.activity_dict[mapping[("t", "2")]]] = 0.5
+        answer[lca.activity_dict[("t", "1")]] = 1
+        answer[lca.activity_dict[("t", "2")]] = 0.5
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_redo_lci_fails_if_activity_outside_technosphere(self):
@@ -108,8 +108,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "1")]]] = 0.5
-        answer[lca.activity_dict[mapping[("t", "2")]]] = 0.25
+        answer[lca.activity_dict[("t", "1")]] = 0.5
+        answer[lca.activity_dict[("t", "2")]] = 0.25
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_substitution(self):
@@ -143,8 +143,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "1")]]] = 1
-        answer[lca.activity_dict[mapping[("t", "2")]]] = -1
+        answer[lca.activity_dict[("t", "1")]] = 1
+        answer[lca.activity_dict[("t", "2")]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_substitution_no_type(self):
@@ -175,8 +175,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "1")]]] = 1
-        answer[lca.activity_dict[mapping[("t", "2")]]] = -1
+        answer[lca.activity_dict[("t", "1")]] = 1
+        answer[lca.activity_dict[("t", "2")]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_circular_chains(self):
@@ -211,8 +211,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "1")]]] = 20 / 19.
-        answer[lca.activity_dict[mapping[("t", "2")]]] = 10 / 19.
+        answer[lca.activity_dict[("t", "1")]] = 20 / 19.
+        answer[lca.activity_dict[("t", "2")]] = 10 / 19.
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_only_products(self):
@@ -245,8 +245,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "p1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "a1")]]] = 1
-        answer[lca.activity_dict[mapping[("t", "a2")]]] = -1
+        answer[lca.activity_dict[("t", "a1")]] = 1
+        answer[lca.activity_dict[("t", "a2")]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_process_product_split(self):
@@ -278,8 +278,8 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "a1"): 1})
         lca.lci()
         answer = np.zeros((2,))
-        answer[lca.activity_dict[mapping[("t", "a1")]]] = 1
-        answer[lca.activity_dict[mapping[("t", "a2")]]] = -1
+        answer[lca.activity_dict[("t", "a1")]] = 1
+        answer[lca.activity_dict[("t", "a2")]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
     def test_activity_as_fu_raises_error(self):
@@ -344,8 +344,10 @@ class LCACalculationTestCase(BW2DataTest):
         databases['six'] = {'depends': []}
         lca = LCA({('one', None): 1})
         self.assertEqual(
-            lca.databases,
-            {'one', 'two', 'three', 'four', 'five', 'six'}
+            lca.databases_filepaths,
+            {Database(name).filepath_processed() for name in
+                ('one', 'two', 'three', 'four', 'five', 'six')
+            }
         )
 
     def test_demand_type(self):
@@ -417,11 +419,10 @@ class LCACalculationTestCase(BW2DataTest):
 
         supply = lca.supply_array.sum()
 
-        self.assertTrue(lca._mapped_dict)
-        self.assertTrue(lca.fix_dictionaries())
-        self.assertFalse(lca._mapped_dict)
+        self.assertTrue(lca._fixed)
+        self.assertFalse(lca.fix_dictionaries())
         # Second time doesn't do anything
         self.assertFalse(lca.fix_dictionaries())
-        self.assertFalse(lca._mapped_dict)
+        self.assertTrue(lca._fixed)
         lca.redo_lci({("t", "1"): 2})
         self.assertEqual(lca.supply_array.sum(), supply * 2)

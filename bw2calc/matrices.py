@@ -4,7 +4,6 @@ from eight import *
 
 from .fallbacks import dicter
 from .utils import load_arrays, MAX_INT_32, TYPE_DICTIONARY
-from bw2data import Database
 from scipy import sparse
 import numpy as np
 try:
@@ -130,7 +129,7 @@ Returns:
     A :ref:`numpy parameter array <building-matrices>`, the row mapping dictionary, the column mapping dictionary, and a COO sparse matrix.
 
         """
-        assert isinstance(paths, (tuple, list, set)), "names must be a list"
+        assert isinstance(paths, (tuple, list, set)), "``paths`` must be a list"
         array = load_arrays(paths)
         if not row_dict:
             row_dict = cls.build_dictionary(array[row_id_label])
@@ -181,7 +180,7 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
     @classmethod
     def build(cls, paths):
         """Build the technosphere and biosphere sparse matrices."""
-        assert isinstance(names, (tuple, list, set)), "paths must be a list"
+        assert isinstance(paths, (tuple, list, set)), "paths must be a list"
         array = load_arrays(paths)
         # take ~10 times faster than fancy indexing
         # http://wesmckinney.com/blog/?p=215

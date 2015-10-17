@@ -3,7 +3,10 @@ from __future__ import print_function, unicode_literals, division
 from eight import *
 
 from .lca import LCA
-from bw2data import calculation_setups
+try:
+    from bw2data import calculation_setups
+except ImportError:
+    calculation_setups = None
 import numpy as np
 
 
@@ -12,6 +15,8 @@ class MultiLCA(object):
 
     Needs to be passed a ``calculation_setup`` name."""
     def __init__(self, cs_name):
+        if not calculation_setups:
+            raise ImportError
         assert cs_name in calculation_setups
         try:
             cs = calculation_setups[cs_name]

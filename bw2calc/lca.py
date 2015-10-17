@@ -2,11 +2,6 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-
-from .independent_lca import IndependentLCA
-from brightway2 import config as base_config, projects
-from brightway2 import databases, mapping, \
-    Method, Weighting, Normalization, get_activity
 from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
@@ -17,7 +12,8 @@ from .errors import (
 )
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
-from .utils import load_arrays
+from .utils import load_arrays, mapping, translate
+import copy
 import numpy as np
 try:
     import pandas
@@ -25,7 +21,7 @@ except ImportError:
     pandas = None
 
 
-class LCA(IndependentLCA):
+class LCA(object):
     """A static LCI or LCIA calculation.
 
     Following the general philosophy of Brightway2, and good software practices, there is a clear separation of concerns between retrieving and formatting data and doing an LCA. Building the necessary matrices is done with MatrixBuilder objects (:ref:`matrixbuilders`). The LCA class only does the LCA calculations themselves.
@@ -37,7 +33,7 @@ class LCA(IndependentLCA):
     #############
 
     def __init__(self, demand, method=None, weighting=None,
-            normalization=None):
+            normalization=None, databases=None):
         """Create a new LCA calculation.
 
         Args:
@@ -48,45 +44,17 @@ class LCA(IndependentLCA):
             A new LCA object
 
         """
-        self._mapped_dict = True
-        self.dirpath = projects.dir
+        self._fixed = False
+
         if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
-        databases.clean()
-        self.demand = demand
-        self.method = method
-        self.weighting = weighting
-        self.normalization = normalization
-        self.databases = self.get_databases(demand)
 
-    def get_databases(self, demand):
-        """Get list of databases needed for demand/functional unit.
+        self.demand, self.method = demand, method
+        self.normalization, self.weighting = normalization, weighting
 
-        Args:
-            * *demand* (dict): Demand dictionary.
-
-        Returns:
-            A set of database names
-
-        """
-        def extend(seeds):
-            return set.union(seeds,
-                             set.union(*[set(databases[obj]['depends'])
-                                         for obj in seeds]))
-
-        try:
-            seed = {key[0] for key in demand}
-        except (IndexError, TypeError):
-            raise MalformedFunctionalUnit(
-                "The given functional unit cannot be understood"
-                )
-        extended = extend(seed)
-        # depends can have loops, so no simple recursive search; need to check
-        # membership
-        while extended != seed:
-            seed = extended
-            extended = extend(seed)
-        return extended
+        self.independent, self.databases_filepaths, self.method_filepath, \
+            self.weighting_filepath, self.normalization_filepath = \
+            translate(demand, databases, method, weighting, normalization)
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -102,14 +70,9 @@ class LCA(IndependentLCA):
         self.demand_array = np.zeros(len(self.product_dict))
         for key in demand:
             try:
-                if self._mapped_dict:
-                    self.demand_array[self.product_dict[mapping[key]]] = \
-                        demand[key]
-                else:
-                    self.demand_array[self.product_dict[key]] = demand[key]
+                self.demand_array[self.product_dict[key]] = demand[key]
             except KeyError:
-                if (key in self.activity_dict or
-                    mapping[key] in self.activity_dict):
+                if key in self.activity_dict:
                     raise ValueError((u"LCA can only be performed on products,"
                         u" not activities ({} is the wrong dimension)"
                         ).format(key)
@@ -140,17 +103,23 @@ This isn't needed for the LCA calculation itself, but is helpful when interpreti
 Doesn't require any arguments or return anything, but changes ``self.activity_dict``, ``self.product_dict`` and ``self.biosphere_dict``.
 
         """
-        if not self._mapped_dict:
-            # Already reversed - should be idempotent
+        if self._fixed:
+            # Already fixed - should be idempotent
+            return False
+        elif self.independent:
+            # Don't have access to mapping
             return False
         rev_mapping = {v: k for k, v in mapping.items()}
+        self._activity_dict = copy.deepcopy(self.activity_dict)
         self.activity_dict = {
             rev_mapping[k]: v for k, v in self.activity_dict.items()}
+        self._product_dict = self.product_dict
         self.product_dict = {
             rev_mapping[k]: v for k, v in self.product_dict.items()}
+        self._biosphere_dict = self.biosphere_dict
         self.biosphere_dict = {
             rev_mapping[k]: v for k, v in self.biosphere_dict.items()}
-        self._mapped_dict = False
+        self._fixed = True
         return True
 
     def reverse_dict(self):
@@ -174,7 +143,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.biosphere_dict, self.activity_dict, \
             self.product_dict, self.biosphere_matrix, \
             self.technosphere_matrix = \
-            builder.build(self.dirpath, self.databases)
+            builder.build(self.databases_filepaths)
         if len(self.activity_dict) != len(self.product_dict):
             raise NonsquareTechnosphere((
                 "Technosphere matrix is not square: {} rows and {} products. "
@@ -185,12 +154,11 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix."""
         self.cf_params, _, _, self.characterization_matrix = builder.build(
-                self.dirpath,
-                [Method(self.method).filename],
+                self.method_filepath,
                 "amount",
                 "flow",
                 "row",
-                row_dict=self.biosphere_dict,
+                row_dict=self._biosphere_dict,
                 one_d=True
             )
 
@@ -198,20 +166,18 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         """Load normalization data."""
         self.normalization_params, _, _, self.normalization_matrix = \
             builder.build(
-                self.dirpath,
-                [Normalization(self.normalization).filename],
+                self.normalization_filepath,
                 "amount",
                 "flow",
                 "index",
-                row_dict=self.biosphere_dict,
+                row_dict=self._biosphere_dict,
                 one_d=True
             )
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""
         self.weighting_params = load_arrays(
-            self.dirpath,
-            [Weighting(self.weighting).filename]
+            self.weighting_filepath
         )
         self.weighting_value = self.weighting_params['amount']
 
@@ -269,6 +235,7 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
 
         """
         self.load_lci_data(builder)
+        self.fix_dictionaries()
         self.build_demand_array()
         if factorize:
             self.decompose_technosphere()
@@ -342,11 +309,10 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
 
         Creates ``self.weighted_inventory``."""
         if hasattr(self, "normalized_inventory"):
-            self.weighted_inventory = \
-                self.weighting_value[0] * self.normalized_inventory
+            obj = self.normalized_inventory
         else:
-            self.weighted_inventory = \
-                self.weighting_value[0] * self.characterized_inventory
+            obj = self.characterized_inventory
+        self.weighted_inventory = self.weighting_value[0] * obj
 
     @property
     def score(self):
@@ -375,7 +341,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         self.technosphere_matrix = MatrixBuilder.build_matrix(
-            self.tech_params, self.activity_dict, self.product_dict,
+            self.tech_params, self._activity_dict, self._product_dict,
             "row", "col",
             new_data=TBMBuilder.fix_supply_use(self.tech_params, vector)
         )
@@ -390,7 +356,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         self.biosphere_matrix = MatrixBuilder.build_matrix(
-            self.bio_params, self.biosphere_dict, self.activity_dict,
+            self.bio_params, self._biosphere_dict, self._activity_dict,
             "row", "col", new_data=vector)
 
     def rebuild_characterization_matrix(self, vector):
@@ -403,7 +369,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         self.characterization_matrix = MatrixBuilder.build_diagonal_matrix(
-            self.cf_params, self.biosphere_dict,
+            self.cf_params, self._biosphere_dict,
             "row", "row", new_data=vector)
 
     def redo_lci(self, demand):
@@ -439,9 +405,12 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.lcia_calculation()
 
     def to_dataframe(self, cutoff=200):
+        assert not self.independent, "This method doesn't work with independent LCAs"
         assert pandas, "This method requires the `pandas` (http://pandas.pydata.org/) library"
         assert hasattr(self, "characterized_inventory"), "Must do LCIA calculation first"
-        self.fix_dictionaries()
+
+        from bw2data import get_activity
+
         coo = self.characterized_inventory.tocoo()
         stacked = np.vstack([np.abs(coo.data), coo.row, coo.col, coo.data])
         stacked.sort()
