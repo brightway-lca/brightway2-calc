@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
+    'DenseLCA',
     'GraphTraversal',
     'LCA',
     'LeastSquaresLCA',
@@ -15,6 +16,7 @@ __all__ = [
 __version__ = (1, 1, "dev1")
 
 from .lca import LCA
+from .dense_lca import DenseLCA
 from .least_squares import LeastSquaresLCA
 from .monte_carlo import MonteCarloLCA, ParallelMonteCarlo, MultiMonteCarlo
 from .mc_vector import ParameterVectorLCA
