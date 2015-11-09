@@ -6,6 +6,10 @@ from . import LCA
 from heapq import heappush, heappop
 import numpy as np
 import warnings
+try:
+    from bw2data import databases
+except ImportError:
+    databases = {}
 
 
 class GraphTraversal(object):
@@ -100,7 +104,6 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
         lca = LCA(demand, method)
         lca.lci()
         lca.lcia()
-        lca.fix_dictionaries()
         lca.decompose_technosphere()
         return lca, lca.solve_linear_system(), lca.score
 
@@ -126,6 +129,9 @@ Returns:
     (nodes, edges, number of calculations)
 
         """
+        static_databases = {name for name in databases if databases[name].get('static')}
+        reverse, _, _ = lca.reverse_dict()
+
         while heap:
             if counter >= max_calc:
                 warnings.warn("Stopping traversal due to calculation count.")
@@ -145,6 +151,10 @@ Returns:
                 # Skip values on technosphere diagonal
                 if activity == parent_index:
                     continue
+                # Skip links into static databases
+                if static_databases and reverse[activity][0] in static_databases:
+                    continue
+                # Skip negative coproducts
                 if skip_coproducts and amount <= 0:
                     continue
                 counter += 1
