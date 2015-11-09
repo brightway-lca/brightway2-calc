@@ -137,6 +137,10 @@ Returns:
                 warnings.warn("Stopping traversal due to calculation count.")
                 break
             parent_index = heappop(heap)[1]
+            # Skip links from static databases
+            if static_databases and reverse[parent_index][0] in static_databases:
+                continue
+
             # Assume that this activity produces its reference product
             scale_value = lca.technosphere_matrix[parent_index, parent_index]
             if scale_value == 0:
@@ -150,9 +154,6 @@ Returns:
             for activity, amount in children:
                 # Skip values on technosphere diagonal
                 if activity == parent_index:
-                    continue
-                # Skip links into static databases
-                if static_databases and reverse[activity][0] in static_databases:
                     continue
                 # Skip negative coproducts
                 if skip_coproducts and amount <= 0:
