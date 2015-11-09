@@ -39,9 +39,13 @@ try:
 
     class Translate(object):
         def dependent_database_filepaths(self, demand):
-            return {Database(obj).filepath_processed() for obj in itertools.chain(
-                *[Database(key[0]).find_graph_dependents() for key in demand])
-            }
+            try:
+                return {Database(obj).filepath_processed() for obj in itertools.chain(
+                    *[Database(key[0]).find_graph_dependents() for key in demand])
+                }
+            except TypeError:
+                raise MalformedFunctionalUnit("The given functional unit is "
+                    "not a valid activity key: {}".format(demand))
 
         def independent(self, demand, databases):
             if not all(isinstance(obj, int) for obj in demand):
