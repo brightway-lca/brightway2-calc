@@ -150,6 +150,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 "Use LeastSquaresLCA to solve this system, or fix the input "
                 "data").format(len(self.activity_dict), len(self.product_dict))
             )
+        self.fix_dictionaries()
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix."""
@@ -235,7 +236,6 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
 
         """
         self.load_lci_data(builder)
-        self.fix_dictionaries()
         self.build_demand_array()
         if factorize:
             self.decompose_technosphere()

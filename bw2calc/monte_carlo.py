@@ -7,6 +7,13 @@ from scipy.sparse.linalg import iterative, spsolve
 from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
+try:
+    from bw2data import databases
+except ImportError:
+    class Dummy(object):
+        def clean(self):
+            pass
+    databases = Dummy()
 
 
 class IterativeMonteCarlo(LCA):
@@ -128,6 +135,7 @@ class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
     def __init__(self, demand, method, iterations=1000, chunk_size=None,
                  cpus=None):
+        databases.clean()
         self.demand = demand
         self.method = method
         self.cpus = cpus
@@ -148,7 +156,10 @@ class ParallelMonteCarlo(object):
                    self.chunk_size)) for x in range(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
-        return list(itertools.chain(*[x.get() for x in results]))
+        results_list = list(itertools.chain(*[x.get() for x in results]))
+        # Have to terminate pool or get "OSError: Too many open files"
+        pool.terminate()
+        return results_list
 
 
 class MultiMonteCarlo(object):
@@ -160,6 +171,7 @@ each Monte Carlo iteration.
         self.demands = demands
         self.method = method
         self.iterations = iterations
+        databases.clean()
 
     def merge_dictionaries(self, *dicts):
         r = {}
@@ -174,7 +186,10 @@ each Monte Carlo iteration.
                                     ) for x in range(self.iterations)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
-        return self.merge_dictionaries(*[x.get() for x in results])
+        results_dict = self.merge_dictionaries(*[x.get() for x in results])
+        # Have to terminate pool or get "OSError: Too many open files"
+        pool.terminate()
+        return results_dict
 
 
 def multi_worker(demands, method):
