@@ -1,7 +1,7 @@
 Brightway2 calculations
 =======================
 
-This package provides the calculation engine for the `Brightway2 life cycle assessment framework <http://brightwaylca.org>`_. `Online documentation <https://brightway2-calc.readthedocs.org/en/latest/>`_ is available, and the source code is hosted on `Bitucket <https://bitbucket.org/cmutel/brightway2-calc>`_.
+This package provides the calculation engine for the `Brightway2 life cycle assessment framework <http://brightwaylca.org>`_. `Online documentation <http://docs.brightwaylca.org/>`_ is available, and the source code is hosted on `Bitucket <https://bitbucket.org/cmutel/brightway2-calc>`_.
 
 The emphasis here has been on speed of solving the linear systems, for normal LCA calculations, graph traversal, or Monte Carlo uncertainty analysis.
 
