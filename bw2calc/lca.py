@@ -382,6 +382,24 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
             self.cf_params, self._biosphere_dict,
             "row", "row", new_data=vector)
 
+    def switch_method(self, method):
+        """Switch to LCIA method `method`"""
+        self.method = method
+        self.get_array_filepaths()
+        self.load_lcia_data()
+
+    def switch_normalization(self, normalization):
+        """Switch to LCIA normalization `normalization`"""
+        self.normalization = normalization
+        self.get_array_filepaths()
+        self.load_normalization_data()
+
+    def switch_weighting(self, weighting):
+        """Switch to LCIA weighting `weighting`"""
+        self.weighting = weighting
+        self.get_array_filepaths()
+        self.load_weighting_data()
+
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand.
 
@@ -415,6 +433,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.lcia_calculation()
 
     def to_dataframe(self, cutoff=200):
+        """Return all nonzero elements of characterized inventory as Pandas dataframe"""
         assert mapping, "This method doesn't work with independent LCAs"
         assert pandas, "This method requires the `pandas` (http://pandas.pydata.org/) library"
         assert hasattr(self, "characterized_inventory"), "Must do LCIA calculation first"
