@@ -6,13 +6,12 @@ from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
 from .errors import (
-    MalformedFunctionalUnit,
     NonsquareTechnosphere,
     OutsideTechnosphere,
 )
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
-from .utils import load_arrays, mapping, translate
+from .utils import load_arrays, mapping, get_filepaths, get_database_filepaths
 import copy
 import numpy as np
 try:
@@ -49,12 +48,23 @@ class LCA(object):
         if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
 
-        self.demand, self.method = demand, method
+        self.demand, self.method, self._databases = demand, method, databases
         self.normalization, self.weighting = normalization, weighting
 
-        self.independent, self.databases_filepaths, self.method_filepath, \
-            self.weighting_filepath, self.normalization_filepath = \
-            translate(demand, databases, method, weighting, normalization)
+        self.databases_filepaths, \
+            self.method_filepath, \
+            self.weighting_filepath, \
+            self.normalization_filepath = \
+            self.get_array_filepaths()
+
+    def get_array_filepaths(self):
+        """Use utility functions to get all array filepaths"""
+        return (
+            get_database_filepaths(self.demand, self._databases),
+            get_filepaths(self.method, "method"),
+            get_filepaths(self.weighting, "weighting"),
+            get_filepaths(self.normalization, "normalization"),
+        )
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -106,7 +116,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         if self._fixed:
             # Already fixed - should be idempotent
             return False
-        elif self.independent:
+        elif not mapping:
             # Don't have access to mapping
             return False
         rev_mapping = {v: k for k, v in mapping.items()}
@@ -405,7 +415,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.lcia_calculation()
 
     def to_dataframe(self, cutoff=200):
-        assert not self.independent, "This method doesn't work with independent LCAs"
+        assert mapping, "This method doesn't work with independent LCAs"
         assert pandas, "This method requires the `pandas` (http://pandas.pydata.org/) library"
         assert hasattr(self, "characterized_inventory"), "Must do LCIA calculation first"
 
