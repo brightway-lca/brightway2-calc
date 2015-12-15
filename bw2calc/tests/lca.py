@@ -249,6 +249,52 @@ class LCACalculationTestCase(BW2DataTest):
         answer[lca.activity_dict[("t", "a2")]] = -1
         self.assertTrue(np.allclose(answer, lca.supply_array))
 
+    def test_activity_product_dict(self):
+        test_data = {
+            ("t", "activity 1"): {'type': 'process'},
+            ("t", "activity 2"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "activity 2"),
+                    'type': 'production',
+                }]
+            },
+            ("t", "activity 3"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "product 4"),
+                    'type': 'production',
+                }]
+            },
+            ("t", "product 4"): {
+                "type": "product"
+            },
+        }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+        lca = LCA({("t", "activity 1"): 1})
+        lca.lci()
+        self.assertEqual(
+           [("t", "activity 1"), ("t", "activity 2"), ("t", "activity 3")],
+           sorted(lca.activity_dict)
+        )
+        self.assertEqual(
+           [("t", "activity 1"), ("t", "activity 2"), ("t", "product 4")],
+           sorted(lca.product_dict)
+        )
+
+        ra, rp, rb = lca.reverse_dict()
+        self.assertEqual(
+           [("t", "activity 1"), ("t", "activity 2"), ("t", "activity 3")],
+           sorted(ra.values())
+        )
+        self.assertEqual(
+           [("t", "activity 1"), ("t", "activity 2"), ("t", "product 4")],
+           sorted(rp.values())
+        )
+
     def test_process_product_split(self):
         test_data = {
             ("t", "p1"): {'type': 'product'},
@@ -344,11 +390,84 @@ class LCACalculationTestCase(BW2DataTest):
         databases['six'] = {'depends': []}
         lca = LCA({('one', None): 1})
         self.assertEqual(
-            lca.databases_filepaths,
-            {Database(name).filepath_processed() for name in
+            sorted(lca.databases_filepaths),
+            sorted({Database(name).filepath_processed() for name in
                 ('one', 'two', 'three', 'four', 'five', 'six')
-            }
+            })
         )
+
+    def test_filepaths_full(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [
+                    {'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}
+                ],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.write(test_data)
+        method = Method(("M",))
+        method.register()
+        method.write([[("biosphere", "1"), 1.]])
+        normalization = Normalization(("N",))
+        normalization.register()
+        normalization.write([[("biosphere", "1"), 1.]])
+        weighting = Weighting("W")
+        weighting.register()
+        weighting.write([1])
+        lca = LCA(
+            {("t", "1"): 1},
+            method.name,
+            weighting.name,
+            normalization.name,
+        )
+        self.assertEqual(
+            sorted(Database(x).filepath_processed() for x in ('biosphere', 't')),
+            sorted(lca.databases_filepaths)
+        )
+        self.assertEqual(
+            lca.method_filepath,
+            [method.filepath_processed()]
+        )
+        self.assertEqual(
+            lca.weighting_filepath,
+            [weighting.filepath_processed()]
+        )
+        self.assertEqual(
+            lca.normalization_filepath,
+            [normalization.filepath_processed()]
+        )
+
+    def test_filepaths_empty(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [
+                    {'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}
+                ],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.write(test_data)
+        lca = LCA({("t", "1"): 1})
+        self.assertEqual(
+            sorted(Database(x).filepath_processed() for x in ('biosphere', 't')),
+            sorted(lca.databases_filepaths)
+        )
+        self.assertTrue(lca.method_filepath is None)
+        self.assertTrue(lca.normalization_filepath is None)
+        self.assertTrue(lca.weighting_filepath is None)
 
     def test_demand_type(self):
         with self.assertRaises(ValueError):
