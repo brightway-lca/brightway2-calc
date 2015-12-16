@@ -11,7 +11,13 @@ from .errors import (
 )
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
-from .utils import load_arrays, mapping, get_filepaths, get_database_filepaths
+from .utils import (
+    clean_databases,
+    get_database_filepaths,
+    get_filepaths,
+    load_arrays,
+    mapping,
+)
 import copy
 import numpy as np
 try:
@@ -43,6 +49,7 @@ class LCA(object):
             A new LCA object
 
         """
+        clean_databases()
         self._fixed = False
 
         if isinstance(demand, (str, tuple, list)):

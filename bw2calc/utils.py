@@ -59,8 +59,14 @@ try:
         """Get filepaths for all databases in supply chain of `functional_unit`"""
         dbs = set.union(*[Database(key[0]).find_graph_dependents() for key in functional_unit])
         return [Database(obj).filepath_processed() for obj in dbs]
+
+    def clean_databases():
+        databases.clean()
 except ImportError:
     get_filepaths = get_database_filepaths = mapping = None
+
+    def clean_databases():
+        pass
 
     # Maximum value for unsigned integer stored in 4 bytes
     MAX_INT_32 = 4294967295

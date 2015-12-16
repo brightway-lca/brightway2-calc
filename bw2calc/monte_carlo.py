@@ -7,13 +7,7 @@ from scipy.sparse.linalg import iterative, spsolve
 from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
-try:
-    from bw2data import databases
-except ImportError:
-    class Dummy(object):
-        def clean(self):
-            pass
-    databases = Dummy()
+from .utils import clean_databases
 
 
 class IterativeMonteCarlo(LCA):
@@ -135,7 +129,7 @@ class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
     def __init__(self, demand, method, iterations=1000, chunk_size=None,
                  cpus=None):
-        databases.clean()
+        clean_databases()
         self.demand = demand
         self.method = method
         self.cpus = cpus
@@ -168,10 +162,10 @@ This is a class for the efficient calculation of multiple demand vectors from
 each Monte Carlo iteration.
     """
     def __init__(self, demands, method, iterations):
+        clean_databases()
         self.demands = demands
         self.method = method
         self.iterations = iterations
-        databases.clean()
 
     def merge_dictionaries(self, *dicts):
         r = {}
