@@ -42,8 +42,8 @@ class LCA(object):
         """Create a new LCA calculation.
 
         Args:
-            * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{("my database", "my process"): 2.5}``. Dictionary keys are the same as `Database <http://brightway2.readthedocs.org/en/latest/key-concepts.html#databases>`_ keys.
-            * *method* (tuple, optional): `LCIA Method <http://brightway2.readthedocs.org/en/latest/key-concepts.html#impact-assessment-methods>`_ tuple, e.g. ``("My", "great", "LCIA", "method")``. Can be omitted if only interested in calculating the life cycle inventory.
+            * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{("my database", "my process"): 2.5}``. Dictionary keys are the same as `Database <https://brightway2.readthedocs.org/en/latest/key-concepts.html#databases>`_ keys.
+            * *method* (tuple, optional): `LCIA Method <https://brightway2.readthedocs.org/en/latest/key-concepts.html#impact-assessment-methods>`_ tuple, e.g. ``("My", "great", "LCIA", "method")``. Can be omitted if only interested in calculating the life cycle inventory.
 
         Returns:
             A new LCA object
