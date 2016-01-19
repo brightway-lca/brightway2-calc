@@ -156,6 +156,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
 
     def load_lci_data(self, builder=TBMBuilder):
         """Load data and create technosphere and biosphere matrices."""
+        self._fixed = False
         self.bio_params, self.tech_params, \
             self.biosphere_dict, self.activity_dict, \
             self.product_dict, self.biosphere_matrix, \
