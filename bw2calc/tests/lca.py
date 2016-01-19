@@ -381,6 +381,26 @@ class LCACalculationTestCase(BW2DataTest):
         with self.assertRaises(NonsquareTechnosphere):
             lca.lci()
 
+    def test_multiple_lci_calculations(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [
+                    {'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}
+                ],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.write(test_data)
+        lca = LCA({test_db.random(): 1})
+        lca.lci()
+        lca.lci()
+
     def test_dependent_databases(self):
         databases['one'] = {'depends': ['two', 'three']}
         databases['two'] = {'depends': ['four', 'five']}
