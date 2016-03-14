@@ -13,7 +13,13 @@ import numpy as np
 class MultiLCA(object):
     """Wrapper class for performing LCA calculations with many functional units and LCIA methods.
 
-    Needs to be passed a ``calculation_setup`` name."""
+    Needs to be passed a ``calculation_setup`` name.
+
+    This class does not subclass the `LCA` class, and performs all calculations upon instantiation.
+
+    Initialization creates `self.results`, which is a NumPy array of LCA scores, with rows of functional units and columns of LCIA methods. Ordering is the same as in the `calculation_setup`.
+
+    """
     def __init__(self, cs_name):
         if not calculation_setups:
             raise ImportError
@@ -44,4 +50,5 @@ class MultiLCA(object):
 
     @property
     def all(self):
+        """Return a dictionary of all functional units"""
         return {k: float(v) for k, v in self.activities}

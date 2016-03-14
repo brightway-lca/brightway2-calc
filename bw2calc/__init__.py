@@ -9,6 +9,7 @@ __all__ = [
     'MatrixBuilder',
     'MonteCarloLCA',
     'MultiMonteCarlo',
+    'MultiLCA',
     'ParallelMonteCarlo',
     'ParameterVectorLCA',
     'TechnosphereBiosphereMatrixBuilder',
@@ -21,6 +22,7 @@ from .dense_lca import DenseLCA
 from .independent_lca import IndepentLCAMixin
 from .least_squares import LeastSquaresLCA
 from .monte_carlo import MonteCarloLCA, ParallelMonteCarlo, MultiMonteCarlo
+from .multi_lca import MultiLCA
 from .mc_vector import ParameterVectorLCA
 from .graph_traversal import GraphTraversal
 from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
