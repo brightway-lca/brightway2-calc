@@ -393,19 +393,19 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     def switch_method(self, method):
         """Switch to LCIA method `method`"""
         self.method = method
-        self.get_array_filepaths()
+        _, self.method_filepath, _, _ = self.get_array_filepaths()
         self.load_lcia_data()
 
     def switch_normalization(self, normalization):
         """Switch to LCIA normalization `normalization`"""
         self.normalization = normalization
-        self.get_array_filepaths()
+        _, _, _, self.normalization_filepath = self.get_array_filepaths()
         self.load_normalization_data()
 
     def switch_weighting(self, weighting):
         """Switch to LCIA weighting `weighting`"""
         self.weighting = weighting
-        self.get_array_filepaths()
+        _, _, self.weighting_filepath, _ = self.get_array_filepaths()
         self.load_weighting_data()
 
     def redo_lci(self, demand):

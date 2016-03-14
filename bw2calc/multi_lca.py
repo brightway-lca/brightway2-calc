@@ -30,19 +30,18 @@ class MultiLCA(object):
             raise ValueError(
                 "{} is not a known `calculation_setup`.".format(cs_name)
             )
-        self.activities = cs['inv']
+        self.func_units = cs['inv']
         self.methods = cs['ia']
         self.lca = LCA(demand=self.all, method=self.methods[0])
         self.lca.lci(factorize=True)
         self.method_matrices = []
-        self.results = np.zeros((len(self.activities), len(self.methods)))
+        self.results = np.zeros((len(self.func_units), len(self.methods)))
         for method in self.methods:
-            self.lca.method = method
-            self.lca.load_lcia_data()
+            self.lca.switch_method(method)
             self.method_matrices.append(self.lca.characterization_matrix)
 
-        for row, activity in enumerate(self.activities):
-            self.lca.redo_lci({activity[0]: float(activity[1])})
+        for row, func_unit in enumerate(self.func_units):
+            self.lca.redo_lci(func_unit)
             for col, cf_matrix in enumerate(self.method_matrices):
                 self.lca.characterization_matrix = cf_matrix
                 self.lca.lcia_calculation()
@@ -50,5 +49,5 @@ class MultiLCA(object):
 
     @property
     def all(self):
-        """Return a dictionary of all functional units"""
-        return {k: float(v) for k, v in self.activities}
+        """Get all possible databases by merging all functional units"""
+        return {key: 1 for func_unit in self.func_units for key in func_unit}
