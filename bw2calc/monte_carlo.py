@@ -3,11 +3,12 @@ from __future__ import print_function, unicode_literals, division
 from eight import *
 
 from .lca import LCA
+from .utils import clean_databases
+from bw2data import projects
 from scipy.sparse.linalg import iterative, spsolve
 from stats_arrays.random import MCRandomNumberGenerator
 import itertools
 import multiprocessing
-from .utils import clean_databases
 
 
 class IterativeMonteCarlo(LCA):
@@ -119,8 +120,8 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         return results
 
 
-def single_worker(demand, method, iterations):
-    # demand, method, iterations = args
+def single_worker(project, demand, method, iterations):
+    projects.current = project
     mc = MonteCarloLCA(demand=demand, method=method)
     return [mc.next() for x in range(iterations)]
 
@@ -146,8 +147,11 @@ class ParallelMonteCarlo(object):
         pool = multiprocessing.Pool(
             processes=min(self.num_jobs, multiprocessing.cpu_count())
         )
-        results = [pool.apply_async(worker, (self.demand, self.method,
-                   self.chunk_size)) for x in range(self.num_jobs)]
+        results = [pool.apply_async(
+            projects.current,
+            worker,
+            (self.demand, self.method, self.chunk_size)
+        ) for x in range(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         results_list = list(itertools.chain(*[x.get() for x in results]))
@@ -176,8 +180,10 @@ each Monte Carlo iteration.
 
     def calculate(self):
         pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
-        results = [pool.apply_async(multi_worker, (self.demands, self.method)
-                                    ) for x in range(self.iterations)]
+        results = [pool.apply_async(
+            multi_worker,
+            (projects.current, self.demands, self.method)
+        ) for x in range(self.iterations)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
         results_dict = self.merge_dictionaries(*[x.get() for x in results])
@@ -186,7 +192,8 @@ each Monte Carlo iteration.
         return results_dict
 
 
-def multi_worker(demands, method):
+def multi_worker(project, demands, method):
+    projects.current = project
     lca = LCA(demands[0], method)
     lca.load_lci_data()
     lca.load_lcia_data()
