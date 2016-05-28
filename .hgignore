@@ -8,3 +8,4 @@ MANIFEST
 cover
 .coverage
 bw2calc.egg-info
+.cache
