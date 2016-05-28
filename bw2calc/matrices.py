@@ -21,9 +21,7 @@ Matrix builders use an array of row indices, an array of column indices, and an 
 See the following for more information on structured arrays:
 
 * `NumPy structured arrays <http://docs.scipy.org/doc/numpy/reference/generated/numpy.recarray.html#numpy.recarray>`_
-* `Intermediate and processed data <http://brightway2.readthedocs.org/en/latest/key-concepts.html#intermediate-and-processed-data>`_
-* `Inventory database structured arrays <https://bw2data.readthedocs.org/en/latest/database.html#bw2data.Database.process>`_
-* `Impact assessment method structured arrays <https://bw2data.readthedocs.org/en/latest/method.html#bw2data.Method.process>`_
+* `Intermediate and processed data <https://docs.brightwaylca.org/intro.html#intermediate-and-processed-data>`_
 
 These classes are not instantiated, and have only `classmethods <https://docs.python.org/2/library/functions.html#classmethod>`__. They are not really true classes, but more organizational. In other words, you should use:
 

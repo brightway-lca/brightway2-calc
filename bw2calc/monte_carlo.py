@@ -148,9 +148,8 @@ class ParallelMonteCarlo(object):
             processes=min(self.num_jobs, multiprocessing.cpu_count())
         )
         results = [pool.apply_async(
-            projects.current,
             worker,
-            (self.demand, self.method, self.chunk_size)
+            (projects.current, self.demand, self.method, self.chunk_size)
         ) for x in range(self.num_jobs)]
         pool.close()
         pool.join()  # Blocks until calculation is finished
