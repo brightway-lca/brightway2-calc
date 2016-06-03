@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals, division
 from eight import *
+from future.utils import implements_iterator
 
 from .lca import LCA
 from .utils import clean_databases
@@ -11,6 +12,7 @@ import itertools
 import multiprocessing
 
 
+@implements_iterator
 class IterativeMonteCarlo(LCA):
     """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
@@ -28,7 +30,7 @@ class IterativeMonteCarlo(LCA):
     def __call__(self):
         return self.next()
 
-    def next(self):
+    def __next__(self):
         raise NotImplemented
 
     def solve_linear_system(self):
@@ -64,7 +66,7 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.load_weighting_data()
             self.weighting_rng = MCRandomNumberGenerator(self.weighting_params, seed=self.seed)
 
-    def next(self):
+    def __next__(self):
         if not hasattr(self, "tech_rng"):
             self.load_data()
         self.rebuild_technosphere_matrix(self.tech_rng.next())
@@ -104,7 +106,7 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=self.seed)
         self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
 
-    def next(self):
+    def __next__(self):
         if not hasattr(self, "tech_rng"):
             self.load_data()
         self.rebuild_technosphere_matrix(self.tech_rng.next())
@@ -121,7 +123,7 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
 
 
 def single_worker(project, demand, method, iterations):
-    projects.current = project
+    projects.set_current(project, writable=False)
     mc = MonteCarloLCA(demand=demand, method=method)
     return [mc.next() for x in range(iterations)]
 
@@ -192,7 +194,7 @@ each Monte Carlo iteration.
 
 
 def multi_worker(project, demands, method):
-    projects.current = project
+    projects.set_current(project, writable=False)
     lca = LCA(demands[0], method)
     lca.load_lci_data()
     lca.load_lcia_data()
