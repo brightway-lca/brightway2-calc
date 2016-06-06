@@ -27,8 +27,10 @@ def extract_uncertainty_fields(array):
 
 try:
     from bw2data import (
+        config,
         Database,
         databases,
+        geomapping,
         mapping,
         Method,
         methods,
@@ -39,6 +41,8 @@ try:
     )
 
     from bw2data.utils import TYPE_DICTIONARY, MAX_INT_32
+
+    global_index = geomapping[config.global_location]
 
     OBJECT_MAPPING = {
         'database': (Database, databases),
@@ -63,7 +67,7 @@ try:
     def clean_databases():
         databases.clean()
 except ImportError:
-    get_filepaths = get_database_filepaths = mapping = None
+    get_filepaths = get_database_filepaths = mapping = global_index = None
 
     def clean_databases():
         pass

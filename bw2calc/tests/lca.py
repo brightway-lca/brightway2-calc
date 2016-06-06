@@ -565,3 +565,75 @@ class LCACalculationTestCase(BW2DataTest):
         self.assertTrue(lca._fixed)
         lca.redo_lci({("t", "1"): 2})
         self.assertEqual(lca.supply_array.sum(), supply * 2)
+
+    def test_basic_lcia(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "2"),
+                    'type': 'technosphere',
+                }],
+            },
+            ("t", "2"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                }],
+            },
+        }
+        method_data = [(('biosphere', "1"), 42)]
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+
+        method = Method(("a method",))
+        method.register()
+        method.write(method_data)
+
+        lca = LCA({("t", "1"): 1}, ("a method",))
+        lca.lci()
+        lca.lcia()
+
+        self.assertTrue(np.allclose(42, lca.score))
+
+    def test_lcia_regionalized_ignored(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "2"),
+                    'type': 'technosphere',
+                }],
+            },
+            ("t", "2"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                }],
+            },
+        }
+        method_data = [
+            (('biosphere', "1"), 21),
+            (('biosphere', "1"), 21, config.global_location),
+            (('biosphere', "1"), 100, "somewhere else"),
+        ]
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+
+        method = Method(("a method",))
+        method.register()
+        method.write(method_data)
+
+        lca = LCA({("t", "1"): 1}, ("a method",))
+        lca.lci()
+        lca.lcia()
+
+        print(lca.score)
+        self.assertTrue(np.allclose(42, lca.score))
+

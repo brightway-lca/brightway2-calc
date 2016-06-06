@@ -12,6 +12,7 @@ from .errors import (
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import (
+    global_index,
     clean_databases,
     get_database_filepaths,
     get_filepaths,
@@ -171,15 +172,23 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         self.fix_dictionaries()
 
     def load_lcia_data(self, builder=MatrixBuilder):
-        """Load data and create characterization matrix."""
+        """Load data and create characterization matrix.
+
+        This method will filter out regionalized characterization factors. This filtering needs access to ``bw2data`` - therefore, regionalized methods will cause incorrect results if ``bw2data`` is not importable.
+
+        """
         self.cf_params, _, _, self.characterization_matrix = builder.build(
                 self.method_filepath,
                 "amount",
                 "flow",
                 "row",
                 row_dict=self._biosphere_dict,
-                one_d=True
+                one_d=True,
             )
+        if global_index is not None:
+            mask = self.cf_params['geo'] == global_index
+            self.cf_params = self.cf_params[mask]
+            self.characterization_matrix = builder.build_diagonal_matrix(self.cf_params, self._biosphere_dict, "row", "amount")
 
     def load_normalization_data(self, builder=MatrixBuilder):
         """Load normalization data."""
