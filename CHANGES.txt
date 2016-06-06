@@ -1,6 +1,44 @@
 Changelog
 *********
 
+Note: This changelog is not exhaustive.
+
+1.3.1 (2016-06-06)
+==================
+
+- CHANGE:Updates for bw2data 2.2
+- BUGFIX: Correctly handle regionalized CFs in site-generic calculations
+- FEATURE: Add contribution methods to LCA classes
+
+1.3 (2016-05-28)
+================
+
+- BUGFIX: Correctly handle project names in multiprocess calculations
+
+1.2.1 (2016-03-14)
+==================
+
+- BUGFIX: switch_* was seriously broken due to new handling of processed arrays filepaths
+
+1.2 (2016-03-14)
+================
+
+- Feature: Py3 compatibility
+- FEATURE: Independent LCAs which don't rely on bw2data and the brightway2 ecosystem
+- Feature: Add ``DenseLCA``
+- FEATURE: Added switch_* and to_dataframe methods to LCA class
+- FEATURE: Allow graph traversal to skip links in static databases
+- BUGFIX: Terminate multiprocessing pools after calculations
+- CHANGE: Load data automatically in Monte Carlo
+- CHANGE: Automatically clean dirty databases before starting calculations
+
+Plus lots of small bugfixes, and compatibility with ``projects``.
+
+1.0 (2015-03-08)
+================
+
+- CHANGE: Split activities and products
+
 0.17.1 (2015-02-13)
 ===================
 
