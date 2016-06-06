@@ -28,7 +28,7 @@ class IterativeMonteCarlo(LCA):
         return self
 
     def __call__(self):
-        return self.next()
+        return next(self)
 
     def __next__(self):
         raise NotImplemented
@@ -125,7 +125,7 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
 def single_worker(project, demand, method, iterations):
     projects.set_current(project, writable=False)
     mc = MonteCarloLCA(demand=demand, method=method)
-    return [mc.next() for x in range(iterations)]
+    return [next(mc) for x in range(iterations)]
 
 
 class ParallelMonteCarlo(object):

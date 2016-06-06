@@ -44,15 +44,11 @@ class ParameterVectorLCA(IterativeMonteCarlo):
         self.rng = MCRandomNumberGenerator(self.params, seed=self.seed)
 
     def __call__(self, vector=None):
-        return self.next(vector)
+        self.sample = self.rng.next() if vector is None else vector
+        return next(self)
 
-    def next(self, vector=None):
+    def __next__(self):
         """Generate a new Monte Carlo iteration."""
-        if vector is not None:
-            self.sample = vector
-        else:
-            self.sample = self.rng.next()
-
         self.rebuild_technosphere_matrix(self.sample[
             self.positions["tech"][0]:self.positions["tech"][1]
             ])
