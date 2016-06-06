@@ -479,3 +479,23 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
             data,
             columns=['Activity', 'Flow', 'Region', 'Amount']
         )
+
+    ####################
+    ### Contribution ###
+    ####################
+
+    def top_emissions(self, **kwargs):
+        """Call ``bw2analyzer.ContributionAnalyses.annotated_top_emissions``"""
+        try:
+            from bw2analyzer import ContributionAnalysis
+        except ImportError:
+            raise ImportError("`bw2analyzer` is not installed")
+        return ContributionAnalysis().annotated_top_emissions(self, **kwargs)
+
+    def top_activities(self, **kwargs):
+        """Call ``bw2analyzer.ContributionAnalyses.annotated_top_processes``"""
+        try:
+            from bw2analyzer import ContributionAnalysis
+        except ImportError:
+            raise ImportError("`bw2analyzer` is not installed")
+        return ContributionAnalysis().annotated_top_processes(self, **kwargs)
