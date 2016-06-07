@@ -2,8 +2,8 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-from ..errors import OutsideTechnosphere, NonsquareTechnosphere
-from ..lca import LCA
+from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere
+from bw2calc.lca import LCA
 from bw2data import *
 from bw2data.utils import TYPE_DICTIONARY
 from bw2data.tests import BW2DataTest

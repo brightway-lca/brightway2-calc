@@ -2,7 +2,7 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-from .. import *
+from bw2calc import *
 from bw2data import config, Database
 from bw2data.tests import BW2DataTest
 from bw2data.utils import MAX_INT_32, numpy_string
