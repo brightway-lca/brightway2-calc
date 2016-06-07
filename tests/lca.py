@@ -76,6 +76,13 @@ class LCACalculationTestCase(BW2DataTest):
         with self.assertRaises(OutsideTechnosphere):
             lca.redo_lci({("z", "1"): 1})
 
+    def test_passing_falsey_key(self):
+        self.add_basic_biosphere()
+        with self.assertRaises(ValueError):
+            LCA({None: 1})
+        with self.assertRaises(ValueError):
+            LCA({(): 1})
+
     def test_production_values(self):
         test_data = {
             ("t", "1"): {

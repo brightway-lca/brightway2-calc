@@ -50,11 +50,14 @@ class LCA(object):
             A new LCA object
 
         """
-        clean_databases()
-        self._fixed = False
-
         if isinstance(demand, (str, tuple, list)):
             raise ValueError("Demand must be a dictionary")
+        for key in demand:
+            if not key:
+                raise ValueError("Invalid demand dictionary")
+
+        clean_databases()
+        self._fixed = False
 
         self.demand, self.method, self._databases = demand, method, databases
         self.normalization, self.weighting = normalization, weighting
@@ -96,7 +99,7 @@ class LCA(object):
                         ).format(key)
                     )
                 else:
-                    raise
+                    raise OutsideTechnosphere("Can't find key {} in product dictionary".format(key))
 
     #########################
     ### Data manipulation ###
@@ -429,10 +432,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         assert hasattr(self, "inventory"), "Must do lci first"
-        try:
-            self.build_demand_array(demand)
-        except KeyError:
-            raise OutsideTechnosphere
+        self.build_demand_array(demand)
         self.lci_calculation()
 
     def redo_lcia(self, demand=None):
