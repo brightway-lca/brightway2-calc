@@ -2,14 +2,17 @@
 
 __all__ = [
     'DenseLCA',
+    'direct_solving_worker',
+    'DirectSolvingMixin',
+    'DirectSolvingMonteCarloLCA',
     'GraphTraversal',
     'IndepentLCAMixin',
     'LCA',
     'LeastSquaresLCA',
     'MatrixBuilder',
     'MonteCarloLCA',
-    'MultiMonteCarlo',
     'MultiLCA',
+    'MultiMonteCarlo',
     'ParallelMonteCarlo',
     'ParameterVectorLCA',
     'TechnosphereBiosphereMatrixBuilder',
@@ -21,7 +24,14 @@ from .lca import LCA
 from .dense_lca import DenseLCA
 from .independent_lca import IndepentLCAMixin
 from .least_squares import LeastSquaresLCA
-from .monte_carlo import MonteCarloLCA, ParallelMonteCarlo, MultiMonteCarlo
+from .monte_carlo import (
+    direct_solving_worker,
+    DirectSolvingMixin,
+    DirectSolvingMonteCarloLCA,
+    MonteCarloLCA,
+    MultiMonteCarlo,
+    ParallelMonteCarlo,
+)
 from .multi_lca import MultiLCA
 from .mc_vector import ParameterVectorLCA
 from .graph_traversal import GraphTraversal

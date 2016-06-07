@@ -53,6 +53,11 @@ class IterativeMonteCarlo(LCA):
             return solution
 
 
+class DirectSolvingMixin(IterativeMonteCarlo):
+    def solve_linear_system(self):
+        return LCA.solve_linear_system(self)
+
+
 class MonteCarloLCA(IterativeMonteCarlo):
     """Monte Carlo uncertainty analysis with separate `random number generators <http://en.wikipedia.org/wiki/Random_number_generation>`_ (RNGs) for each set of parameters."""
     def load_data(self):
@@ -87,6 +92,10 @@ class MonteCarloLCA(IterativeMonteCarlo):
             return self.score
         else:
             return self.supply_array
+
+
+class DirectSolvingMonteCarloLCA(MonteCarloLCA, DirectSolvingMixin):
+    pass
 
 
 class ComparativeMonteCarlo(IterativeMonteCarlo):
@@ -125,6 +134,12 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
 def single_worker(project, demand, method, iterations):
     projects.set_current(project, writable=False)
     mc = MonteCarloLCA(demand=demand, method=method)
+    return [next(mc) for x in range(iterations)]
+
+
+def direct_solving_worker(project, demand, method, iterations):
+    projects.set_current(project, writable=False)
+    mc = DirectSolvingMonteCarloLCA(demand=demand, method=method)
     return [next(mc) for x in range(iterations)]
 
 
