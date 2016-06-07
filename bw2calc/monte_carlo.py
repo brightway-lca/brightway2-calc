@@ -176,55 +176,92 @@ class ParallelMonteCarlo(object):
         return results_list
 
 
-class MultiMonteCarlo(object):
+def multi_worker(args):
+    """Calculate a single Monte Carlo iteration for many demands.
+
+    ``args`` are in order:
+        * ``project``: Name of project
+        * ``demands``: List of demand dictionaries
+        * ``method``: LCIA method
+
+    Returns a list of results: ``[(demand dictionary, result)]``
+
     """
-This is a class for the efficient calculation of multiple demand vectors from
-each Monte Carlo iteration.
-    """
-    def __init__(self, demands, method, iterations):
-        clean_databases()
-        self.demands = demands
-        self.method = method
-        self.iterations = iterations
-
-    def merge_dictionaries(self, *dicts):
-        r = {}
-        for dic in dicts:
-            for k, v in dic.items():
-                r.setdefault(k, []).append(v)
-        return r
-
-    def calculate(self):
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count() - 1)
-        results = [pool.apply_async(
-            multi_worker,
-            (projects.current, self.demands, self.method)
-        ) for x in range(self.iterations)]
-        pool.close()
-        pool.join()  # Blocks until calculation is finished
-        results_dict = self.merge_dictionaries(*[x.get() for x in results])
-        # Have to terminate pool or get "OSError: Too many open files"
-        pool.terminate()
-        return results_dict
-
-
-def multi_worker(project, demands, method):
+    project, demands, method = args
     projects.set_current(project, writable=False)
     lca = LCA(demands[0], method)
     lca.load_lci_data()
     lca.load_lcia_data()
     # Create new matrices
-    lca.rebuild_technosphere_matrix(
-        MCRandomNumberGenerator(lca.tech_params).next())
-    lca.rebuild_biosphere_matrix(
-        MCRandomNumberGenerator(lca.bio_params).next())
+    lca.rebuild_technosphere_matrix(next(
+        MCRandomNumberGenerator(lca.tech_params)))
+    lca.rebuild_biosphere_matrix(next(
+        MCRandomNumberGenerator(lca.bio_params)))
     lca.rebuild_characterization_matrix(
-        MCRandomNumberGenerator(lca.cf_params).next())
-    lca.decompose_technosphere()
-    lca.lci()
+        next(MCRandomNumberGenerator(lca.cf_params)))
+    lca.lci(factorize=True)
     lca.lcia()
-    results = {}
+    results = []
     for demand in demands:
         lca.redo_lcia(demand)
-        results[str(demand)] = lca.score
+        results.append((demand, lca.score))
     return results
+
+
+class MultiMonteCarlo(object):
+    """
+This is a class for the efficient calculation of *many* demand vectors from
+each Monte Carlo iteration.
+
+Args:
+    * ``args`` is a list of demand dictionaries
+    * ``method`` is a LCIA method
+    * ``iterations`` is the number of Monte Carlo iterations desired
+    * ``cpus`` is the (optional) number of CPUs to use
+
+The input list can have complex demands, so ``[{('foo', 'bar'): 1, ('foo', 'baz'): 1}, {('foo', 'another'): 1}]`` is OK.
+
+Call ``.calculate()`` to generate results.
+
+    """
+    def __init__(self, demands, method, iterations, cpus=None):
+        clean_databases()
+        # Convert from activity proxies if necessary
+        self.demands = [{(k[0], k[1]): v}
+                        for obj in demands
+                        for k, v in obj.items()]
+        self.method = method
+        self.iterations = iterations
+        self.cpus = cpus or multiprocessing.cpu_count()
+
+    def merge_results(self, objs):
+        """Merge the results from each ``multi_worker`` worker.
+
+        ``[('a', [0,1]), ('a', [2,3])]`` becomes ``[('a', [0,1,2,3)]``.
+
+        """
+        r = {}
+        for obj in objs:
+            for key, value in obj:
+                r.setdefault(frozenset(key.items()), []).append(value)
+        return [(dict(x), y) for x, y in r.items()]
+
+    def calculate(self, worker=multi_worker):
+        """Calculate Monte Carlo results for many demand vectors.
+
+        Returns a list of results with the format::
+
+            [(demand dictionary, [lca scores])]
+
+        There is no guarantee that the results are returned in the same order as the ``demand`` input variable.
+
+        """
+        with multiprocessing.Pool(processes=self.cpus) as pool:
+            results = pool.map(
+                worker,
+                [
+                    (projects.current, self.demands, self.method)
+                    for _ in range(self.iterations)
+                ]
+            )
+        return self.merge_results(results)
