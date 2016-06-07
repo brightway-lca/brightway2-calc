@@ -3,6 +3,13 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.3.2 (2016-06-08)
+==================
+
+- FEATURE: Add class and mixin for Monte Carlo using direct solvers
+- CHANGE: Move tests to root directory and add Monte Carlo tests
+- CHANGE: Consistent use of ``__next__`` and ``next()`` so that all Monte Carlo iterator classes are Py2/3 compatible and programmed the same way. ``ParameterVectorLCA.next()`` will no longer work on Python 3; instead, call ``next(ParameterVectorLCA)``. When providing a new vector, call the class itself (after it is instantiated): ``pv = ParameterVectorLCA(args); pv(new_vector)``.
+
 1.3.1 (2016-06-06)
 ==================
 
