@@ -58,6 +58,7 @@ class DirectSolvingMixin(IterativeMonteCarlo):
         return LCA.solve_linear_system(self)
 
 
+@implements_iterator
 class MonteCarloLCA(IterativeMonteCarlo):
     """Monte Carlo uncertainty analysis with separate `random number generators <http://en.wikipedia.org/wiki/Random_number_generation>`_ (RNGs) for each set of parameters."""
     def load_data(self):
@@ -98,6 +99,7 @@ class DirectSolvingMonteCarloLCA(MonteCarloLCA, DirectSolvingMixin):
     pass
 
 
+@implements_iterator
 class ComparativeMonteCarlo(IterativeMonteCarlo):
     """First draft approach at comparative LCA"""
     def __init__(self, demands, *args, **kwargs):

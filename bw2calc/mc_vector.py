@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals, division
 from eight import *
+from future.utils import implements_iterator
 
 from .monte_carlo import IterativeMonteCarlo
 from .utils import extract_uncertainty_fields as euf
@@ -8,6 +9,7 @@ from stats_arrays.random import MCRandomNumberGenerator
 import numpy as np
 
 
+@implements_iterator
 class ParameterVectorLCA(IterativeMonteCarlo):
     """A Monte Carlo class where all uncertain parameters are stored in a single large array.
 
