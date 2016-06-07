@@ -87,9 +87,13 @@ def test_multi_mc(background):
         ("a", "method"),
         iterations=10
     )
-    assert mc.calculate()
+    results = mc.calculate()
+    print(resultss)
+    assert results
 
 def test_parallel_monte_carl(background):
     fu, method = get_args()
     mc = ParallelMonteCarlo(fu, method, iterations=200)
-    assert mc.calculate()
+    results = mc.calculate()
+    print(results)
+    assert results
