@@ -4,13 +4,16 @@ from eight import *
 
 from bw2calc import *
 from bw2data import config, Database, Method, projects, databases
+# from bw2data.utils import random_string
 from bw2data.tests import bw2test
 import pytest
 
 
-@pytest.fixture
-@bw2test
-def background():
+no_pool = pytest.mark.skipif(config._windows,
+                             reason="fork() on Windows doesn't pass temp directory")
+
+
+def _build_databases():
     Database("biosphere").write({
         ("biosphere", "1"): {'type': 'emission'},
         ("biosphere", "2"): {'type': 'emission'},
@@ -55,6 +58,23 @@ def background():
     ])
 
 
+@pytest.fixture
+@bw2test
+def background():
+    _build_databases()
+
+
+# def random_project():
+#     string = random_string()
+#     while string in projects:
+#         string = random_string()
+#     projects.set_current(string)
+
+
+# def teardown_project():
+#     pass
+
+
 def get_args():
     return {("test", "1"): 1}, ("a", "method")
 
@@ -77,6 +97,7 @@ def test_direct_solving(background):
     mc = DirectSolvingMonteCarloLCA(*get_args())
     assert next(mc)
 
+@no_pool
 def test_multi_mc(background):
     mc = MultiMonteCarlo(
         [
@@ -88,9 +109,10 @@ def test_multi_mc(background):
         iterations=10
     )
     results = mc.calculate()
-    print(resultss)
+    print(results)
     assert results
 
+@no_pool
 def test_parallel_monte_carl(background):
     fu, method = get_args()
     mc = ParallelMonteCarlo(fu, method, iterations=200)
