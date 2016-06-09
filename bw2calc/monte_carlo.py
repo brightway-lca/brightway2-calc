@@ -6,10 +6,21 @@ from future.utils import implements_iterator
 from .lca import LCA
 from .utils import clean_databases
 from bw2data import projects
+from contextlib import contextmanager
 from scipy.sparse.linalg import iterative, spsolve
 from stats_arrays.random import MCRandomNumberGenerator
-import itertools
 import multiprocessing
+import sys
+
+if sys.version_info < (3, 0):
+    @contextmanager
+    def pool_adapter(pool):
+        try:
+            yield pool
+        finally:
+            pool.terminate()
+else:
+    pool_adapter = lambda x: x
 
 
 @implements_iterator
@@ -133,13 +144,15 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         return results
 
 
-def single_worker(project, demand, method, iterations):
+def single_worker(args):
+    project, demand, method, iterations = args
     projects.set_current(project, writable=False)
     mc = MonteCarloLCA(demand=demand, method=method)
     return [next(mc) for x in range(iterations)]
 
 
-def direct_solving_worker(project, demand, method, iterations):
+def direct_solving_worker(args):
+    project, demand, method, iterations = args
     projects.set_current(project, writable=False)
     mc = DirectSolvingMonteCarloLCA(demand=demand, method=method)
     return [next(mc) for x in range(iterations)]
@@ -152,30 +165,26 @@ class ParallelMonteCarlo(object):
         clean_databases()
         self.demand = demand
         self.method = method
-        self.cpus = cpus
+        self.cpus = cpus or multiprocessing.cpu_count()
         if chunk_size:
             self.chunk_size = chunk_size
             self.num_jobs = iterations // chunk_size
             if iterations % self.chunk_size:
                 self.num_jobs += 1
         else:
-            self.num_jobs = self.cpus or multiprocessing.cpu_count()
+            self.num_jobs = self.cpus
             self.chunk_size = (iterations // self.num_jobs) + 1
 
     def calculate(self, worker=single_worker):
-        pool = multiprocessing.Pool(
-            processes=min(self.num_jobs, multiprocessing.cpu_count())
-        )
-        results = [pool.apply_async(
-            worker,
-            (projects.current, self.demand, self.method, self.chunk_size)
-        ) for x in range(self.num_jobs)]
-        pool.close()
-        pool.join()  # Blocks until calculation is finished
-        results_list = list(itertools.chain(*[x.get() for x in results]))
-        # Have to terminate pool or get "OSError: Too many open files"
-        pool.terminate()
-        return results_list
+        with pool_adapter(multiprocessing.Pool(processes=self.cpus)) as pool:
+            results = pool.map(
+                worker,
+                [
+                    (projects.current, self.demand, self.method, self.chunk_size)
+                    for _ in range(self.num_jobs)
+                ]
+            )
+        return [x for lst in results for x in lst]
 
 
 def multi_worker(args):
@@ -258,7 +267,7 @@ Call ``.calculate()`` to generate results.
         There is no guarantee that the results are returned in the same order as the ``demand`` input variable.
 
         """
-        with multiprocessing.Pool(processes=self.cpus) as pool:
+        with pool_adapter(multiprocessing.Pool(processes=self.cpus)) as pool:
             results = pool.map(
                 worker,
                 [

@@ -84,7 +84,7 @@ def get_args():
 
 def test_plain_monte_carlo(background):
     mc = MonteCarloLCA(*get_args())
-    if hasattr(mc, __next__):
+    if hasattr(mc, "__next__"):
         assert mc.__next__() > 0
     else:
         assert mc.next() > 0
