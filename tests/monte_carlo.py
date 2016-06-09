@@ -4,9 +4,10 @@ from eight import *
 
 from bw2calc import *
 from bw2data import config, Database, Method, projects, databases
-# from bw2data.utils import random_string
+from bw2data.utils import random_string
 from bw2data.tests import bw2test
 import pytest
+import wrapt
 
 
 no_pool = pytest.mark.skipif(config._windows,
@@ -64,15 +65,17 @@ def background():
     _build_databases()
 
 
-# def random_project():
-#     string = random_string()
-#     while string in projects:
-#         string = random_string()
-#     projects.set_current(string)
-
-
-# def teardown_project():
-#     pass
+@wrapt.decorator
+def random_project(wrapped, instance, args, kwargs):
+    config.is_test = True
+    string = random_string()
+    while string in projects:
+        string = random_string()
+    projects.set_current(string)
+    _build_databases()
+    result = wrapped(*args, **kwargs)
+    projects.delete_project(delete_dir=True)
+    return result
 
 
 def get_args():
@@ -112,8 +115,31 @@ def test_multi_mc(background):
     print(results)
     assert results
 
+@random_project
+def test_multi_mc_no_temp_dir():
+    mc = MultiMonteCarlo(
+        [
+            {("test", "1"): 1},
+            {("test", "2"): 1},
+            {("test", "1"): 1, ("test", "2"): 1}
+        ],
+        ("a", "method"),
+        iterations=10
+    )
+    results = mc.calculate()
+    print(results)
+    assert results
+
 @no_pool
-def test_parallel_monte_carl(background):
+def test_parallel_monte_carlo(background):
+    fu, method = get_args()
+    mc = ParallelMonteCarlo(fu, method, iterations=200)
+    results = mc.calculate()
+    print(results)
+    assert results
+
+@random_project
+def test_parallel_monte_carlo_no_temp_dir():
     fu, method = get_args()
     mc = ParallelMonteCarlo(fu, method, iterations=200)
     results = mc.calculate()
