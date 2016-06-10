@@ -77,7 +77,7 @@ def random_project(wrapped, instance, args, kwargs):
     _build_databases()
     result = wrapped(*args, **kwargs)
     projects.set_current("default", writable=False)
-    projects.delete_project(delete_dir=True)
+    projects.delete_project(name=string, delete_dir=True)
     return result
 
 
