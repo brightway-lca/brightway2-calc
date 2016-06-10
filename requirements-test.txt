@@ -1,0 +1,6 @@
+brightway2
+eight
+numpy
+pytest
+scipy
+stats_arrays
