@@ -114,6 +114,10 @@ def test_direct_solving(background):
     mc = DirectSolvingMonteCarloLCA(*get_args())
     assert next(mc)
 
+def test_parameter_vector_monte_carlo(background):
+    mc = ParameterVectorLCA(*get_args())
+    assert next(mc) > 0
+
 @no_pool
 def test_multi_mc(background):
     mc = MultiMonteCarlo(

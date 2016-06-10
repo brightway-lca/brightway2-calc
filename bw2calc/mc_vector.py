@@ -45,12 +45,17 @@ class ParameterVectorLCA(IterativeMonteCarlo):
         self.params = np.hstack(params)
         self.rng = MCRandomNumberGenerator(self.params, seed=self.seed)
 
-    def __call__(self, vector=None):
-        self.sample = self.rng.next() if vector is None else vector
-        return next(self)
+    def rebuild_all(self, vector=None):
+        """Rebuild the LCI/LCIA matrices from a new Monte Carlo sample or provided vector."""
+        if not hasattr(self, "positions"):
+            self.load_data()
 
-    def __next__(self):
-        """Generate a new Monte Carlo iteration."""
+        if vector is not None:
+            assert vector.shape == self.sample.shape, \
+                "Incorrect `vector` shape. Is {}, but should be {}".format(
+                    vector.shape, self.sample.shape
+                )
+        self.sample = self.rng.next() if vector is None else vector
         self.rebuild_technosphere_matrix(self.sample[
             self.positions["tech"][0]:self.positions["tech"][1]
             ])
@@ -65,6 +70,10 @@ class ParameterVectorLCA(IterativeMonteCarlo):
             self.weighting_value = self.sample[
                 self.positions["weighting"][0]:self.positions["weighting"][1]
             ]
+
+    def __next__(self):
+        """Generate a new Monte Carlo iteration."""
+        self.rebuild_all()
 
         if not hasattr(self, "demand_array"):
             self.build_demand_array()
