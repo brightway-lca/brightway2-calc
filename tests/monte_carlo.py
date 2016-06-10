@@ -6,6 +6,7 @@ from bw2calc import *
 from bw2data import config, Database, Method, projects, databases
 from bw2data.utils import random_string
 from bw2data.tests import bw2test
+from numbers import Number
 import pytest
 import wrapt
 
@@ -68,6 +69,7 @@ def background():
 @wrapt.decorator
 def random_project(wrapped, instance, args, kwargs):
     config.is_test = True
+    projects._restore_orig_directory()
     string = random_string()
     while string in projects:
         string = random_string()
@@ -81,6 +83,14 @@ def random_project(wrapped, instance, args, kwargs):
 def get_args():
     return {("test", "1"): 1}, ("a", "method")
 
+
+@random_project
+def test_random_project():
+    assert "Brightway" in projects.dir
+
+@bw2test
+def test_temp_dir_again():
+    assert "Brightway" not in projects.dir
 
 def test_plain_monte_carlo(background):
     mc = MonteCarloLCA(*get_args())
@@ -132,6 +142,8 @@ def test_multi_mc_no_temp_dir():
     results = mc.calculate()
     print(results)
     assert results
+    assert isinstance(results, list)
+    assert len(results)
 
 @no_pool
 def test_parallel_monte_carlo(background):
@@ -148,3 +160,6 @@ def test_parallel_monte_carlo_no_temp_dir():
     results = mc.calculate()
     print(results)
     assert results
+    assert isinstance(results, list)
+    assert isinstance(results[0], Number)
+    assert results[0] > 0
