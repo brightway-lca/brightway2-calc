@@ -23,6 +23,9 @@ class ParameterVectorLCA(IterativeMonteCarlo):
                 self.tech_params.shape[0] + self.bio_params.shape[0]
             )
         }
+
+        # `euf` is extract_uncertainty_fields; needed because we are
+        # "gluing" together arrays with different column numbers and labels
         params = (euf(self.tech_params), euf(self.bio_params))
 
         if self.lcia:
