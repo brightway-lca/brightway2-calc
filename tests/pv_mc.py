@@ -96,3 +96,14 @@ def test_pv_ordering_correct(background):
 
         assert 8 <= pv.characterization_matrix[b2, b2] <= 15
         assert pv.characterization_matrix[b2, b1] == 0
+
+
+def test_raise_assertion_error_with_wrong_size_vector(background):
+    pv = ParameterVectorLCA({("test", "1"): 1}, ("a", "method"))
+    with pytest.raises(AssertionError):
+        pv.rebuild_all(np.ones(100,))
+
+
+def test_no_error_with_right_size_vector(background):
+    pv = ParameterVectorLCA({("test", "1"): 1}, ("a", "method"))
+    pv.rebuild_all(np.ones(7,))

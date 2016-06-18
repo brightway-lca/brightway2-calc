@@ -54,9 +54,9 @@ class ParameterVectorLCA(IterativeMonteCarlo):
             self.load_data()
 
         if vector is not None:
-            assert vector.shape == self.sample.shape, \
+            assert vector.shape == self.params.shape, \
                 "Incorrect `vector` shape. Is {}, but should be {}".format(
-                    vector.shape, self.sample.shape
+                    vector.shape, self.params.shape
                 )
         self.sample = self.rng.next() if vector is None else vector
         self.rebuild_technosphere_matrix(self.sample[
