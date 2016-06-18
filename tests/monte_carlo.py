@@ -15,7 +15,7 @@ no_pool = pytest.mark.skipif(config._windows,
                              reason="fork() on Windows doesn't pass temp directory")
 
 
-def _build_databases():
+def build_databases():
     Database("biosphere").write({
         ("biosphere", "1"): {'type': 'emission'},
         ("biosphere", "2"): {'type': 'emission'},
@@ -63,7 +63,7 @@ def _build_databases():
 @pytest.fixture
 @bw2test
 def background():
-    _build_databases()
+    build_databases()
 
 
 @wrapt.decorator
@@ -74,7 +74,7 @@ def random_project(wrapped, instance, args, kwargs):
     while string in projects:
         string = random_string()
     projects.set_current(string)
-    _build_databases()
+    build_databases()
     result = wrapped(*args, **kwargs)
     projects.set_current("default", writable=False)
     projects.delete_project(name=string, delete_dir=True)
