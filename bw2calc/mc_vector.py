@@ -53,12 +53,16 @@ class ParameterVectorLCA(IterativeMonteCarlo):
         if not hasattr(self, "positions"):
             self.load_data()
 
+        if vector is not None and not isinstance(vector, np.ndarray):
+            raise ValueError("`vector` must be a 1-d numpy array")
+
         if vector is not None:
             assert vector.shape == self.params.shape, \
                 "Incorrect `vector` shape. Is {}, but should be {}".format(
                     vector.shape, self.params.shape
                 )
-        self.sample = self.rng.next() if vector is None else vector
+        # Copy to break references and avoid later manipulation by RNG
+        self.sample = (self.rng.next() if vector is None else vector).copy()
         self.rebuild_technosphere_matrix(self.tech_sample)
         self.rebuild_biosphere_matrix(self.bio_sample)
         if self.lcia:

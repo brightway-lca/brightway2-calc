@@ -36,7 +36,7 @@ def build_databases():
         },
         ("test", "2"): {
             'exchanges': [{
-                'amount': 0.42,
+                'amount': -0.42,
                 'input': ('biosphere', "2"),
                 'type': 'biosphere',
             }],
@@ -85,7 +85,7 @@ def test_pv_ordering_correct(background):
         assert 8 <= pv.characterization_matrix[b2, b2] <= 15
         assert pv.characterization_matrix[b2, b1] == 0
 
-        assert np.allclose(pv.biosphere_matrix[b2, a2], 0.42)
+        assert np.allclose(pv.biosphere_matrix[b2, a2], -0.42)
         assert pv.biosphere_matrix[b1, a1] >= 50
 
         assert pv.technosphere_matrix[p1, a1] == 1
@@ -107,3 +107,31 @@ def test_raise_assertion_error_with_wrong_size_vector(background):
 def test_no_error_with_right_size_vector(background):
     pv = ParameterVectorLCA({("test", "1"): 1}, ("a", "method"))
     pv.rebuild_all(np.ones(7,))
+
+
+def test_stored_samples_correct(background):
+    pv = ParameterVectorLCA({("test", "1"): 1}, ("a", "method"))
+    pv.load_data()
+
+    samples = []
+
+    for x in range(10):
+        next(pv)
+        samples.append(pv.sample.copy())
+
+    # Sample has length 7
+    # 0, 1: Production exchanges, no uncertainty
+    # 2: Tech input: 0.2-0.8, uniform uncertainty
+    # 3: Biosphere: 50+, normal uncertainty
+    # 4: Biosphere: -0.42, no uncertainty
+    # 5: CF: 1, no uncertainty
+    # 6: CF: 8-15, triangular uncertainty
+
+    for sample in samples:
+        assert sample[0] == 1
+        assert sample[1] == 1
+        assert sample[2] > 0
+        assert sample[3] >= 50
+        assert np.allclose(sample[4], -0.42)
+        assert sample[5] == 1
+        assert 8 <= sample[6] <= 15
