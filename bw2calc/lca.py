@@ -373,7 +373,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.technosphere_matrix = MatrixBuilder.build_matrix(
             self.tech_params, self._activity_dict, self._product_dict,
             "row", "col",
-            new_data=TBMBuilder.fix_supply_use(self.tech_params, vector)
+            new_data=TBMBuilder.fix_supply_use(self.tech_params, vector.copy())
         )
 
     def rebuild_biosphere_matrix(self, vector):
