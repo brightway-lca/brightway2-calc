@@ -3,6 +3,11 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.3.6 (2016-07-01)
+==================
+
+- Fixed bugs where RNG and technosphere matrix builder would change values in arrays meant to be static
+
 1.3.5 (2016-07-01)
 ==================
 
