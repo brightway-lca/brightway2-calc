@@ -3,6 +3,11 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.3.5 (2016-XX-XX)
+==================
+
+- Fix bugs and add tests for ParameterVectorLCA
+
 1.3.4 (2016-06-10)
 ==================
 
