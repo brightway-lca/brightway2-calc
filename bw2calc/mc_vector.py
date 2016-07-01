@@ -59,20 +59,12 @@ class ParameterVectorLCA(IterativeMonteCarlo):
                     vector.shape, self.params.shape
                 )
         self.sample = self.rng.next() if vector is None else vector
-        self.rebuild_technosphere_matrix(self.sample[
-            self.positions["tech"][0]:self.positions["tech"][1]
-            ])
-        self.rebuild_biosphere_matrix(self.sample[
-            self.positions["bio"][0]:self.positions["bio"][1]
-            ])
+        self.rebuild_technosphere_matrix(self.tech_sample)
+        self.rebuild_biosphere_matrix(self.bio_sample)
         if self.lcia:
-            self.rebuild_characterization_matrix(self.sample[
-                self.positions["cf"][0]:self.positions["cf"][1]
-            ])
+            self.rebuild_characterization_matrix(self.cf_sample)
         if self.weighting:
-            self.weighting_value = self.sample[
-                self.positions["weighting"][0]:self.positions["weighting"][1]
-            ]
+            self.weighting_value = self.weighting_sample
 
     def __next__(self):
         """Generate a new Monte Carlo iteration."""
@@ -89,3 +81,19 @@ class ParameterVectorLCA(IterativeMonteCarlo):
             return self.score
         else:
             return self.supply_array
+
+    @property
+    def tech_sample(self):
+        return self.sample[self.positions["tech"][0]:self.positions["tech"][1]]
+
+    @property
+    def bio_sample(self):
+        return self.sample[self.positions["bio"][0]:self.positions["bio"][1]]
+
+    @property
+    def cf_sample(self):
+        return self.sample[self.positions["cf"][0]:self.positions["cf"][1]]
+
+    @property
+    def weighting_sample(self):
+        return self.sample[self.positions["weighting"][0]:self.positions["weighting"][1]]
