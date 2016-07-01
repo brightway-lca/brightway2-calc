@@ -168,7 +168,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             builder.build(self.databases_filepaths)
         if len(self.activity_dict) != len(self.product_dict):
             raise NonsquareTechnosphere((
-                "Technosphere matrix is not square: {} rows and {} products. "
+                "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "
                 "Use LeastSquaresLCA to solve this system, or fix the input "
                 "data").format(len(self.activity_dict), len(self.product_dict))
             )
