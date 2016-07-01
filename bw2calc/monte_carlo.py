@@ -13,6 +13,7 @@ import multiprocessing
 import sys
 
 if sys.version_info < (3, 0):
+    # multiprocessing.pool as a context manager not available in Python 2.7
     @contextmanager
     def pool_adapter(pool):
         try:
