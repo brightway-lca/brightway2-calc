@@ -9,6 +9,7 @@ import datetime
 import os
 import json
 import tarfile
+import tempfile
 try:
     import cPickle as pickle
 except ImportError:
@@ -91,12 +92,14 @@ try:
 
         filepaths = get_filepaths(demand, "demand")
         data = {
-            'demand': [(getattr(k, "key", k), v) for k, v in demand.items()],
-            'database_filepath': _(filepaths)
+            'demand': {mapping[k]: v for k, v in demand.items()},
+            'database_filepath': _(filepaths),
+            'adjust_filepaths': ['database_filepath'],
         }
         for key, value in kwargs.items():
             if key in OBJECT_MAPPING:
                 data[key] = _(get_filepaths(value, key))
+                data['adjust_filepaths'].append(key)
                 filepaths.extend(get_filepaths(value, key))
             else:
                 data[key] = value
@@ -146,5 +149,29 @@ except ImportError:
         "substitution": 3,
     }
 
+def load_calculation_package(fp):
+    """Load a calculation package created by ``save_calculation_package``.
 
+    NumPy arrays are saved to a temporary directory, and file paths are adjusted.
 
+    ``fp`` is the absolute file path of a calculation package file.
+
+    Returns a dictionary suitable for passing to an LCA object, e.g. ``LCA(**load_calculation_package(fp))``.
+
+    """
+    assert os.path.exists(fp), "Can't find file: {}".format(fp)
+
+    temp_dir = tempfile.mkdtemp()
+    with tarfile.open(fp, 'r|gz') as tar:
+        tar.extractall(temp_dir)
+
+    print(temp_dir)
+
+    config_fps = [x for x in os.listdir(temp_dir) if x.endswith(".config.json")]
+    assert len(config_fps) == 1, "Can't find configuration file"
+    config = json.load(open(os.path.join(temp_dir, config_fps[0])))
+
+    for field in config.pop('adjust_filepaths'):
+        config[field] = [os.path.join(temp_dir, fn) for fn in config[field]]
+
+    return config

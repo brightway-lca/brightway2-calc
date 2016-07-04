@@ -14,7 +14,7 @@ class IndepentLCAMixin(object):
         for collection in (self.database_filepath, self.method, self.weighting, self.normalization):
             if collection is not None:
                 for fp in collection:
-                    assert os.path.exists(fp, "Can't find file {}".format(fp))
+                    assert os.path.exists(fp), "Can't find file {}".format(fp)
         return (
             self.database_filepath,
             self.method,

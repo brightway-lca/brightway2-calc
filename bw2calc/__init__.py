@@ -9,6 +9,7 @@ __all__ = [
     'IndepentLCAMixin',
     'LCA',
     'LeastSquaresLCA',
+    'load_calculation_package',
     'MatrixBuilder',
     'MonteCarloLCA',
     'MultiLCA',
@@ -37,4 +38,4 @@ from .multi_lca import MultiLCA
 from .mc_vector import ParameterVectorLCA
 from .graph_traversal import GraphTraversal
 from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
-from .utils import save_calculation_package
+from .utils import save_calculation_package, load_calculation_package
