@@ -165,8 +165,6 @@ def load_calculation_package(fp):
     with tarfile.open(fp, 'r|gz') as tar:
         tar.extractall(temp_dir)
 
-    print(temp_dir)
-
     config_fps = [x for x in os.listdir(temp_dir) if x.endswith(".config.json")]
     assert len(config_fps) == 1, "Can't find configuration file"
     config = json.load(open(os.path.join(temp_dir, config_fps[0])))
