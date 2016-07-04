@@ -3,6 +3,11 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.4 (2016-XX-XX)
+================
+
+- Added utility functions for ``load_calculation_package`` and ``save_calculation_package`` for independent LCAs and cloud computing.
+
 1.3.6 (2016-07-01)
 ==================
 
