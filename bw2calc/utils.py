@@ -170,6 +170,7 @@ def load_calculation_package(fp):
     config_fps = [x for x in os.listdir(temp_dir) if x.endswith(".config.json")]
     assert len(config_fps) == 1, "Can't find configuration file"
     config = json.load(open(os.path.join(temp_dir, config_fps[0])))
+    config['demand'] = {int(k): v for k, v in config['demand'].items()}
 
     for field in config.pop('adjust_filepaths'):
         config[field] = [os.path.join(temp_dir, fn) for fn in config[field]]

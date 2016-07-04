@@ -21,3 +21,9 @@ class IndepentLCAMixin(object):
             self.weighting,
             self.normalization,
         )
+
+    def fix_dictionaries(self):
+        """Don't adjust dictionaries even if ``bw2data`` is present, as functional unit is an integer."""
+        self._activity_dict = self.activity_dict
+        self._product_dict = self.product_dict
+        self._biosphere_dict = self.biosphere_dict
