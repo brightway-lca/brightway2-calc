@@ -14,7 +14,6 @@ from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import (
     global_index,
     clean_databases,
-    get_database_filepaths,
     get_filepaths,
     load_arrays,
     mapping,
@@ -39,7 +38,7 @@ class LCA(object):
     #############
 
     def __init__(self, demand, method=None, weighting=None,
-            normalization=None, databases=None):
+            normalization=None, database_filepath=None):
         """Create a new LCA calculation.
 
         Args:
@@ -59,10 +58,13 @@ class LCA(object):
         clean_databases()
         self._fixed = False
 
-        self.demand, self.method, self._databases = demand, method, databases
-        self.normalization, self.weighting = normalization, weighting
+        self.demand = demand
+        self.method = method
+        self.normalization = normalization
+        self.weighting = weighting
+        self.database_filepath = database_filepath
 
-        self.databases_filepaths, \
+        self.database_filepath, \
             self.method_filepath, \
             self.weighting_filepath, \
             self.normalization_filepath = \
@@ -71,7 +73,7 @@ class LCA(object):
     def get_array_filepaths(self):
         """Use utility functions to get all array filepaths"""
         return (
-            get_database_filepaths(self.demand, self._databases),
+            get_filepaths(self.demand, "demand"),
             get_filepaths(self.method, "method"),
             get_filepaths(self.weighting, "weighting"),
             get_filepaths(self.normalization, "normalization"),
@@ -165,7 +167,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.biosphere_dict, self.activity_dict, \
             self.product_dict, self.biosphere_matrix, \
             self.technosphere_matrix = \
-            builder.build(self.databases_filepaths)
+            builder.build(self.database_filepath)
         if len(self.activity_dict) != len(self.product_dict):
             raise NonsquareTechnosphere((
                 "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "

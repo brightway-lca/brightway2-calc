@@ -15,6 +15,7 @@ __all__ = [
     'MultiMonteCarlo',
     'ParallelMonteCarlo',
     'ParameterVectorLCA',
+    'save_calculation_package',
     'TechnosphereBiosphereMatrixBuilder',
 ]
 
@@ -36,3 +37,4 @@ from .multi_lca import MultiLCA
 from .mc_vector import ParameterVectorLCA
 from .graph_traversal import GraphTraversal
 from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
+from .utils import save_calculation_package

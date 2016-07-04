@@ -417,7 +417,7 @@ class LCACalculationTestCase(BW2DataTest):
         databases['six'] = {'depends': []}
         lca = LCA({('one', None): 1})
         self.assertEqual(
-            sorted(lca.databases_filepaths),
+            sorted(lca.database_filepath),
             sorted({Database(name).filepath_processed() for name in
                 ('one', 'two', 'three', 'four', 'five', 'six')
             })
@@ -456,7 +456,7 @@ class LCACalculationTestCase(BW2DataTest):
         )
         self.assertEqual(
             sorted(Database(x).filepath_processed() for x in ('biosphere', 't')),
-            sorted(lca.databases_filepaths)
+            sorted(lca.database_filepath)
         )
         self.assertEqual(
             lca.method_filepath,
@@ -490,7 +490,7 @@ class LCACalculationTestCase(BW2DataTest):
         lca = LCA({("t", "1"): 1})
         self.assertEqual(
             sorted(Database(x).filepath_processed() for x in ('biosphere', 't')),
-            sorted(lca.databases_filepaths)
+            sorted(lca.database_filepath)
         )
         self.assertTrue(lca.method_filepath is None)
         self.assertTrue(lca.normalization_filepath is None)
