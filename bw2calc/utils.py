@@ -18,8 +18,8 @@ except ImportError:
 
 def load_arrays(paths):
     """Load the numpy arrays in list of filepaths ``paths``."""
-    assert all(os.path.exists(fp) for fp in paths)
-    return np.hstack([pickle.load(open(path, "rb")) for path in sorted(paths)])
+    assert all(os.path.isfile(fp) for fp in paths)
+    return np.hstack([np.load(path) for path in sorted(paths)])
 
 
 def extract_uncertainty_fields(array):

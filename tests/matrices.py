@@ -7,10 +7,6 @@ from bw2data import config, Database
 from bw2data.tests import BW2DataTest
 from bw2data.utils import MAX_INT_32, numpy_string
 import numpy as np
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 TBM = TechnosphereBiosphereMatrixBuilder
 
@@ -30,8 +26,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0, 2: 1}
-        with open(database.filepath_processed(), "wb") as f:
-            pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(database.filepath_processed(), array, allow_pickle=False)
         matrix = MatrixBuilder.build([database.filepath_processed()],
             "values", "a", "row",
             row_dict=row_dict, one_d=True)[3]
@@ -55,8 +50,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0, 2: 1}
-        with open(database.filepath_processed(), "wb") as f:
-            pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(database.filepath_processed(), array, allow_pickle=False)
         values = MatrixBuilder.build([database.filepath_processed()],
             "values", "a", "row",
             row_dict=row_dict, one_d=True)[0]
@@ -76,8 +70,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             ], dtype=dtype
         )
         row_dict = {1: 0}
-        with open(database.filepath_processed(), "wb") as f:
-            pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(database.filepath_processed(), array, allow_pickle=False)
         with self.assertRaises(ValueError):
             MatrixBuilder.build([database.filepath_processed()],
                 "values", "a", "row",
@@ -102,8 +95,7 @@ class MatrixBuilderTestCase(BW2DataTest):
         )
         row_dict = {1: 0, 3: 1}
         col_dict = {2: 0, 6: 1}
-        with open(database.filepath_processed(), "wb") as f:
-            pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(database.filepath_processed(), array, allow_pickle=False)
         values = MatrixBuilder.build([database.filepath_processed()],
             "values", "a", "row", "b", "col", row_dict, col_dict)[0]
         self.assertEqual(values.shape, (2,))
@@ -125,8 +117,7 @@ class MatrixBuilderTestCase(BW2DataTest):
         )
         row_dict = {1: 0}
         col_dict = {2: 0}
-        with open(database.filepath_processed(), "wb") as f:
-            pickle.dump(array, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(database.filepath_processed(), array, allow_pickle=False)
         with self.assertRaises(ValueError):
             MatrixBuilder.build([database.filepath_processed()],
                 "values", "a", "row", "b", "col", row_dict, col_dict,
