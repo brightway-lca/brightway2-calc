@@ -105,13 +105,13 @@ try:
                 data[key] = value
 
         config_fp = os.path.join(
-            projects.request_directory("output"),
+            projects.output_dir,
             "{}.config.json".format(safe_filename(name))
         )
         with open(config_fp, "w") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         archive = os.path.join(
-            projects.request_directory("output"),
+            projects.output_dir,
             "{}.{}.tar.gz".format(
                 safe_filename(name, False),
                 datetime.datetime.now().strftime("%d-%B-%Y-%I-%M%p")
