@@ -1,6 +1,14 @@
 Brightway2 calculations
 =======================
 
+.. image:: https://ci.appveyor.com/api/projects/status/uqixaochulbu6vjv?svg=true
+   :target: https://ci.appveyor.com/project/cmutel/brightway2-calc
+   :alt: bw2calc appveyor build status
+
+.. image:: https://drone.io/bitbucket.org/cmutel/brightway2-calc/status.png
+   :target: https://drone.io/bitbucket.org/cmutel/brightway2-calc/latest
+   :alt: bw2calc drone.io build status
+
 This package provides the calculation engine for the `Brightway2 life cycle assessment framework <https://brightwaylca.org>`_. `Online documentation <https://docs.brightwaylca.org/>`_ is available, and the source code is hosted on `Bitucket <https://bitbucket.org/cmutel/brightway2-calc>`_.
 
 The emphasis here has been on speed of solving the linear systems, for normal LCA calculations, graph traversal, or Monte Carlo uncertainty analysis.
