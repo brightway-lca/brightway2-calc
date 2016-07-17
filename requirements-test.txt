@@ -2,5 +2,7 @@ brightway2
 eight
 numpy
 pytest
+pytest-cov
+python-coveralls
 scipy
 stats_arrays
