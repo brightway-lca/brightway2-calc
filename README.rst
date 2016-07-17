@@ -10,7 +10,7 @@ Brightway2 calculations
    :alt: bw2calc drone.io build status
 
 .. image:: https://coveralls.io/repos/bitbucket/cmutel/brightway2-calc/badge.svg?branch=master
-    :target: https://coveralls.io/bitbucket/cmutel/brightway2-calc?branch=master
+    :target: https://coveralls.io/bitbucket/cmutel/brightway2-calc?branch=default
     :alt: Test coverage report
 
 This package provides the calculation engine for the `Brightway2 life cycle assessment framework <https://brightwaylca.org>`_. `Online documentation <https://docs.brightwaylca.org/>`_ is available, and the source code is hosted on `Bitucket <https://bitbucket.org/cmutel/brightway2-calc>`_.
