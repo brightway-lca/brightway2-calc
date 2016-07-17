@@ -115,6 +115,12 @@ def test_stored_samples_correct(background):
 
     samples = []
 
+    print(pv.tech_params)
+    print(pv.bio_params)
+
+    # Each param array is sorted by
+
+
     for x in range(10):
         next(pv)
         samples.append(pv.sample.copy())
@@ -128,6 +134,7 @@ def test_stored_samples_correct(background):
     # 6: CF: 8-15, triangular uncertainty
 
     for sample in samples:
+        print(sample)
         assert sample[0] == 1
         assert sample[1] == 1
         assert sample[2] > 0
@@ -135,3 +142,4 @@ def test_stored_samples_correct(background):
         assert np.allclose(sample[4], -0.42)
         assert sample[5] == 1
         assert 8 <= sample[6] <= 15
+        raise ValueError
