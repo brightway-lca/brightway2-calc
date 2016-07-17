@@ -3,7 +3,7 @@ from __future__ import print_function, unicode_literals
 from eight import *
 
 from bw2calc import *
-from bw2data import Database, Method
+from bw2data import Database, Method, mapping
 from bw2data.tests import bw2test
 import numpy as np
 import pytest
@@ -26,6 +26,7 @@ def build_databases():
             }, {
                 'amount': 100,
                 'minimum': 50,
+                'maximum': 500,
                 'input': ('biosphere', "1"),
                 'type': 'biosphere',
                 'loc': 100,
@@ -114,32 +115,21 @@ def test_stored_samples_correct(background):
     pv.load_data()
 
     samples = []
-
-    print(pv.tech_params)
-    print(pv.bio_params)
-
-    # Each param array is sorted by
-
-
     for x in range(10):
         next(pv)
         samples.append(pv.sample.copy())
 
-    # Sample has length 7
-    # 0, 1: Production exchanges, no uncertainty
-    # 2: Tech input: 0.2-0.8, uniform uncertainty
-    # 3: Biosphere: 50+, normal uncertainty
-    # 4: Biosphere: -0.42, no uncertainty
-    # 5: CF: 1, no uncertainty
-    # 6: CF: 8-15, triangular uncertainty
+    expected = [
+        (mapping[("test", "2")], mapping[("test", "2")], 1, 1),
+        (mapping[('test', "1")], mapping[("test", "1")], 1, 1),
+        (mapping[('test', "2")], mapping[("test", "1")], 0.2, 0.8),
+        (mapping[('biosphere', "1")], mapping[("test", "1")], 50, 500),
+        (mapping[('biosphere', "2")], mapping[("test", "2")], -0.43, -0.41),
+    ]
 
-    for sample in samples:
-        print(sample)
-        assert sample[0] == 1
-        assert sample[1] == 1
-        assert sample[2] > 0
-        assert sample[3] >= 50
-        assert np.allclose(sample[4], -0.42)
-        assert sample[5] == 1
-        assert 8 <= sample[6] <= 15
-        raise ValueError
+    concatenated = np.hstack((pv.tech_params, pv.bio_params))
+    for row, col, mn, mx in expected:
+        mask = (concatenated['input'] == row) * (concatenated['output'] == col)
+        assert mask.sum() == 1
+        for sample in samples:
+            assert mn <= sample[:mask.shape[0]][mask] <= mx
