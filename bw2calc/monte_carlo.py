@@ -7,7 +7,11 @@ from .lca import LCA
 from .utils import clean_databases
 from bw2data import projects
 from contextlib import contextmanager
-from scipy.sparse.linalg import iterative, spsolve
+from scipy.sparse.linalg import iterative
+try:
+    from pypardiso import spsolve
+except ImportError:
+    from scipy.sparse import spsolve
 from stats_arrays.random import MCRandomNumberGenerator
 import multiprocessing
 import sys
