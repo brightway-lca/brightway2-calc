@@ -2,7 +2,10 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-from scipy.sparse.linalg import factorized, spsolve
+try:
+    from pypardiso import factorized, spsolve
+except ImportError:
+    from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
 from .errors import (
