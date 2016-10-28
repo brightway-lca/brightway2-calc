@@ -2,11 +2,11 @@ from setuptools import setup
 
 setup(
     name='bw2calc',
-    version="1.5.1",
+    version="1.5.2",
     packages=["bw2calc"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
-    license=open('LICENSE.txt').read(),
+    license=open('LICENSE.txt', encoding='utf-8').read(),
     url="https://bitbucket.org/cmutel/brightway2-calc",
     install_requires=[
         "eight",
