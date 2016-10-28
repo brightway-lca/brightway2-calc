@@ -1,4 +1,5 @@
 from setuptools import setup
+import io
 
 setup(
     name='bw2calc',
@@ -6,7 +7,7 @@ setup(
     packages=["bw2calc"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
-    license=open('LICENSE.txt', encoding='utf-8').read(),
+    license=io.open('LICENSE.txt', encoding='utf-8').read(),
     url="https://bitbucket.org/cmutel/brightway2-calc",
     install_requires=[
         "eight",
