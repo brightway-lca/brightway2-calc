@@ -27,6 +27,10 @@ try:
     import pandas
 except ImportError:
     pandas = None
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 
 class LCA(object):
@@ -52,7 +56,7 @@ class LCA(object):
             A new LCA object
 
         """
-        if isinstance(demand, (str, tuple, list)):
+        if not isinstance(demand, Mapping):
             raise ValueError("Demand must be a dictionary")
         for key in demand:
             if not key:

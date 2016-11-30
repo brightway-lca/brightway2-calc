@@ -83,6 +83,16 @@ class LCACalculationTestCase(BW2DataTest):
         with self.assertRaises(ValueError):
             LCA({(): 1})
 
+    def test_pass_object_as_demand(self):
+        self.add_basic_biosphere()
+
+        class Foo:
+            pass
+
+        obj = Foo()
+        with self.assertRaises(ValueError):
+            LCA(obj)
+
     def test_production_values(self):
         test_data = {
             ("t", "1"): {
