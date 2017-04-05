@@ -167,7 +167,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
     ### Data retrieval ###
     ######################
 
-    def load_lci_data(self, builder=TBMBuilder):
+    def load_lci_data(self, fix_dictionaries=True, builder=TBMBuilder):
         """Load data and create technosphere and biosphere matrices."""
         self._fixed = False
         self.bio_params, self.tech_params, \
@@ -181,7 +181,8 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 "Use LeastSquaresLCA to solve this system, or fix the input "
                 "data").format(len(self.activity_dict), len(self.product_dict))
             )
-        self.fix_dictionaries()
+        if fix_dictionaries:
+            self.fix_dictionaries()
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix.

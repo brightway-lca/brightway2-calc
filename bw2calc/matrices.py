@@ -2,14 +2,10 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-from .fallbacks import dicter
+from .indexing import index_with_searchsorted, index_with_arrays
 from .utils import load_arrays, MAX_INT_32, TYPE_DICTIONARY
 from scipy import sparse
 import numpy as np
-try:
-    from bw2speedups import indexer
-except ImportError:
-    from .fallbacks import indexer
 
 
 class MatrixBuilder(object):
@@ -39,59 +35,6 @@ and not:
     """
 
     @classmethod
-    def add_matrix_indices(cls, array_from, array_to, mapping):
-        """
-Map ``array_from`` keys to ``array_to`` values using the dictionary ``mapping``.
-
-This is needed to take the ``flow``, ``input``, and ``output`` columns, which can be arbitrarily large integers, and transform them to matrix indices, which start from zero.
-
-Here is an example:
-
-.. code-block:: python
-
-    import numpy as np
-    a_f = np.array((1, 2, 3, 4))
-    a_t = np.zeros(4)
-    mapping = {1: 5, 2: 6, 3: 7, 4: 8}
-    MatrixBuilder.add_matrix_indices(a_f, a_t, mapping)
-    # => a_t is now [5, 6, 7, 8]
-
-This is a relatively computationally expensive method, and therefore a stand-alone library - `bw2speedups <https://pypi.python.org/pypi/bw2speedups>`_ - is used if installed. Install it with ``pip install bw2speedups``.
-
-Args:
-    * *array_from* (array): 1-dimensional integer numpy array.
-    * *array_to* (array): 1-dimensional integer numpy array.
-    * *mapping* (dict): Dictionary that links ``mapping`` indices to ``row`` or ``col`` indices, e.g. ``{34: 3}``.
-
-Operates in place. Doesn't return anything.
-
-        """
-        indexer(array_from, array_to, mapping)
-
-    @classmethod
-    def build_dictionary(cls, array):
-        """
-Build a dictionary from the sorted, unique elements of an array.
-
-Here is an example:
-
-.. code-block:: python
-
-    import numpy as np
-    array = np.array((4, 8, 6, 2, 4))
-    MatrixBuilder.build_dictionary(array)
-    # => returns {2: 0, 4: 1, 6: 2, 8: 3}
-
-Args:
-    * *array* (array): A numpy array of integers
-
-Returns:
-    A dictionary that maps the sorted, unique elements of ``array`` to integers starting with zero.
-
-        """
-        return dicter(array)
-
-    @classmethod
     def build(cls, paths, data_label,
               row_id_label, row_index_label,
               col_id_label=None, col_index_label=None,
@@ -102,6 +45,8 @@ Build a sparse matrix from NumPy structured array(s).
 See more detailed documentation at :ref:`building-matrices`.
 
 This method does the following:
+
+TODO: Update
 
 #. Load and concatenate the :ref:`structured arrays files <building-matrices>` in filepaths ``paths`` using the function :func:`.utils.load_arrays` into a parameter array.
 #. If not ``row_dict``, use :meth:`.build_dictionary` to build ``row_dict`` from the parameter array column ``row_id_label``.
@@ -129,22 +74,38 @@ Returns:
         """
         assert isinstance(paths, (tuple, list, set)), "``paths`` must be a list"
         array = load_arrays(paths)
+
         if not row_dict:
-            row_dict = cls.build_dictionary(array[row_id_label])
-        cls.add_matrix_indices(array[row_id_label], array[row_index_label],
-                               row_dict)
+            row_dict = index_with_searchsorted(
+                array[row_id_label],
+                array[row_index_label]
+            )
+        else:
+            index_with_arrays(
+                array[row_id_label],
+                array[row_index_label],
+                row_dict
+            )
+
         if one_d:
             # Eliminate references to row data which isn't used;
-            # Unused data remains MAX_INT_32 values because it isn't mapped
-            # by ``add_matrix_indices``.
+            # Unused data remains MAX_INT_32 values
             if drop_missing:
                 array = array[np.where(array[row_index_label] != MAX_INT_32)]
             matrix = cls.build_diagonal_matrix(array, row_dict, row_index_label, data_label)
         else:
             if not col_dict:
-                col_dict = cls.build_dictionary(array[col_id_label])
-            cls.add_matrix_indices(array[col_id_label],
-                                   array[col_index_label], col_dict)
+                col_dict = index_with_searchsorted(
+                    array[col_id_label],
+                    array[col_index_label]
+                )
+            else:
+                index_with_arrays(
+                    array[col_id_label],
+                    array[col_index_label],
+                    col_dict
+                )
+
             if drop_missing:
                 array = array[np.where(array[row_index_label] != MAX_INT_32)]
                 array = array[np.where(array[col_index_label] != MAX_INT_32)]
@@ -192,19 +153,26 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         bio_array = array.take(np.where(
             array['type'] == TYPE_DICTIONARY["biosphere"]
         )[0])
-        activity_dict = cls.build_dictionary(np.hstack((
+
+
+        activity_dict = index_with_searchsorted(
             tech_array['output'],
-            bio_array['output']
-        )))
-        product_dict = cls.build_dictionary(tech_array["input"])
-        bio_dict = cls.build_dictionary(bio_array["input"])
-        cls.add_matrix_indices(tech_array['input'], tech_array['row'],
-                               product_dict)
-        cls.add_matrix_indices(tech_array['output'], tech_array['col'],
-                               activity_dict)
-        cls.add_matrix_indices(bio_array['input'], bio_array['row'], bio_dict)
-        cls.add_matrix_indices(bio_array['output'], bio_array['col'],
-                               activity_dict)
+            tech_array['col']
+        )
+        product_dict = index_with_searchsorted(
+            tech_array['input'],
+            tech_array['row']
+        )
+        bio_dict = index_with_searchsorted(
+            bio_array['input'],
+            bio_array['row']
+        )
+        index_with_arrays(
+            bio_array['output'],
+            bio_array['col'],
+            activity_dict
+        )
+
         technosphere = cls.build_technosphere_matrix(tech_array, activity_dict, product_dict)
         biosphere = cls.build_matrix(bio_array, bio_dict, activity_dict, "row", "col", "amount")
         return (bio_array, tech_array, bio_dict, activity_dict, product_dict,

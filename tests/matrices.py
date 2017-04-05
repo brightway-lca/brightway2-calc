@@ -123,31 +123,6 @@ class MatrixBuilderTestCase(BW2DataTest):
                 "values", "a", "row", "b", "col", row_dict, col_dict,
                 drop_missing=False)
 
-    def test_add_matrix_indices(self):
-        a = np.arange(10).astype(np.uint32)
-        b = np.zeros(10).astype(np.uint32)
-        m = {x: x + 100 for x in range(10)}
-        MatrixBuilder.add_matrix_indices(a, b, m)
-        self.assertTrue(np.allclose(
-            b,
-            np.arange(100, 110)
-        ))
-        # Test multiple inputs mapping to same output
-        b = np.zeros(10).astype(np.uint32)
-        m = {x: 42 for x in range(10)}
-        MatrixBuilder.add_matrix_indices(a, b, m)
-        self.assertTrue(np.allclose(
-            b,
-            np.ones(10) * 42
-        ))
-
-    def test_build_dictionary(self):
-        a = np.arange(10, 30)
-        a[10:] = 19
-        np.random.shuffle(a)
-        d = MatrixBuilder.build_dictionary(a)
-        self.assertEqual(d, {x+10:x for x in range(10)})
-
     def test_build_matrix(self):
         a = np.zeros((4,), dtype=[
             (numpy_string('values'), np.float64),
