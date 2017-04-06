@@ -66,10 +66,8 @@ def index_with_searchsorted(array_from, array_to):
 
     Returns a dictionary that maps the sorted, unique elements of ``array_from`` to integers starting with zero."""
     unique = np.unique(array_from)
-    to_values = np.arange(unique.size)
-    sort_idx = np.argsort(unique)
-    idx = np.searchsorted(unique, array_from, sorter = sort_idx)
-    array_to[:] = to_values[sort_idx][idx]
+    idx = np.searchsorted(unique, array_from)
+    array_to[:] = idx
     return dict(zip(
         (int(x) for x in unique),
         itertools.count()
