@@ -3,7 +3,12 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
-1.6 (2017-XX-XX)
+1.6.1 (2017-04-06)
+==================
+
+- Simplify indexing
+
+1.6 (2017-04-05)
 ================
 
 - Replace `bw2speedups` indexing with numpy array trickiness which is ~5 times faster
