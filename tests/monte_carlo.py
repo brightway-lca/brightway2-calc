@@ -87,6 +87,7 @@ def get_args():
 
 @random_project
 def test_random_project():
+    print(projects.dir)
     assert "Brightway" in projects.dir
 
 @bw2test
