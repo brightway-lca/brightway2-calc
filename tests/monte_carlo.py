@@ -15,8 +15,10 @@ import wrapt
 no_pool = pytest.mark.skipif(config._windows,
     reason="fork() on Windows doesn't pass temp directory")
 
-no_pipeline = pytest.mark.skipif(bool(os.environ.get("BITBUCKET_COMMIT")),
-    reason="Project directory in CI Docker container is weird")
+yes_docker = pytest.mark.skipif(bool(os.environ.get("BRIGHTWAY2_DOCKER")),
+    reason="Project directory in CI Docker container is '/home/jovyan/data'")
+no_docker = pytest.mark.skipif(not bool(os.environ.get("BRIGHTWAY2_DOCKER")),
+    reason="Normal project directory")
 
 
 def build_databases():
@@ -90,10 +92,16 @@ def get_args():
 
 
 @random_project
-@no_pipeline
+@yes_docker
 def test_random_project():
     print(projects.dir)
     assert "Brightway" in projects.dir
+
+@random_project
+@no_docker
+def test_random_project():
+    print(projects.dir)
+    assert "jovyan" in projects.dir
 
 @bw2test
 def test_temp_dir_again():
