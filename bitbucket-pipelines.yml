@@ -10,8 +10,6 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - pip install pytest pytest-cov coveralls
-          - pip install git+https://github.com/z4r/python-coveralls.git
           - pip install -U --no-deps bw2data bw2calc bw2io
           - pytest --cov=bw2calc
-          - export CIRCLE_BUILD_NUM=$BITBUCKET_COMMIT
-          - coveralls
+          - CIRCLE_BUILD_NUM=$BITBUCKET_COMMIT coveralls
