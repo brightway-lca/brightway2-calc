@@ -9,5 +9,6 @@ pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - pip install -U --no-deps bw2data bw2calc bw2io pytest
+          - pip install pytest
+          - pip install -U --no-deps bw2data bw2calc bw2io
           - pytest
