@@ -7,6 +7,7 @@ from bw2data import config, Database, Method, projects, databases
 from bw2data.utils import random_string
 from bw2data.tests import bw2test
 from numbers import Number
+import os
 import pytest
 import wrapt
 
@@ -14,6 +15,8 @@ import wrapt
 no_pool = pytest.mark.skipif(config._windows,
                              reason="fork() on Windows doesn't pass temp directory")
 
+no_pipeline = pytest.mark.skipif(os.environ["CI"],
+    reason="Project directory in CI Docker container is weird")
 
 def build_databases():
     Database("biosphere").write({
@@ -86,6 +89,7 @@ def get_args():
 
 
 @random_project
+@no_pipeline
 def test_random_project():
     print(projects.dir)
     assert "Brightway" in projects.dir
