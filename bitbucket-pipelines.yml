@@ -3,13 +3,14 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: cmutel/brightway2
+image: cmutel/brightway2-tests
 
 pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - pip install pytest pytest-cov coveralls
+          - pip install pytest pytest-cov
+          - pip install git+https://github.com/z4r/python-coveralls.git
           - pip install -U --no-deps bw2data bw2calc bw2io
           - pytest --cov=bw2calc
-          - CIRCLE_BUILD_NUM=$BITBUCKET_COMMIT coveralls
+          - coveralls
