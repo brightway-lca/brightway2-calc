@@ -9,7 +9,8 @@ pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - pip install pytest python-coveralls
+          - pip install pytest
+          - pip install git+https://github.com/z4r/python-coveralls.git
           - pip install -U --no-deps bw2data bw2calc bw2io
           - pytest
           - coveralls
