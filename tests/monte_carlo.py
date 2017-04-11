@@ -13,10 +13,11 @@ import wrapt
 
 
 no_pool = pytest.mark.skipif(config._windows,
-                             reason="fork() on Windows doesn't pass temp directory")
+    reason="fork() on Windows doesn't pass temp directory")
 
-no_pipeline = pytest.mark.skipif(os.environ["CI"],
+no_pipeline = pytest.mark.skipif(bool(os.environ.get("BITBUCKET_COMMIT")),
     reason="Project directory in CI Docker container is weird")
+
 
 def build_databases():
     Database("biosphere").write({
