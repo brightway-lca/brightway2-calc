@@ -9,9 +9,8 @@ pipelines:
   default:
     - step:
         script: # Modify the commands below to build your repository.
-          - 'hg log -r -5:'
           - pip install pytest pytest-cov
-          - pip install git+https://github.com/z4r/python-coveralls.git
+          - pip install git+https://github.com/cmutel/python-coveralls.git@mercurial-log
           - pip install -U --no-deps bw2data bw2calc bw2io
           - pytest --cov=bw2calc
           - coveralls
