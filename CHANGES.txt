@@ -3,6 +3,11 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.6.2 (2017-04-17)
+==================
+
+- Fix license text
+
 1.6.1 (2017-04-06)
 ==================
 
