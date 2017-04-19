@@ -9,8 +9,8 @@ Brightway2 calculations
     :target: https://coveralls.io/bitbucket/cmutel/brightway2-calc?branch=default
     :alt: Test coverage report
 
-.. image:: https://joss.theoj.org/papers/10.21105/joss.00236/status.svg
-   :target: https://joss.theoj.org/papers/6c24869ed7f1e66b3b837c31579c6fe5
+.. image:: http://joss.theoj.org/papers/10.21105/joss.00236/status.svg
+   :target: http://joss.theoj.org/papers/6c24869ed7f1e66b3b837c31579c6fe5
    :alt: Brightway publication in JOSS
 
 This package provides the calculation engine for the `Brightway2 life cycle assessment framework <https://brightwaylca.org>`_. `Online documentation <https://docs.brightwaylca.org/>`_ is available, and the source code is hosted on `Bitucket <https://bitbucket.org/cmutel/brightway2-calc>`_.
