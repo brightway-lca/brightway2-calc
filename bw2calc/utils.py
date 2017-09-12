@@ -16,6 +16,7 @@ except ImportError:
     import pickle
 
 MAX_INT_32 = 4294967295
+MAX_SIGNED_INT_32 = 2147483647
 
 
 def load_arrays(paths):
@@ -47,7 +48,7 @@ try:
         weightings,
     )
 
-    from bw2data.utils import TYPE_DICTIONARY, MAX_INT_32, safe_filename
+    from bw2data.utils import TYPE_DICTIONARY, safe_filename
 
     global_index = geomapping[config.global_location]
 
@@ -153,7 +154,7 @@ except ImportError:
 
 def get_seed():
     """Get valid Numpy random seed value"""
-    return np.random.randint(0, MAX_INT_32)
+    return np.random.randint(0, MAX_SIGNED_INT_32)
 
 
 def load_calculation_package(fp):
