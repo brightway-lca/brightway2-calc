@@ -12,6 +12,7 @@ from .errors import (
     NonsquareTechnosphere,
     OutsideTechnosphere,
 )
+from .log_utils import create_logger
 from .matrices import MatrixBuilder
 from .matrices import TechnosphereBiosphereMatrixBuilder as TBMBuilder
 from .utils import (
@@ -23,6 +24,7 @@ from .utils import (
 )
 import copy
 import numpy as np
+import logging
 try:
     import pandas
 except ImportError:
@@ -45,7 +47,7 @@ class LCA(object):
     #############
 
     def __init__(self, demand, method=None, weighting=None,
-            normalization=None, database_filepath=None):
+            normalization=None, database_filepath=None, log_config=None):
         """Create a new LCA calculation.
 
         Args:
@@ -62,6 +64,10 @@ class LCA(object):
             if not key:
                 raise ValueError("Invalid demand dictionary")
 
+        if log_config:
+            create_logger(**log_config)
+        self.logger = logging.getLogger('bw2calc')
+
         clean_databases()
         self._fixed = False
 
@@ -76,6 +82,17 @@ class LCA(object):
             self.weighting_filepath, \
             self.normalization_filepath = \
             self.get_array_filepaths()
+
+        self.logger.info("Created LCA object", extra={
+            'demand': {(k[0], k[1]): v for k, v in self.demand.items()},
+            'database_filepath': self.database_filepath,
+            'method': self.method,
+            'method_filepath': self.method_filepath,
+            'normalization': self.normalization,
+            'normalization_filepath': self.normalization_filepath,
+            'weighting': self.weighting,
+            'weighting_filepath': self.weighting_filepath,
+        })
 
     def get_array_filepaths(self):
         """Use utility functions to get all array filepaths"""

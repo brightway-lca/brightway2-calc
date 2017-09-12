@@ -4,7 +4,7 @@ from eight import *
 from future.utils import implements_iterator
 
 from .lca import LCA
-from .utils import clean_databases
+from .utils import clean_databases, get_seed
 from bw2data import projects
 from contextlib import contextmanager
 from scipy.sparse.linalg import iterative
@@ -35,10 +35,11 @@ class IterativeMonteCarlo(LCA):
                  seed=None, *args, **kwargs):
         super(IterativeMonteCarlo, self).__init__(demand, method=method, *args,
                                                   **kwargs)
-        self.seed = seed
+        self.seed = seed or get_seed()
         self.iter_solver = iter_solver
         self.guess = None
         self.lcia = method is not None
+        self.logger.info("Seeded RNGs", extra={'seed': self.seed})
 
     def __iter__(self):
         return self

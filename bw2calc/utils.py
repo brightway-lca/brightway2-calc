@@ -15,6 +15,8 @@ try:
 except ImportError:
     import pickle
 
+MAX_INT_32 = 4294967295
+
 
 def load_arrays(paths):
     """Load the numpy arrays in list of filepaths ``paths``."""
@@ -140,7 +142,6 @@ except ImportError:
         raise NotImplemented
 
     # Maximum value for unsigned integer stored in 4 bytes
-    MAX_INT_32 = 4294967295
     TYPE_DICTIONARY = {
         "unknown": -1,
         "production": 0,
@@ -148,6 +149,12 @@ except ImportError:
         "biosphere": 2,
         "substitution": 3,
     }
+
+
+def get_seed():
+    """Get valid Numpy random seed value"""
+    return np.random.randint(0, MAX_INT_32)
+
 
 def load_calculation_package(fp):
     """Load a calculation package created by ``save_calculation_package``.
