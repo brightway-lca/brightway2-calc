@@ -143,17 +143,8 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         array = load_arrays(paths)
         # take ~10 times faster than fancy indexing
         # http://wesmckinney.com/blog/?p=215
-        tech_array = array.take(
-            np.hstack((
-                np.where(array['type'] == TYPE_DICTIONARY["production"])[0],
-                np.where(array['type'] == TYPE_DICTIONARY.get("substitution", -999))[0],
-                np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
-            ))
-        )
-        bio_array = array.take(np.where(
-            array['type'] == TYPE_DICTIONARY["biosphere"]
-        )[0])
-
+        tech_array = cls.select_technosphere_array(array)
+        bio_array = cls.select_biosphere_array(array)
 
         activity_dict = index_with_searchsorted(
             tech_array['output'],
@@ -179,10 +170,35 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
                 biosphere, technosphere)
 
     @classmethod
+    def select_technosphere_array(cls, array):
+        """Create a new array with technosphere matrix exchanges"""
+        return array.take(
+            np.hstack((
+                np.where(array['type'] == TYPE_DICTIONARY["production"])[0],
+                np.where(array['type'] == TYPE_DICTIONARY.get("substitution", -999))[0],
+                np.where(array['type'] == TYPE_DICTIONARY["technosphere"])[0],
+            ))
+        )
+
+    @classmethod
+    def select_biosphere_array(cls, array):
+        """Create a new array with biosphere matrix exchanges"""
+        return array.take(np.where(
+            array['type'] == TYPE_DICTIONARY["biosphere"]
+        )[0])
+
+    @classmethod
     def get_technosphere_inputs_mask(cls, array):
         """Get boolean mask of technosphere inputs from ``array`` (i.e. the ones to include when building the technosphere matrix)."""
         return np.where(
             array["type"] == TYPE_DICTIONARY["technosphere"]
+        )
+
+    @classmethod
+    def get_biosphere_inputs_mask(cls, array):
+        """Get boolean mask of biosphere flows from ``array`` (i.e. the ones to include when building the biosphere matrix)."""
+        return np.where(
+            array["type"] == TYPE_DICTIONARY["biosphere"]
         )
 
     @classmethod

@@ -8,13 +8,19 @@ from .utils import clean_databases, get_seed
 from bw2data import projects
 from contextlib import contextmanager
 from scipy.sparse.linalg import iterative
+from stats_arrays.random import MCRandomNumberGenerator
+import multiprocessing
+import sys
+
 try:
     from pypardiso import spsolve
 except ImportError:
     from scipy.sparse.linalg import spsolve
-from stats_arrays.random import MCRandomNumberGenerator
-import multiprocessing
-import sys
+try:
+    from bw_presamples import MatrixPresamples
+except ImportError:
+    MatrixPresamples = None
+
 
 if sys.version_info < (3, 0):
     # multiprocessing.pool as a context manager not available in Python 2.7
@@ -33,9 +39,9 @@ class IterativeMonteCarlo(LCA):
     """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
                  seed=None, *args, **kwargs):
+        self.seed = seed or get_seed()
         super(IterativeMonteCarlo, self).__init__(demand, method=method, *args,
                                                   **kwargs)
-        self.seed = seed or get_seed()
         self.iter_solver = iter_solver
         self.guess = None
         self.lcia = method is not None
@@ -98,6 +104,9 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.rebuild_characterization_matrix(self.cf_rng.next())
         if self.weighting:
             self.weighting_value = self.weighting_rng.next()
+
+        for obj in self.presamples:
+            obj.update_matrices(self)
 
         if not hasattr(self, "demand_array"):
             self.build_demand_array()
