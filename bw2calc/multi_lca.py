@@ -21,7 +21,7 @@ class MultiLCA(object):
 
     """
     def __init__(self, cs_name):
-        if not calculation_setups:
+        if calculation_setups is None:
             raise ImportError
         assert cs_name in calculation_setups
         try:
