@@ -182,3 +182,14 @@ def load_calculation_package(fp):
         config[field] = [os.path.join(temp_dir, fn) for fn in config[field]]
 
     return config
+
+
+def wrap_functional_unit(dct):
+    """Transform functional units for effective logging.
+
+    Turns ``Activity`` objects into their keys.
+
+    Because JSON can't handle tuples as keys, also """
+    return [{'database': k[0],
+             'code': k[1],
+             'amount': v} for k, v in dct.items()]

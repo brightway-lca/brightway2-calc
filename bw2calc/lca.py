@@ -21,6 +21,7 @@ from .utils import (
     get_filepaths,
     load_arrays,
     mapping,
+    wrap_functional_unit,
 )
 import copy
 import numpy as np
@@ -84,7 +85,7 @@ class LCA(object):
             self.get_array_filepaths()
 
         self.logger.info("Created LCA object", extra={
-            'demand': {(k[0], k[1]): v for k, v in self.demand.items()},
+            'demand': wrap_functional_unit(self.demand),
             'database_filepath': self.database_filepath,
             'method': self.method,
             'method_filepath': self.method_filepath,
@@ -434,18 +435,22 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.method = method
         _, self.method_filepath, _, _ = self.get_array_filepaths()
         self.load_lcia_data()
+        self.logger.info("Switching LCIA method", extra={'method': method})
 
     def switch_normalization(self, normalization):
         """Switch to LCIA normalization `normalization`"""
         self.normalization = normalization
         _, _, _, self.normalization_filepath = self.get_array_filepaths()
         self.load_normalization_data()
+        self.logger.info("Switching LCIA normalization",
+                         extra={'normalization': normalization})
 
     def switch_weighting(self, weighting):
         """Switch to LCIA weighting `weighting`"""
         self.weighting = weighting
         _, _, self.weighting_filepath, _ = self.get_array_filepaths()
         self.load_weighting_data()
+        self.logger.info("Switching LCIA weighting", extra={'weighting': weighting})
 
     def redo_lci(self, demand):
         """Redo LCI with same databases but different demand.
@@ -461,6 +466,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         assert hasattr(self, "inventory"), "Must do lci first"
         self.build_demand_array(demand)
         self.lci_calculation()
+        self.logger.info("Redoing LCI", extra={'demand': wrap_functional_unit(demand)})
 
     def redo_lcia(self, demand=None):
         """Redo LCIA, optionally with new demand.
@@ -475,6 +481,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         if demand:
             self.redo_lci(demand)
         self.lcia_calculation()
+        self.logger.info("Redoing LCIA", extra={'demand': wrap_functional_unit(demand)})
 
     def to_dataframe(self, cutoff=200):
         """Return all nonzero elements of characterized inventory as Pandas dataframe"""

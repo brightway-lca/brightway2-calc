@@ -3,6 +3,7 @@ from __future__ import print_function, unicode_literals, division
 from eight import *
 
 from .lca import LCA
+from .utils import wrap_functional_unit
 try:
     from bw2data import calculation_setups
 except ImportError:
@@ -20,7 +21,7 @@ class MultiLCA(object):
     Initialization creates `self.results`, which is a NumPy array of LCA scores, with rows of functional units and columns of LCIA methods. Ordering is the same as in the `calculation_setup`.
 
     """
-    def __init__(self, cs_name):
+    def __init__(self, cs_name, log_config=None):
         if calculation_setups is None:
             raise ImportError
         assert cs_name in calculation_setups
@@ -32,7 +33,12 @@ class MultiLCA(object):
             )
         self.func_units = cs['inv']
         self.methods = cs['ia']
-        self.lca = LCA(demand=self.all, method=self.methods[0])
+        self.lca = LCA(demand=self.all, method=self.methods[0], log_config=log_config)
+        self.lca.logger.info({
+            'message': 'Started MultiLCA calculation',
+            'methods': list(self.methods),
+            'functional units': [wrap_functional_unit(o) for o in self.func_units]
+        })
         self.lca.lci(factorize=True)
         self.method_matrices = []
         self.results = np.zeros((len(self.func_units), len(self.methods)))
