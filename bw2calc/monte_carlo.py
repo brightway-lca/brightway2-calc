@@ -167,7 +167,7 @@ def direct_solving_worker(args):
 class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
     def __init__(self, demand, method, iterations=1000, chunk_size=None,
-                 cpus=None):
+                 cpus=None, log_config=None):
         clean_databases()
         self.demand = demand
         self.method = method
@@ -206,22 +206,12 @@ def multi_worker(args):
     """
     project, demands, method = args
     projects.set_current(project, writable=False)
-    lca = LCA(demands[0], method)
-    lca.load_lci_data()
-    lca.load_lcia_data()
-    # Create new matrices
-    lca.rebuild_technosphere_matrix(next(
-        MCRandomNumberGenerator(lca.tech_params)))
-    lca.rebuild_biosphere_matrix(next(
-        MCRandomNumberGenerator(lca.bio_params)))
-    lca.rebuild_characterization_matrix(
-        next(MCRandomNumberGenerator(lca.cf_params)))
-    lca.lci(factorize=True)
-    lca.lcia()
+    mc = MonteCarloLCA(demands[0], method)
+    next(mc)
     results = []
     for demand in demands:
-        lca.redo_lcia(demand)
-        results.append((demand, lca.score))
+        mc.redo_lcia(demand)
+        results.append((demand, mc.score))
     return results
 
 

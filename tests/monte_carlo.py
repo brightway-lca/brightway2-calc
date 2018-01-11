@@ -7,6 +7,7 @@ from bw2data import config, Database, Method, projects, databases
 from bw2data.utils import random_string
 from bw2data.tests import bw2test
 from numbers import Number
+import numpy as np
 import os
 import pytest
 import wrapt
@@ -146,6 +147,34 @@ def test_multi_mc(background):
     results = mc.calculate()
     print(results)
     assert results
+
+@no_pool
+def test_multi_mc_not_same_answer(background):
+    activity_list = [
+            {("test", "1"): 1},
+            {("test", "2"): 1},
+            {("test", "1"): 1, ("test", "2"): 1}
+        ]
+    mc = MultiMonteCarlo(
+        activity_list,
+        ("a", "method"),
+        iterations=10
+    )
+    results = mc.calculate()
+    for _, lst in results:
+        assert len(set(lst)) > 1
+
+    lca = LCA(activity_list[0], ("a", "method"))
+    lca.lci()
+    lca.lcia()
+
+    def score(lca, func_unit):
+        lca.redo_lcia(func_unit)
+        return lca.score
+
+    static = [score(lca, func_unit) for func_unit in activity_list]
+    for a, b in zip(static, results):
+        assert a not in b[1]
 
 @random_project
 def test_multi_mc_no_temp_dir():
