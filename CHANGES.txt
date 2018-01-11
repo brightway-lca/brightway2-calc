@@ -3,6 +3,13 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.6.3 (2018-01-11)
+==================
+
+- JOSS submission
+- Fix bug in MultiMonteCarlo
+- Add some logging to support presamples in the future
+
 1.6.2 (2017-04-17)
 ==================
 
