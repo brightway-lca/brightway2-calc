@@ -152,9 +152,11 @@ except ImportError:
     }
 
 
-def get_seed():
+def get_seed(seed=None):
     """Get valid Numpy random seed value"""
-    return np.random.randint(0, MAX_SIGNED_INT_32)
+    # https://groups.google.com/forum/#!topic/briansupport/9ErDidIBBFM
+    random = np.random.RandomState(seed)
+    return random.randint(0, MAX_SIGNED_INT_32)
 
 
 def load_calculation_package(fp):

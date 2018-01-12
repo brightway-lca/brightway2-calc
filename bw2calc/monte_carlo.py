@@ -234,9 +234,8 @@ Call ``.calculate()`` to generate results.
     def __init__(self, demands, method, iterations, cpus=None):
         clean_databases()
         # Convert from activity proxies if necessary
-        self.demands = [{(k[0], k[1]): v}
-                        for obj in demands
-                        for k, v in obj.items()]
+        self.demands = [{(k[0], k[1]): v for k, v in obj.items()}
+                        for obj in demands]
         self.method = method
         self.iterations = iterations
         self.cpus = cpus or multiprocessing.cpu_count()

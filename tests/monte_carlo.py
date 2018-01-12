@@ -145,7 +145,6 @@ def test_multi_mc(background):
         iterations=10
     )
     results = mc.calculate()
-    print(results)
     assert results
 
 @no_pool
@@ -153,7 +152,7 @@ def test_multi_mc_not_same_answer(background):
     activity_list = [
             {("test", "1"): 1},
             {("test", "2"): 1},
-            {("test", "1"): 1, ("test", "2"): 1}
+            # {("test", "1"): 1, ("test", "2"): 1}
         ]
     mc = MultiMonteCarlo(
         activity_list,
@@ -161,8 +160,9 @@ def test_multi_mc_not_same_answer(background):
         iterations=10
     )
     results = mc.calculate()
+    assert len(results) == 2
     for _, lst in results:
-        assert len(set(lst)) > 1
+        assert len(set(lst)) == len(lst)
 
     lca = LCA(activity_list[0], ("a", "method"))
     lca.lci()
@@ -175,6 +175,22 @@ def test_multi_mc_not_same_answer(background):
     static = [score(lca, func_unit) for func_unit in activity_list]
     for a, b in zip(static, results):
         assert a not in b[1]
+
+@no_pool
+def test_multi_mc_compound_func_units(background):
+    activity_list = [
+            {("test", "1"): 1},
+            {("test", "2"): 1},
+            {("test", "1"): 1, ("test", "2"): 1}
+        ]
+    mc = MultiMonteCarlo(
+        activity_list,
+        ("a", "method"),
+        iterations=10
+    )
+    results = mc.calculate()
+    assert len(results) == 3
+    assert activity_list == mc.demands
 
 @random_project
 def test_multi_mc_no_temp_dir():
