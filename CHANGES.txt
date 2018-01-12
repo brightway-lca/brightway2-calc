@@ -3,6 +3,11 @@ Changelog
 
 Note: This changelog is not exhaustive.
 
+1.6.4 (2018-01-12)
+==================
+
+- Really fix bug in seed generation for pooled Monte Carlo calculations
+
 1.6.3 (2018-01-11)
 ==================
 
