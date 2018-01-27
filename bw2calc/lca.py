@@ -88,6 +88,7 @@ class LCA(object):
             warnings.warn("Skipping presamples; `bw_presamples` not installed")
             self.presamples = []
         elif presamples:
+            # Iterating over a `Campaign` object will return the presample filepaths
             self.presamples = [MatrixPresamples(path, self.seed) for path in presamples]
         else:
             self.presamples = []
@@ -105,6 +106,7 @@ class LCA(object):
             'method_filepath': self.method_filepath,
             'normalization': self.normalization,
             'normalization_filepath': self.normalization_filepath,
+            'presamples': [str(obj) for obj in self.presamples],
             'weighting': self.weighting,
             'weighting_filepath': self.weighting_filepath,
         })
@@ -261,7 +263,6 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.weighting_filepath
         )
         self.weighting_value = self.weighting_params['amount']
-        # TODO: Weighting presamples?
 
     ####################
     ### Calculations ###
