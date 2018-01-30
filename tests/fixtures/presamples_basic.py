@@ -31,8 +31,8 @@ basedir = os.path.dirname(os.path.abspath(__file__))
 
 def write_database():
     bio_data =  {
-        ("bio", "a"): {'exchange': []},
-        ("bio", "b"): {'exchange': []},
+        ("bio", "a"): {'exchange': [], 'type': 'biosphere'},
+        ("bio", "b"): {'exchange': [], 'type': 'biosphere'},
     }
     Database("bio").write(bio_data)
 
@@ -84,12 +84,12 @@ def write_database():
             'input': ("test", "3"),
             'uncertainty type': 0
         }, {
-            'amount': -3,
+            'amount': 3,
             'type': 'technosphere',
             'input': ("test", "1"),
             'uncertainty type': 0
         }, {
-            'amount': -2,
+            'amount': 2,
             'type': 'technosphere',
             'input': ("test", "2"),
             'uncertainty type': 0

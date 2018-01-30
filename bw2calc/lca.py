@@ -89,8 +89,8 @@ class LCA(object):
             warnings.warn("Skipping presamples; `bw_presamples` not installed")
             self.presamples = []
         elif presamples:
-            # Iterating over a `Campaign` object will return the presample filepaths
-            self.presamples = [MatrixPresamples(path, self.seed) for path in presamples]
+            # Iterating over a `Campaign` object will also return the presample filepaths
+            self.presamples = [MatrixPresamples(presamples, self.seed)]
         else:
             self.presamples = []
 
