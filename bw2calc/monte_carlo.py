@@ -150,6 +150,9 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         self.rebuild_biosphere_matrix(self.bio_rng.next())
         self.rebuild_characterization_matrix(self.cf_rng.next())
 
+        for obj in self.presamples:
+            obj.update_matrices(self)
+
         results = []
         for demand in self.demands:
             self.build_demand_array(demand)

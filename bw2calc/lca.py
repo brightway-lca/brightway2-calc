@@ -218,8 +218,11 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         if fix_dictionaries:
             self.fix_dictionaries()
         for obj in self.presamples:
+            # Only need to index here for traditional LCA
             obj.index_arrays(self)
-            obj.update_matrices(self, ('technosphere', 'biosphere'))
+            obj.update_matrices(
+                self, ('technosphere_matrix', 'biosphere_matrix')
+            )
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix.
@@ -240,8 +243,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.cf_params = self.cf_params[mask]
             self.characterization_matrix = builder.build_diagonal_matrix(self.cf_params, self._biosphere_dict, "row", "amount")
         for obj in self.presamples:
-            obj.index_arrays(self)
-            obj.update_matrices(self, ('cf',))
+            obj.update_matrices(self, ['characterization_matrix'])
 
     def load_normalization_data(self, builder=MatrixBuilder):
         """Load normalization data."""
@@ -255,7 +257,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 one_d=True
             )
         for obj in self.presamples:
-            obj.update_matrices(self, ('normalization',))
+            obj.update_matrices(self, ['normalization_matrix',])
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""
@@ -263,6 +265,10 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.weighting_filepath
         )
         self.weighting_value = self.weighting_params['amount']
+        for obj in self.presamples:
+            pass
+            # TODO: This won't work because weighting is a value not a matrix
+            obj.update_matrices(self, ['weighting_value',])
 
     ####################
     ### Calculations ###
