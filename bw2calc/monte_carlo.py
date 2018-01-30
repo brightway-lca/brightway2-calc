@@ -137,6 +137,9 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         super(ComparativeMonteCarlo, self).__init__(demand_all, *args, **kwargs)
 
     def load_data(self):
+        if not getattr(self, "method"):
+            raise ValueError("Must specify an LCIA method")
+
         self.load_lci_data()
         self.load_lcia_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)

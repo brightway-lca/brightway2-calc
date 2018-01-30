@@ -115,18 +115,38 @@ def write_database():
 def build_single_presample_array():
     from bw_presamples import create_presamples_package
 
-    indices = [
+    tech_indices = [
         (("test", "1"), ("test", "2"), 'technosphere'),
         (("test", "2"), ("test", "2"), 'production'),
     ]
 
-    samples = np.array((
+    tech_samples = np.array((
         [1],
         [1],
     ))
 
+    bio_indices = [
+        (("bio", "a"), ("test", "2")),
+        (("bio", "b"), ("test", "2")),
+        (("bio", "b"), ("test", "1")),
+    ]
+
+    bio_samples = np.array((
+        [10],
+        [1],
+        [0],
+    ))
+
+    cf_indices = [("bio", "a")]
+
+    cf_samples = np.array(([1],))
+
     create_presamples_package(
-        matrix_presamples=[(samples, indices, 'technosphere')],
+        matrix_presamples=[
+            (tech_samples, tech_indices, 'technosphere'),
+            (bio_samples, bio_indices, 'biosphere'),
+            (cf_samples, cf_indices, 'cf'),
+        ],
         id_='single-sample', name='single-sample',
         dirpath=basedir, overwrite=True
     )

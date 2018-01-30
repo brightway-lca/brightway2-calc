@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
+    'ComparativeMonteCarlo',
     'DenseLCA',
     'direct_solving_worker',
     'DirectSolvingMixin',
@@ -33,6 +34,7 @@ from .utils import save_calculation_package, load_calculation_package
 
 try:
     from .monte_carlo import (
+        ComparativeMonteCarlo,
         direct_solving_worker,
         DirectSolvingMixin,
         DirectSolvingMonteCarloLCA,

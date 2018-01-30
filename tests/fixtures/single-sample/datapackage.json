@@ -30,6 +30,59 @@
       "col to label": "col",
       "col dict": "_activity_dict",
       "matrix": "technosphere_matrix"
+    },
+    {
+      "type": "biosphere",
+      "samples": {
+        "filepath": "single-sample.1.samples.npy",
+        "md5": "411dfca5e3a545469637cd22179c20e5",
+        "shape": [
+          3,
+          1
+        ],
+        "dtype": "int64",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "indices": {
+        "filepath": "single-sample.1.indices.npy",
+        "md5": "295c574b7ce73d59eb45e20f7df1d511",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "profile": "data-resource",
+      "row from label": "input",
+      "row to label": "row",
+      "row dict": "_biosphere_dict",
+      "col from label": "output",
+      "col to label": "col",
+      "col dict": "_activity_dict",
+      "matrix": "biosphere_matrix"
+    },
+    {
+      "type": "cf",
+      "samples": {
+        "filepath": "single-sample.2.samples.npy",
+        "md5": "d55c3a518f0edd8587b390f1e15d8d95",
+        "shape": [
+          1,
+          1
+        ],
+        "dtype": "int64",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "indices": {
+        "filepath": "single-sample.2.indices.npy",
+        "md5": "5a3fb91a28e0c1607c4d8e329862d7ee",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "profile": "data-resource",
+      "row from label": "flow",
+      "row to label": "row",
+      "row dict": "_biosphere_dict",
+      "matrix": "characterization_matrix"
     }
   ]
 }
