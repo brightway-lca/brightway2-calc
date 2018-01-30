@@ -4,10 +4,11 @@ from eight import *
 
 from .errors import MalformedFunctionalUnit
 import itertools
-import numpy as np
 import datetime
-import os
+import hashlib
 import json
+import numpy as np
+import os
 import tarfile
 import tempfile
 try:
@@ -195,3 +196,14 @@ def wrap_functional_unit(dct):
     return [{'database': k[0],
              'code': k[1],
              'amount': v} for k, v in dct.items()]
+
+
+def md5(filepath, blocksize=65536):
+    """Generate MD5 hash for file at `filepath`"""
+    hasher = hashlib.md5()
+    fo = open(filepath, 'rb')
+    buf = fo.read(blocksize)
+    while len(buf) > 0:
+        hasher.update(buf)
+        buf = fo.read(blocksize)
+    return hasher.hexdigest()

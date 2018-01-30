@@ -1,0 +1,35 @@
+{
+  "name": "single-sample",
+  "id": "single-sample",
+  "profile": "data-package",
+  "resources": [
+    {
+      "type": "technosphere",
+      "samples": {
+        "filepath": "single-sample.0.samples.npy",
+        "md5": "ed9536e878bb6fdd1f7a92c6f706dc8f",
+        "shape": [
+          2,
+          1
+        ],
+        "dtype": "int64",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "indices": {
+        "filepath": "single-sample.0.indices.npy",
+        "md5": "db4c6fed8ac37c0afee83d12c27bba16",
+        "format": "npy",
+        "mediatype": "application/octet-stream"
+      },
+      "profile": "data-resource",
+      "row from label": "input",
+      "row to label": "row",
+      "row dict": "_product_dict",
+      "col from label": "output",
+      "col to label": "col",
+      "col dict": "_activity_dict",
+      "matrix": "technosphere_matrix"
+    }
+  ]
+}

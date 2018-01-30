@@ -2,10 +2,6 @@
 from __future__ import print_function, unicode_literals, division
 from eight import *
 
-try:
-    from pypardiso import factorized, spsolve
-except ImportError:
-    from scipy.sparse.linalg import factorized, spsolve
 from scipy import sparse
 import numpy as np
 from .errors import (
@@ -26,6 +22,12 @@ from .utils import (
 import copy
 import numpy as np
 import logging
+import warnings
+
+try:
+    from pypardiso import factorized, spsolve
+except ImportError:
+    from scipy.sparse.linalg import factorized, spsolve
 try:
     import pandas
 except ImportError:
@@ -34,6 +36,10 @@ try:
     from collections.abc import Mapping
 except ImportError:
     from collections import Mapping
+try:
+    from bw_presamples import MatrixPresamples
+except ImportError:
+    MatrixPresamples = None
 
 
 class LCA(object):
@@ -42,13 +48,14 @@ class LCA(object):
     Following the general philosophy of Brightway2, and good software practices, there is a clear separation of concerns between retrieving and formatting data and doing an LCA. Building the necessary matrices is done with MatrixBuilder objects (:ref:`matrixbuilders`). The LCA class only does the LCA calculations themselves.
 
     """
+    seed = None
 
     #############
     ### Setup ###
     #############
 
-    def __init__(self, demand, method=None, weighting=None,
-            normalization=None, database_filepath=None, log_config=None):
+    def __init__(self, demand, method=None, weighting=None, normalization=None,
+                 database_filepath=None, log_config=None, presamples=None):
         """Create a new LCA calculation.
 
         Args:
@@ -78,6 +85,15 @@ class LCA(object):
         self.weighting = weighting
         self.database_filepath = database_filepath
 
+        if presamples and MatrixPresamples is None:
+            warnings.warn("Skipping presamples; `bw_presamples` not installed")
+            self.presamples = []
+        elif presamples:
+            # Iterating over a `Campaign` object will return the presample filepaths
+            self.presamples = [MatrixPresamples(path, self.seed) for path in presamples]
+        else:
+            self.presamples = []
+
         self.database_filepath, \
             self.method_filepath, \
             self.weighting_filepath, \
@@ -91,6 +107,7 @@ class LCA(object):
             'method_filepath': self.method_filepath,
             'normalization': self.normalization,
             'normalization_filepath': self.normalization_filepath,
+            'presamples': [str(obj) for obj in self.presamples],
             'weighting': self.weighting,
             'weighting_filepath': self.weighting_filepath,
         })
@@ -201,6 +218,12 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             )
         if fix_dictionaries:
             self.fix_dictionaries()
+        for obj in self.presamples:
+            # Only need to index here for traditional LCA
+            obj.index_arrays(self)
+            obj.update_matrices(
+                self, ('technosphere_matrix', 'biosphere_matrix')
+            )
 
     def load_lcia_data(self, builder=MatrixBuilder):
         """Load data and create characterization matrix.
@@ -220,6 +243,8 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             mask = self.cf_params['geo'] == global_index
             self.cf_params = self.cf_params[mask]
             self.characterization_matrix = builder.build_diagonal_matrix(self.cf_params, self._biosphere_dict, "row", "amount")
+        for obj in self.presamples:
+            obj.update_matrices(self, ['characterization_matrix'])
 
     def load_normalization_data(self, builder=MatrixBuilder):
         """Load normalization data."""
@@ -232,6 +257,8 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 row_dict=self._biosphere_dict,
                 one_d=True
             )
+        for obj in self.presamples:
+            obj.update_matrices(self, ['normalization_matrix',])
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""
@@ -239,6 +266,10 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.weighting_filepath
         )
         self.weighting_value = self.weighting_params['amount']
+        for obj in self.presamples:
+            pass
+            # TODO: This won't work because weighting is a value not a matrix
+            obj.update_matrices(self, ['weighting_value',])
 
     ####################
     ### Calculations ###
