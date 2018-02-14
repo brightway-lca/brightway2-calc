@@ -16,6 +16,7 @@
         "format": "npy",
         "mediatype": "application/octet-stream"
       },
+      "index": 0,
       "indices": {
         "filepath": "single-sample.0.indices.npy",
         "md5": "db4c6fed8ac37c0afee83d12c27bba16",
@@ -44,6 +45,7 @@
         "format": "npy",
         "mediatype": "application/octet-stream"
       },
+      "index": 1,
       "indices": {
         "filepath": "single-sample.1.indices.npy",
         "md5": "295c574b7ce73d59eb45e20f7df1d511",
@@ -72,6 +74,7 @@
         "format": "npy",
         "mediatype": "application/octet-stream"
       },
+      "index": 2,
       "indices": {
         "filepath": "single-sample.2.indices.npy",
         "md5": "5a3fb91a28e0c1607c4d8e329862d7ee",
