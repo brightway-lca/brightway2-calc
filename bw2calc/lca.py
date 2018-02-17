@@ -48,14 +48,12 @@ class LCA(object):
     Following the general philosophy of Brightway2, and good software practices, there is a clear separation of concerns between retrieving and formatting data and doing an LCA. Building the necessary matrices is done with MatrixBuilder objects (:ref:`matrixbuilders`). The LCA class only does the LCA calculations themselves.
 
     """
-    seed = None
-
     #############
     ### Setup ###
     #############
 
     def __init__(self, demand, method=None, weighting=None, normalization=None,
-                 database_filepath=None, log_config=None, presamples=None):
+                 database_filepath=None, log_config=None, presamples=None, seed=None):
         """Create a new LCA calculation.
 
         Args:
@@ -84,6 +82,7 @@ class LCA(object):
         self.normalization = normalization
         self.weighting = weighting
         self.database_filepath = database_filepath
+        self.seed = seed
 
         if presamples and MatrixPresamples is None:
             warnings.warn("Skipping presamples; `bw_presamples` not installed")

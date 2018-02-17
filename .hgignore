@@ -9,3 +9,4 @@ cover
 .coverage
 bw2calc.egg-info
 .cache
+.pytest_cache
