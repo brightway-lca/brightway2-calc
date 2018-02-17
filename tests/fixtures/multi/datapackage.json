@@ -1,16 +1,16 @@
 {
-  "name": "single-sample",
-  "id": "single-sample",
+  "name": "multi",
+  "id": "multi",
   "profile": "data-package",
   "resources": [
     {
       "type": "technosphere",
       "samples": {
-        "filepath": "single-sample.0.samples.npy",
-        "md5": "ed9536e878bb6fdd1f7a92c6f706dc8f",
+        "filepath": "multi.0.samples.npy",
+        "md5": "1477771e61289fe84cc71525dfc62e66",
         "shape": [
           2,
-          1
+          3
         ],
         "dtype": "int64",
         "format": "npy",
@@ -18,7 +18,7 @@
       },
       "index": 0,
       "indices": {
-        "filepath": "single-sample.0.indices.npy",
+        "filepath": "multi.0.indices.npy",
         "md5": "db4c6fed8ac37c0afee83d12c27bba16",
         "format": "npy",
         "mediatype": "application/octet-stream"
@@ -35,11 +35,11 @@
     {
       "type": "biosphere",
       "samples": {
-        "filepath": "single-sample.1.samples.npy",
-        "md5": "411dfca5e3a545469637cd22179c20e5",
+        "filepath": "multi.1.samples.npy",
+        "md5": "15a8f279f9aa8a76bda28c640616813b",
         "shape": [
           3,
-          1
+          3
         ],
         "dtype": "int64",
         "format": "npy",
@@ -47,7 +47,7 @@
       },
       "index": 1,
       "indices": {
-        "filepath": "single-sample.1.indices.npy",
+        "filepath": "multi.1.indices.npy",
         "md5": "295c574b7ce73d59eb45e20f7df1d511",
         "format": "npy",
         "mediatype": "application/octet-stream"
@@ -60,32 +60,6 @@
       "col to label": "col",
       "col dict": "_activity_dict",
       "matrix": "biosphere_matrix"
-    },
-    {
-      "type": "cf",
-      "samples": {
-        "filepath": "single-sample.2.samples.npy",
-        "md5": "d55c3a518f0edd8587b390f1e15d8d95",
-        "shape": [
-          1,
-          1
-        ],
-        "dtype": "int64",
-        "format": "npy",
-        "mediatype": "application/octet-stream"
-      },
-      "index": 2,
-      "indices": {
-        "filepath": "single-sample.2.indices.npy",
-        "md5": "5a3fb91a28e0c1607c4d8e329862d7ee",
-        "format": "npy",
-        "mediatype": "application/octet-stream"
-      },
-      "profile": "data-resource",
-      "row from label": "flow",
-      "row to label": "row",
-      "row dict": "_biosphere_dict",
-      "matrix": "characterization_matrix"
     }
   ]
 }

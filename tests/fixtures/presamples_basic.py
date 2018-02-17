@@ -152,6 +152,41 @@ def build_single_presample_array():
     )
 
 
+def build_multi_presample_array():
+    from bw_presamples import create_presamples_package
+
+    tech_indices = [
+        (("test", "1"), ("test", "2"), 'technosphere'),
+        (("test", "2"), ("test", "2"), 'production'),
+    ]
+
+    tech_samples = np.array((
+        [1, 2, 3],
+        [100, 101, 102],
+    ))
+
+    bio_indices = [
+        (("bio", "a"), ("test", "2")),
+        (("bio", "b"), ("test", "2")),
+        (("bio", "b"), ("test", "1")),
+    ]
+
+    bio_samples = np.array((
+        [10, 11, 12],
+        [1, 2, 3],
+        [0, -1, -2],
+    ))
+
+    create_presamples_package(
+        matrix_presamples=[
+            (tech_samples, tech_indices, 'technosphere'),
+            (bio_samples, bio_indices, 'biosphere'),
+        ],
+        id_='multi', name='multi',
+        dirpath=basedir, overwrite=True
+    )
+
+
 if __name__ == "__main__":
     name = "test-builder-{}".format(uuid.uuid4().hex)
     if name in projects:
@@ -160,5 +195,6 @@ if __name__ == "__main__":
         projects.set_current(name)
         write_database()
         build_single_presample_array()
+        build_multi_presample_array()
     finally:
         projects.delete_project(delete_dir=True)
