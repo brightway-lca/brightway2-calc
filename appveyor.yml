@@ -35,7 +35,7 @@ install:
     - cmd: call %CONDA_INSTALL_LOCN%\Scripts\activate.bat
     - cmd: conda update -y -q conda
     - cmd: conda config --add channels conda-forge
-    - cmd: conda install -y -q -c defaults -c conda-forge -c cmutel -c haasad numpy scipy psutil pypardiso eight pytest bw2data
+    - cmd: conda install -y -q -c defaults -c conda-forge -c cmutel -c haasad numpy scipy psutil pypardiso eight pytest bw2data peewee==2.10.2
     - cmd: python setup.py install
 
 build: false
