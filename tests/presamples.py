@@ -95,3 +95,30 @@ def test_single_sample_presamples(basic):
         mc.product_dict[("test", "2")],
         mc.activity_dict[("test", "2")],
     ] == 1
+
+@pytest.mark.skipif(not MatrixPresamples, reason="bw_presamples not installed")
+def test_multi_sample_presamples(basic):
+    ss = os.path.join(basedir, "multi")
+
+    lca = LCA({("test", "2"): 1}, method=("m",))
+    lca.lci()
+    static = lca.technosphere_matrix.data
+
+    multi = []
+    for _ in range(10):
+        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss],
+                  seed=42)
+        lca.lci()
+        multi.append(lca.technosphere_matrix.data)
+
+    assert all(np.allclose(multi[i], multi[i + 1]) for i in range(9))
+    assert not np.allclose(multi[0], static)
+
+    multi = []
+    for _ in range(10):
+        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
+        lca.lci()
+        multi.append(lca.technosphere_matrix.data)
+
+    assert not all(np.allclose(multi[i], multi[i + 1]) for i in range(9))
+    assert not np.allclose(multi[0], static)
