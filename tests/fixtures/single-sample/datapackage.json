@@ -2,6 +2,7 @@
   "name": "single-sample",
   "id": "single-sample",
   "profile": "data-package",
+  "seed": null,
   "resources": [
     {
       "type": "technosphere",

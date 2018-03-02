@@ -142,7 +142,7 @@ def build_single_presample_array():
     cf_samples = np.array(([1],))
 
     create_presamples_package(
-        matrix_presamples=[
+        matrix_data=[
             (tech_samples, tech_indices, 'technosphere'),
             (bio_samples, bio_indices, 'biosphere'),
             (cf_samples, cf_indices, 'cf'),
@@ -178,7 +178,7 @@ def build_multi_presample_array():
     ))
 
     create_presamples_package(
-        matrix_presamples=[
+        matrix_data=[
             (tech_samples, tech_indices, 'technosphere'),
             (bio_samples, bio_indices, 'biosphere'),
         ],

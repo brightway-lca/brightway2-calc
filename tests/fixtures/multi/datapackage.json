@@ -2,6 +2,7 @@
   "name": "multi",
   "id": "multi",
   "profile": "data-package",
+  "seed": null,
   "resources": [
     {
       "type": "technosphere",
