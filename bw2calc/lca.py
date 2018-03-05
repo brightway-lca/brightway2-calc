@@ -486,7 +486,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         self.load_weighting_data()
         self.logger.info("Switching LCIA weighting", extra={'weighting': weighting})
 
-    def redo_lci(self, demand):
+    def redo_lci(self, demand=None):
         """Redo LCI with same databases but different demand.
 
         Args:
@@ -498,6 +498,8 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         assert hasattr(self, "inventory"), "Must do lci first"
+        if demand is not None:
+            self.redo_lci(demand)
         self.build_demand_array(demand)
         self.lci_calculation()
         self.logger.info("Redoing LCI", extra={'demand': wrap_functional_unit(demand)})
@@ -512,7 +514,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
 
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        if demand:
+        if demand is not None:
             self.redo_lci(demand)
         self.lcia_calculation()
         self.logger.info("Redoing LCIA", extra={'demand': wrap_functional_unit(demand)})
