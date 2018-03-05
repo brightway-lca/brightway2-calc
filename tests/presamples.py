@@ -10,7 +10,7 @@ from bw2calc import (
     MonteCarloLCA,
     ParameterVectorLCA,
 )
-from bw2calc.lca import MatrixPresamples
+from bw2calc.lca import PackagesDataLoader
 from bw2data import *
 from bw2data.tests import bw2test
 from bw2data.utils import TYPE_DICTIONARY
@@ -36,7 +36,7 @@ def test_fixture_lca_results(basic):
         [-(3 + 1/3),    2 + 2/3,   2/3]
     ])
 
-@pytest.mark.skipif(not MatrixPresamples, reason="bw_presamples not installed")
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_single_sample_presamples(basic):
     ss = os.path.join(basedir, "single-sample")
 
@@ -96,7 +96,7 @@ def test_single_sample_presamples(basic):
         mc.activity_dict[("test", "2")],
     ] == 1
 
-@pytest.mark.skipif(not MatrixPresamples, reason="bw_presamples not installed")
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_multi_sample_presamples(basic):
     ss = os.path.join(basedir, "multi")
 

@@ -113,7 +113,7 @@ def write_database():
 
 
 def build_single_presample_array():
-    from bw_presamples import create_presamples_package
+    from presamples import create_presamples_package
 
     tech_indices = [
         (("test", "1"), ("test", "2"), 'technosphere'),
@@ -153,7 +153,7 @@ def build_single_presample_array():
 
 
 def build_multi_presample_array():
-    from bw_presamples import create_presamples_package
+    from presamples import create_presamples_package
 
     tech_indices = [
         (("test", "1"), ("test", "2"), 'technosphere'),

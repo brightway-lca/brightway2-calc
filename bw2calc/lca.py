@@ -37,9 +37,9 @@ try:
 except ImportError:
     from collections import Mapping
 try:
-    from bw_presamples import MatrixPresamples
+    from presamples import PackagesDataLoader
 except ImportError:
-    MatrixPresamples = None
+    PackagesDataLoader = None
 
 
 class LCA(object):
@@ -53,7 +53,8 @@ class LCA(object):
     #############
 
     def __init__(self, demand, method=None, weighting=None, normalization=None,
-                 database_filepath=None, log_config=None, presamples=None, seed=None):
+                 database_filepath=None, log_config=None, presamples=None,
+                 seed=None, override_presamples_seed=False):
         """Create a new LCA calculation.
 
         Args:
@@ -84,12 +85,15 @@ class LCA(object):
         self.database_filepath = database_filepath
         self.seed = seed
 
-        if presamples and MatrixPresamples is None:
-            warnings.warn("Skipping presamples; `bw_presamples` not installed")
+        if presamples and PackagesDataLoader is None:
+            warnings.warn("Skipping presamples; `presamples` not installed")
             self.presamples = []
         elif presamples:
             # Iterating over a `Campaign` object will also return the presample filepaths
-            self.presamples = [MatrixPresamples(presamples, self.seed)]
+            self.presamples = [PackagesDataLoader(
+                presamples,
+                self.seed if override_presamples_seed else None
+            )]
         else:
             self.presamples = []
 

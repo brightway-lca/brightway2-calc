@@ -16,10 +16,6 @@ try:
     from pypardiso import spsolve
 except ImportError:
     from scipy.sparse.linalg import spsolve
-try:
-    from bw_presamples import MatrixPresamples
-except ImportError:
-    MatrixPresamples = None
 
 
 if sys.version_info < (3, 0):
@@ -40,8 +36,8 @@ class IterativeMonteCarlo(LCA):
     def __init__(self, demand, method=None, iter_solver=iterative.cgs,
                  seed=None, *args, **kwargs):
         self.seed = seed or get_seed()
-        super(IterativeMonteCarlo, self).__init__(demand, method=method, *args,
-                                                  **kwargs)
+        super(IterativeMonteCarlo, self).__init__(demand, method=method,
+                                                  seed=self.seed, *args, **kwargs)
         self.iter_solver = iter_solver
         self.guess = None
         self.lcia = method is not None
