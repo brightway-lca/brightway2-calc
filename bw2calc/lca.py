@@ -87,15 +87,15 @@ class LCA(object):
 
         if presamples and PackagesDataLoader is None:
             warnings.warn("Skipping presamples; `presamples` not installed")
-            self.presamples = []
+            self.presamples = None
         elif presamples:
             # Iterating over a `Campaign` object will also return the presample filepaths
-            self.presamples = [PackagesDataLoader(
+            self.presamples = PackagesDataLoader(
                 presamples,
                 self.seed if override_presamples_seed else None
-            )]
+            )
         else:
-            self.presamples = []
+            self.presamples = None
 
         self.database_filepath, \
             self.method_filepath, \
@@ -110,7 +110,7 @@ class LCA(object):
             'method_filepath': self.method_filepath,
             'normalization': self.normalization,
             'normalization_filepath': self.normalization_filepath,
-            'presamples': [str(obj) for obj in self.presamples],
+            'presamples': str(self.presamples),
             'weighting': self.weighting,
             'weighting_filepath': self.weighting_filepath,
         })
@@ -221,10 +221,11 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             )
         if fix_dictionaries:
             self.fix_dictionaries()
-        for obj in self.presamples:
-            # Only need to index here for traditional LCA
-            obj.index_arrays(self)
-            obj.update_matrices(
+
+        # Only need to index here for traditional LCA
+        if self.presamples:
+            self.presamples.index_arrays(self)
+            self.presamples.update_matrices(
                 self, ('technosphere_matrix', 'biosphere_matrix')
             )
 
@@ -246,8 +247,9 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             mask = self.cf_params['geo'] == global_index
             self.cf_params = self.cf_params[mask]
             self.characterization_matrix = builder.build_diagonal_matrix(self.cf_params, self._biosphere_dict, "row", "amount")
-        for obj in self.presamples:
-            obj.update_matrices(self, ['characterization_matrix'])
+
+        if self.presamples:
+            self.presamples.update_matrices(self, ['characterization_matrix'])
 
     def load_normalization_data(self, builder=MatrixBuilder):
         """Load normalization data."""
@@ -260,8 +262,8 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 row_dict=self._biosphere_dict,
                 one_d=True
             )
-        for obj in self.presamples:
-            obj.update_matrices(self, ['normalization_matrix',])
+        if self.presamples:
+            self.presamples.update_matrices(self, ['normalization_matrix',])
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""
@@ -269,10 +271,10 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.weighting_filepath
         )
         self.weighting_value = self.weighting_params['amount']
-        for obj in self.presamples:
-            pass
-            # TODO: This won't work because weighting is a value not a matrix
-            obj.update_matrices(self, ['weighting_value',])
+
+        # TODO: This won't work because weighting is a value not a matrix
+        # if self.presamples:
+        #     self.presamples.update_matrices(self, ['weighting_value',])
 
     ####################
     ### Calculations ###
