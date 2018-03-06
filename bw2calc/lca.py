@@ -501,8 +501,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         """
         assert hasattr(self, "inventory"), "Must do lci first"
         if demand is not None:
-            self.redo_lci(demand)
-        self.build_demand_array(demand)
+            self.build_demand_array(demand)
         self.lci_calculation()
         self.logger.info("Redoing LCI", extra={'demand': wrap_functional_unit(demand)})
 
