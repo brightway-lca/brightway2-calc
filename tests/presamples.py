@@ -107,7 +107,7 @@ def test_multi_sample_presamples(basic):
     multi = []
     for _ in range(10):
         lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss],
-                  seed=42)
+                  seed=42, override_presamples_seed=True)
         lca.lci()
         multi.append(lca.technosphere_matrix.data)
 
