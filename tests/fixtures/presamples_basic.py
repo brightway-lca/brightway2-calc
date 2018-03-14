@@ -148,7 +148,43 @@ def build_single_presample_array():
             (cf_samples, cf_indices, 'cf'),
         ],
         id_='single-sample', name='single-sample',
-        dirpath=basedir, overwrite=True
+        dirpath=basedir, overwrite=True,
+        seed=54321,
+    )
+
+
+def build_multi_presample_array_unseeded():
+    from presamples import create_presamples_package
+
+    tech_indices = [
+        (("test", "1"), ("test", "2"), 'technosphere'),
+        (("test", "2"), ("test", "2"), 'production'),
+    ]
+
+    tech_samples = np.array((
+        [1, 2, 3],
+        [100, 101, 102],
+    ))
+
+    bio_indices = [
+        (("bio", "a"), ("test", "2")),
+        (("bio", "b"), ("test", "2")),
+        (("bio", "b"), ("test", "1")),
+    ]
+
+    bio_samples = np.array((
+        [10, 11, 12],
+        [1, 2, 3],
+        [0, -1, -2],
+    ))
+
+    create_presamples_package(
+        matrix_data=[
+            (tech_samples, tech_indices, 'technosphere'),
+            (bio_samples, bio_indices, 'biosphere'),
+        ],
+        id_='unseeded', name='unseeded',
+        dirpath=basedir, overwrite=True,
     )
 
 
@@ -183,7 +219,8 @@ def build_multi_presample_array():
             (bio_samples, bio_indices, 'biosphere'),
         ],
         id_='multi', name='multi',
-        dirpath=basedir, overwrite=True
+        dirpath=basedir, overwrite=True,
+        seed=42,
     )
 
 
@@ -232,6 +269,7 @@ if __name__ == "__main__":
         write_database()
         build_single_presample_array()
         build_multi_presample_array()
+        build_multi_presample_array_unseeded()
         build_multi_presample_sequential_array()
     finally:
         projects.delete_project(delete_dir=True)

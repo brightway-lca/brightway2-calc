@@ -14,6 +14,7 @@ from bw2calc.lca import PackagesDataLoader
 from bw2data import *
 from bw2data.tests import bw2test
 from bw2data.utils import TYPE_DICTIONARY
+from pathlib import Path
 import numpy as np
 import pytest
 import os
@@ -24,11 +25,6 @@ import os
 def basic():
     write_database()
 
-
-# Tests:
-# - Test for single sample
-# - Test for multiple samples
-# - Test for solver cache being invalidated
 
 def test_writing_test_fixture(basic):
     assert len(databases) == 2
@@ -59,6 +55,12 @@ def test_writing_test_fixture(basic):
         assert np.allclose(lca.biosphere_matrix[
             lca.biosphere_dict[x] , lca.activity_dict[y]
         ], z)
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_accept_pathlib(basic):
+    ss = Path(basedir)  / "single-sample"
+    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
+    lca.lci()
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_single_sample_presamples(basic):
@@ -128,7 +130,7 @@ def test_solver_cache_invalidated(basic):
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_multi_sample_presamples(basic):
-    ss = os.path.join(basedir, "multi")
+    path = os.path.join(basedir, "multi")
 
     lca = LCA({("test", "2"): 1}, method=("m",))
     lca.lci()
@@ -136,19 +138,84 @@ def test_multi_sample_presamples(basic):
 
     multi = []
     for _ in range(10):
-        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss],
-                  seed=42, override_presamples_seed=True)
+        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[path])
         lca.lci()
         multi.append(lca.technosphere_matrix.data)
 
     assert all(np.allclose(multi[i], multi[i + 1]) for i in range(9))
-    assert not np.allclose(multi[0], static)
+    for x in range(9):
+        assert not np.allclose(multi[x], static)
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_multi_sample_presamples_no_seed_different(basic):
+    path = os.path.join(basedir, "unseeded")
 
     multi = []
     for _ in range(10):
-        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
+        lca = LCA({("test", "2"): 1}, method=("m",), presamples=[path])
         lca.lci()
         multi.append(lca.technosphere_matrix.data)
 
     assert not all(np.allclose(multi[i], multi[i + 1]) for i in range(9))
-    assert not np.allclose(multi[0], static)
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_keep_presamples_seed(basic):
+    path = os.path.join(basedir, "multi")
+
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[path], seed=6)
+    first = [next(mc) for _ in range(10)]
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[path], seed=7)
+    second = [next(mc) for _ in range(10)]
+    assert first == second
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_override_presamples_seed(basic):
+    path = os.path.join(basedir, "multi")
+
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[path], seed=6, override_presamples_seed=True)
+    first = [next(mc) for _ in range(10)]
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[path], seed=7, override_presamples_seed=True)
+    second = [next(mc) for _ in range(10)]
+    assert first != second
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_sequential_seed():
+    path = os.path.join(basedir, "seq")
+    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[path])
+    lca.lci()
+    assert lca.technosphere_matrix[
+        lca.product_dict[("test", "1")],
+        lca.activity_dict[("test", "2")],
+    ] == -1
+    lca.presamples.update_matrices()
+    assert lca.technosphere_matrix[
+        lca.product_dict[("test", "1")],
+        lca.activity_dict[("test", "2")],
+    ] == -2
+    lca.presamples.update_matrices()
+    assert lca.technosphere_matrix[
+        lca.product_dict[("test", "1")],
+        lca.activity_dict[("test", "2")],
+    ] == -3
+    lca.presamples.update_matrices()
+    assert lca.technosphere_matrix[
+        lca.product_dict[("test", "1")],
+        lca.activity_dict[("test", "2")],
+    ] == -1
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_call_update_matrices_manually(basic):
+    path = os.path.join(basedir, "multi")
+
+    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[path])
+    lca.lci()
+    lca.lcia()
+
+    results = set()
+    for _ in range(100):
+        lca.presamples.update_matrices()
+        lca.redo_lci()
+        lca.redo_lcia()
+        results.add(lca.score)
+
+    assert len(results) > 1
