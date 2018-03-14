@@ -14,10 +14,14 @@ from bw2calc.lca import PackagesDataLoader
 from bw2data import *
 from bw2data.tests import bw2test
 from bw2data.utils import TYPE_DICTIONARY
-from pathlib import Path
 import numpy as np
 import pytest
 import os
+
+try:
+    from pathlib import Path
+except ImportError:
+    Path = None
 
 
 @pytest.fixture
@@ -57,6 +61,7 @@ def test_writing_test_fixture(basic):
         ], z)
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+@pytest.mark.skipif(not Path, reason="Python version 2")
 def test_accept_pathlib(basic):
     ss = Path(basedir)  / "single-sample"
     lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
