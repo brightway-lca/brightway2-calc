@@ -3,7 +3,7 @@ import io
 
 setup(
     name='bw2calc',
-    version="1.7",
+    version="1.7.1",
     packages=["bw2calc"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",

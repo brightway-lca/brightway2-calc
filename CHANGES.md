@@ -1,5 +1,8 @@
 # Changelog
 
+### 1.7.1 (2018-02-14)
+
+Compatibility with `presamples` release version
 
 ## 1.7 (2018-01-18)
 
