@@ -25,6 +25,11 @@ def basic():
     write_database()
 
 
+# Tests:
+# - Test for single sample
+# - Test for multiple samples
+# - Test for solver cache being invalidated
+
 def test_writing_test_fixture(basic):
     assert len(databases) == 2
     assert len(methods) == 1
@@ -111,6 +116,15 @@ def test_single_sample_presamples(basic):
         mc.product_dict[("test", "2")],
         mc.activity_dict[("test", "2")],
     ] == 1
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_solver_cache_invalidated(basic):
+    ss = os.path.join(basedir, "single-sample")
+    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
+    lca.lci(factorize=True)
+    assert hasattr(lca, "solver")
+    lca.presamples.update_matrices()
+    assert not hasattr(lca, "solver")
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_multi_sample_presamples(basic):
