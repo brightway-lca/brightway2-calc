@@ -91,8 +91,9 @@ class LCA(object):
         elif presamples:
             # Iterating over a `Campaign` object will also return the presample filepaths
             self.presamples = PackagesDataLoader(
-                presamples,
-                self.seed if override_presamples_seed else None
+                dirpaths=presamples,
+                seed=self.seed if override_presamples_seed else None,
+                lca=self
             )
         else:
             self.presamples = None
@@ -226,7 +227,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         if self.presamples:
             self.presamples.index_arrays(self)
             self.presamples.update_matrices(
-                self, ('technosphere_matrix', 'biosphere_matrix')
+                matrices=('technosphere_matrix', 'biosphere_matrix')
             )
 
     def load_lcia_data(self, builder=MatrixBuilder):
@@ -249,7 +250,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
             self.characterization_matrix = builder.build_diagonal_matrix(self.cf_params, self._biosphere_dict, "row", "amount")
 
         if self.presamples:
-            self.presamples.update_matrices(self, ['characterization_matrix'])
+            self.presamples.update_matrices(matrices=['characterization_matrix'])
 
     def load_normalization_data(self, builder=MatrixBuilder):
         """Load normalization data."""
@@ -263,7 +264,7 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
                 one_d=True
             )
         if self.presamples:
-            self.presamples.update_matrices(self, ['normalization_matrix',])
+            self.presamples.update_matrices(matrices=['normalization_matrix',])
 
     def load_weighting_data(self):
         """Load weighting data, a 1-element array."""

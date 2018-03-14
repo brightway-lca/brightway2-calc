@@ -88,5 +88,6 @@
       "row dict": "_biosphere_dict",
       "matrix": "characterization_matrix"
     }
-  ]
+  ],
+  "ncols": 1
 }

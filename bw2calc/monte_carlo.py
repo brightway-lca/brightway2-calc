@@ -102,7 +102,7 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.weighting_value = self.weighting_rng.next()
 
         if self.presamples:
-            self.presamples.update_matrices(self)
+            self.presamples.update_matrices()
 
         if not hasattr(self, "demand_array"):
             self.build_demand_array()
@@ -150,7 +150,7 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
         self.rebuild_characterization_matrix(self.cf_rng.next())
 
         if self.presamples:
-            self.presamples.update_matrices(self)
+            self.presamples.update_matrices()
 
         results = []
         for demand in self.demands:

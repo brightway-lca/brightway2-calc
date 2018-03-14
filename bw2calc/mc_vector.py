@@ -71,7 +71,7 @@ class ParameterVectorLCA(IterativeMonteCarlo):
             self.weighting_value = self.weighting_sample
 
         if self.presamples:
-            self.presamples.update_matrices(self)
+            self.presamples.update_matrices()
 
     def __next__(self):
         """Generate a new Monte Carlo iteration."""

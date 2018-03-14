@@ -28,13 +28,32 @@ def basic():
 def test_writing_test_fixture(basic):
     assert len(databases) == 2
     assert len(methods) == 1
+    lca  = LCA({("test", "1"): 1})
+    lca.lci()
+    expected = [
+        (("test", "1"), ("test", "1"), 1),
+        (("test", "3"), ("test", "1"), -0.1),
+        (("test", "2"), ("test", "2"), 0.5),
+        (("test", "1"), ("test", "2"), 2),
+        (("test", "3"), ("test", "3"), 1),
+        (("test", "1"), ("test", "3"), -3),
+        (("test", "2"), ("test", "3"), -2),
 
-def test_fixture_lca_results(basic):
-    expected = np.array([
-        [       2/3,       4/15,  2/30],
-        [-(2 + 2/3),      14/15, -4/15],
-        [-(3 + 1/3),    2 + 2/3,   2/3]
-    ])
+    ]
+    for x, y, z in expected:
+        assert np.allclose(lca.technosphere_matrix[
+            lca.product_dict[x], lca.activity_dict[y]
+        ], z)
+    expected = [
+        (("bio", "b"), ("test", "1"), 7),
+        (("bio", "a"), ("test", "2"), 1),
+        (("bio", "b"), ("test", "2"), 5),
+        (("bio", "a"), ("test", "3"), 2),
+    ]
+    for x, y, z in expected:
+        assert np.allclose(lca.biosphere_matrix[
+            lca.biosphere_dict[x] , lca.activity_dict[y]
+        ], z)
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_single_sample_presamples(basic):
@@ -46,8 +65,7 @@ def test_single_sample_presamples(basic):
         lca.supply_array,
         np.array([-(2 + 2/3),      14/15, -4/15])
     )
-    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss],
-              seed='sequential')
+    lca = LCA({("test", "2"): 1}, method=("m",), presamples=[ss])
     lca.lci()
     assert np.allclose(
         lca.supply_array,
@@ -60,8 +78,7 @@ def test_single_sample_presamples(basic):
         mc.supply_array,
         np.array([-(2 + 2/3),      14/15, -4/15])
     )
-    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[ss],
-                       seed='sequential')
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[ss])
     next(mc)
     assert np.allclose(
         mc.supply_array,
@@ -74,8 +91,7 @@ def test_single_sample_presamples(basic):
         mc.product_dict[("test", "2")],
         mc.activity_dict[("test", "2")],
     ] == 0.5
-    mc = ParameterVectorLCA({("test", "2"): 1}, method=("m",), presamples=[ss],
-                            seed='sequential')
+    mc = ParameterVectorLCA({("test", "2"): 1}, method=("m",), presamples=[ss])
     next(mc)
     assert mc.technosphere_matrix[
         mc.product_dict[("test", "2")],
@@ -89,7 +105,7 @@ def test_single_sample_presamples(basic):
         mc.activity_dict[("test", "2")],
     ] == 0.5
     mc = ComparativeMonteCarlo([{("test", "2"): 1}], method=("m",),
-                               presamples=[ss], seed='sequential')
+                               presamples=[ss])
     next(mc)
     assert mc.technosphere_matrix[
         mc.product_dict[("test", "2")],
