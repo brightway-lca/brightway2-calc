@@ -2,12 +2,75 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere
+from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere, EmptyBiosphere
 from bw2calc.lca import LCA
 from bw2data import *
 from bw2data.utils import TYPE_DICTIONARY
-from bw2data.tests import BW2DataTest
+from bw2data.tests import BW2DataTest, bw2test
 import numpy as np
+import pytest
+
+
+@bw2test
+def test_empty_biosphere_lcia():
+    biosphere = Database("biosphere")
+    biosphere.register()
+    biosphere.write({
+        ("biosphere", "1"): {
+            'categories': ['things'],
+            'exchanges': [],
+            'name': 'an emission',
+            'type': 'emission',
+            'unit': 'kg'
+    }})
+
+    test_data = {
+        ("t", "1"): {
+            'exchanges': [{
+                'amount': 1,
+                'input': ('t', "2"),
+                'type': 'technosphere',
+            }],
+        },
+        ("t", "2"): {'exchanges': []},
+    }
+    test_db = Database("t")
+    test_db.register()
+    test_db.write(test_data)
+
+    method = Method(("a method",))
+    method.register()
+    method.write([(('biosphere', "1"), 42)])
+
+    lca = LCA({("t", "1"): 1}, ("a method",))
+    lca.lci()
+    with pytest.raises(EmptyBiosphere):
+        lca.lcia()
+
+
+@bw2test
+def test_warning_empty_biosphere():
+    test_data = {
+        ("t", "1"): {
+            'exchanges': [{
+                'amount': 0.5,
+                'input': ('t', "2"),
+                'type': 'technosphere',
+                'uncertainty type': 0}],
+            'type': 'process',
+            'unit': 'kg'
+            },
+        ("t", "2"): {
+            'exchanges': [],
+            'type': 'process',
+            'unit': 'kg'
+            },
+        }
+    test_db = Database("t")
+    test_db.write(test_data)
+    lca = LCA({("t", "1"): 1})
+    with pytest.warns(UserWarning):
+        lca.lci()
 
 
 class LCACalculationTestCase(BW2DataTest):

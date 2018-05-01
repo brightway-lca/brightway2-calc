@@ -5,6 +5,7 @@ from eight import *
 from scipy import sparse
 import numpy as np
 from .errors import (
+    EmptyBiosphere,
     NonsquareTechnosphere,
     OutsideTechnosphere,
 )
@@ -223,6 +224,10 @@ Doesn't require any arguments or return anything, but changes ``self.activity_di
         if fix_dictionaries:
             self.fix_dictionaries()
 
+        if not self.biosphere_dict:
+            warnings.warn("No biosphere flows found. No inventory results can "
+                          "be calculated, `lcia` will raise an error")
+
         # Only need to index here for traditional LCA
         if self.presamples:
             self.presamples.index_arrays(self)
@@ -363,6 +368,9 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         """
         assert hasattr(self, "inventory"), "Must do lci first"
         assert self.method, "Must specify a method to perform LCIA"
+        if not self.biosphere_dict:
+            raise EmptyBiosphere
+
         self.load_lcia_data(builder)
         self.lcia_calculation()
 

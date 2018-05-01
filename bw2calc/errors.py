@@ -29,3 +29,8 @@ class NonsquareTechnosphere(BW2CalcError):
 class MalformedFunctionalUnit(BW2CalcError):
     """The given functional unit cannot be understood"""
     pass
+
+
+class EmptyBiosphere(BW2CalcError):
+    """Can't do impact assessment with no biosphere flows"""
+    pass
