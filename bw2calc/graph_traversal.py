@@ -110,7 +110,7 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
     def cumulative_score(self, index, supply, characterized_biosphere, lca):
         """Compute cumulative LCA score for a given activity"""
         demand = np.zeros((supply.shape[0],))
-        demand[index] = supply[index]
+        demand[index] = supply[index] * lca.technosphere_matrix[index, index]
         return float((characterized_biosphere * lca.solver(demand)).sum())
 
     def unit_score(self, index, supply, characterized_biosphere):
@@ -163,25 +163,28 @@ Returns:
                     activity, supply, characterized_biosphere, lca)
                 if abs(cumulative_score) < abs(total_score * cutoff):
                     continue
+                
+                # flow between activity and parent (Multiply by -1 because technosphere values are negative)
+                flow = -1.0 * lca.technosphere_matrix[activity, parent_index] * supply[parent_index]
+                total_activity_output = lca.technosphere_matrix[activity, activity] * supply[activity]
+                    
                 # Edge format is (to, from, mass amount, cumulative impact)
                 edges.append({
                     "to": parent_index,
                     "from": activity,
                     # Amount of this link * amount of parent demanding link
-                    "amount": amount * nodes[parent_index]["amount"],
+                    "amount": flow,
                     # Raw exchange value
                     "exc_amount": amount,
-                    # Amount of dataset demanded
-                    "impact": float(amount * nodes[parent_index]["amount"]
-                    # times impact per unit of this input
-                    * cumulative_score / supply[activity])
+                    # Impact related to this flow
+                    "impact": flow / total_activity_output * cumulative_score
                 })
                 # Want multiple incoming edges, but don't add existing node
                 if activity in nodes:
                     continue
                 nodes[activity] = {
                     # Total amount of this flow supplied
-                    "amount": supply[activity],
+                    "amount": total_activity_output,
                     # Cumulative score from all flows of this activity
                     "cum": cumulative_score,
                     # Individual score attributable to environmental flows
