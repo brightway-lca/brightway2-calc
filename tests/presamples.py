@@ -209,6 +209,31 @@ def test_sequential_seed():
     ] == -1
 
 @pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
+def test_sequential_seed_monte_carlo():
+    path = os.path.join(basedir, "seq")
+    mc = MonteCarloLCA({("test", "2"): 1}, method=("m",), presamples=[path])
+    next(mc)
+    assert mc.technosphere_matrix[
+        mc.product_dict[("test", "1")],
+        mc.activity_dict[("test", "2")],
+    ] == -1
+    next(mc)
+    assert mc.technosphere_matrix[
+        mc.product_dict[("test", "1")],
+        mc.activity_dict[("test", "2")],
+    ] == -2
+    next(mc)
+    assert mc.technosphere_matrix[
+        mc.product_dict[("test", "1")],
+        mc.activity_dict[("test", "2")],
+    ] == -3
+    next(mc)
+    assert mc.technosphere_matrix[
+        mc.product_dict[("test", "1")],
+        mc.activity_dict[("test", "2")],
+    ] == -1
+
+@pytest.mark.skipif(not PackagesDataLoader, reason="presamples not installed")
 def test_call_update_matrices_manually(basic):
     path = os.path.join(basedir, "multi")
 
