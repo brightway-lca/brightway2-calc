@@ -91,7 +91,7 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.load_weighting_data()
             self.weighting_rng = MCRandomNumberGenerator(self.weighting_params, seed=self.seed)
         if self.presamples:
-            self.presamples.reset_sequential_indcies()
+            self.presamples.reset_sequential_indices()
 
     def __next__(self):
         if not hasattr(self, "tech_rng"):
