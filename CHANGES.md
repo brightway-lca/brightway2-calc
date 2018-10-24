@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.3 (2018-10-24)
+
+Updated Monte Carlo for upstream presamples changes
+
 ## 1.7.2 (2018-08-21)
 
 Merged [Pull Request #3](https://bitbucket.org/cmutel/brightway2-calc/pull-requests/3/correcting-flow-and-impact-calculations/diff) to fix some attributes in graph traversals. Thanks Bernhard Steubing!
