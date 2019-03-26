@@ -215,3 +215,38 @@ class TechnosphereBiosphereMatrixBuilder(MatrixBuilder):
         vector = cls.fix_supply_use(array, vector.copy())
         return cls.build_matrix(array, product_dict, activity_dict, "row",
                                 "col", "amount", vector)
+
+
+class SingleMatrixBuilder(MatrixBuilder):
+    """Subclass of ``MatrixBuilder`` that supports consumption (i.e. multiply by -1)."""
+    @classmethod
+    def build(cls, path):
+        """Build the technosphere and biosphere sparse matrices."""
+        array = load_arrays([path])
+        col_dict = index_with_searchsorted(
+            array['output'],
+            array['col']
+        )
+        row_dict = index_with_searchsorted(
+            array['input'],
+            array['row']
+        )
+        matrix = cls.build_single_matrix(array, row_dict, col_dict)
+        return (array, row_dict, col_dict, matrix)
+
+    @classmethod
+    def fix_supply_use(cls, array, vector):
+        """Make technosphere inputs negative."""
+        # Inputs are consumed, so are negative
+        mask = np.where(
+            array["type"] == TYPE_DICTIONARY["generic consumption"]
+        )
+        vector[mask] = -1 * vector[mask]
+        return vector
+
+    @classmethod
+    def build_single_matrix(cls, array, row_dict, col_dict, new_data=None):
+        vector = array["amount"] if new_data is None else new_data
+        vector = cls.fix_supply_use(array, vector.copy())
+        return cls.build_matrix(array, row_dict, col_dict, "row",
+                                "col", "amount", vector)

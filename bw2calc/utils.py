@@ -22,7 +22,7 @@ MAX_SIGNED_INT_32 = 2147483647
 
 def load_arrays(paths):
     """Load the numpy arrays in list of filepaths ``paths``."""
-    assert all(os.path.isfile(fp) for fp in paths)
+    assert all(os.path.isfile(fp) for fp in paths if isinstance(fp, str))
     return np.hstack([np.load(path) for path in sorted(paths)])
 
 
@@ -50,6 +50,9 @@ try:
     )
 
     from bw2data.utils import TYPE_DICTIONARY, safe_filename
+
+    TYPE_DICTIONARY["generic production"] = 11
+    TYPE_DICTIONARY["generic consumption"] = 12
 
     global_index = geomapping[config.global_location]
 
@@ -150,6 +153,10 @@ except ImportError:
         "technosphere": 1,
         "biosphere": 2,
         "substitution": 3,
+        # Added for single-matrix LCAs, which combine LCI and LCIA.
+        # consumption values need to be multiplied by -1 in the matrix.
+        "generic production": 11,
+        "generic consumption": 12,
     }
 
 

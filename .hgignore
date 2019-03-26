@@ -10,3 +10,4 @@ cover
 bw2calc.egg-info
 .cache
 .pytest_cache
+.ipynb_checkpoints
