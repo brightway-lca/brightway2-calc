@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.4 (2019-08-23)
+
+* Improved support for independent LCA calculations (i.e. without Brightway2 databases, only processed arrays)
+* Added ability to calculate LCAs in a single matrix (for BONSAI)
+
 ## 1.7.3 (2018-10-24)
 
 Updated Monte Carlo for upstream presamples changes

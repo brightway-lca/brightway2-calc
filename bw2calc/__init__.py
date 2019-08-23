@@ -7,7 +7,7 @@ __all__ = [
     'DirectSolvingMixin',
     'DirectSolvingMonteCarloLCA',
     'GraphTraversal',
-    'IndepentLCAMixin',
+    'IndependentLCAMixin',
     'LCA',
     'LeastSquaresLCA',
     'load_calculation_package',
@@ -21,11 +21,11 @@ __all__ = [
     'TechnosphereBiosphereMatrixBuilder',
 ]
 
-__version__ = (1, 7, 3)
+__version__ = (1, 7, 4)
 
 from .lca import LCA
 from .dense_lca import DenseLCA
-from .independent_lca import IndepentLCAMixin
+from .independent_lca import IndependentLCAMixin
 from .least_squares import LeastSquaresLCA
 from .multi_lca import MultiLCA
 from .graph_traversal import GraphTraversal
