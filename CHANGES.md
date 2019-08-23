@@ -1,6 +1,6 @@
 # Changelog
 
-## DEV
+## 1.7.4 (2019-08-23)
 
 Improved support for independent LCA calculations (i.e. without Brightway2 databases, only processed arrays)
 
