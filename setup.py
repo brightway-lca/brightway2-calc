@@ -7,7 +7,7 @@ setup(
     packages=["bw2calc"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
-    license=io.open('LICENSE.txt', encoding='utf-8').read(),
+    license="NewBSD 3-clause; LICENSE.txt",
     url="https://bitbucket.org/cmutel/brightway2-calc",
     install_requires=[
         "eight",
