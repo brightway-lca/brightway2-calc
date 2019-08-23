@@ -1,5 +1,9 @@
 # Changelog
 
+## DEV
+
+Improved support for independent LCA calculations (i.e. without Brightway2 databases, only processed arrays)
+
 ## 1.7.3 (2018-10-24)
 
 Updated Monte Carlo for upstream presamples changes

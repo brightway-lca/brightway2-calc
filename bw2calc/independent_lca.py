@@ -4,7 +4,7 @@ from eight import *
 import os
 
 
-class IndepentLCAMixin(object):
+class IndependentLCAMixin(object):
     """Mixin that allows `method`, etc. to be filepaths instead of DataStore object names.
 
     Removes dependency on `bw2data`."""

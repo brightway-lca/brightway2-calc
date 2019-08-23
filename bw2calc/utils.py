@@ -190,12 +190,17 @@ def load_calculation_package(fp):
 def wrap_functional_unit(dct):
     """Transform functional units for effective logging.
 
-    Turns ``Activity`` objects into their keys.
-
-    Because JSON can't handle tuples as keys, also """
-    return [{'database': k[0],
-             'code': k[1],
-             'amount': v} for k, v in dct.items()]
+    Turns ``Activity`` objects into their keys."""
+    data = []
+    for key, amount in dct.items():
+        try:
+            data.append({'database': key[0],
+                         'code': key[1],
+                         'amount': amount})
+        except:
+            data.append({'key': key,
+                         'amount': amount})
+    return data
 
 
 def md5(filepath, blocksize=65536):
