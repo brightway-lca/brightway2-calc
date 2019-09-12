@@ -43,6 +43,24 @@ def test_independent_lca_with_no_global_value(monkeypatch):
     assert lca.score == 8020
 
 
+@bw2test
+def test_independent_lca_with_directly_passing_array(monkeypatch):
+    monkeypatch.setattr(
+        'bw2calc.lca.global_index',
+        None
+    )
+
+    class ILCA(IndependentLCAMixin, LCA):
+        pass
+
+    ia = np.load(ia_fp)
+    lca = ILCA({15: 1}, database_filepath=[inv_fp], method=[ia])
+    lca.lci()
+    lca.lcia()
+    print(lca.score)
+    assert lca.score == 8020
+
+
 if __name__ == '__main__':
 
     """
