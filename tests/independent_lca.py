@@ -1,14 +1,12 @@
 from bw2calc import LCA, IndependentLCAMixin
 from bw2data.tests import BW2DataTest, bw2test
 from bw2data.utils import TYPE_DICTIONARY, MAX_INT_32
-from pathlib import Path
 import numpy as np
 import os
 
-
-basedir = Path(os.path.dirname(__file__)) / "fixtures" / "independent"
-inv_fp = basedir / "inv.npy"
-ia_fp = basedir / "ia.npy"
+basedir = os.path.join(os.path.dirname(__file__), "fixtures", "independent")
+inv_fp = os.path.join(basedir, "inv.npy")
+ia_fp = os.path.join(basedir, "ia.npy")
 
 
 @bw2test
@@ -43,7 +41,6 @@ def test_independent_lca_with_no_global_value(monkeypatch):
     lca.lcia()
     print(lca.score)
     assert lca.score == 8020
-
 
 
 if __name__ == '__main__':
