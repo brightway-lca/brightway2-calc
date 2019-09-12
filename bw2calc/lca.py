@@ -335,7 +335,7 @@ Args:
 Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory``.
 
         """
-        self.load_lci_data(builder)
+        self.load_lci_data(builder=builder)
         self.build_demand_array()
         if factorize:
             self.decompose_technosphere()
