@@ -20,10 +20,22 @@ MAX_INT_32 = 4294967295
 MAX_SIGNED_INT_32 = 2147483647
 
 
-def load_arrays(paths):
-    """Load the numpy arrays in list of filepaths ``paths``."""
-    assert all(os.path.isfile(fp) for fp in paths if isinstance(fp, str))
-    return np.hstack([np.load(path) for path in sorted(paths)])
+def load_arrays(objs):
+    """Load the numpy arrays from list of objects ``objs``.
+
+    Currently accepts ``str`` filepaths, ``BytesIO``,
+     ``numpy.ndarray`` arrays. Creates copies of objects"""
+
+    arrays = []
+    for obj in objs:
+        if isinstance(obj, np.ndarray):
+            # we're done here as the object is already a numpy array
+            arrays.append(obj.copy())
+        else:
+            # treat object as loadable by numpy and try to load it from disk
+            arrays.append(np.load(obj))
+
+    return np.hstack(arrays)
 
 
 def extract_uncertainty_fields(array):
