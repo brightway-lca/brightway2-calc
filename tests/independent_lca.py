@@ -1,6 +1,7 @@
 from bw2calc import LCA, IndependentLCAMixin
 from bw2data.tests import BW2DataTest, bw2test
 from bw2data.utils import TYPE_DICTIONARY, MAX_INT_32
+from io import BytesIO
 import numpy as np
 import os
 
@@ -57,8 +58,26 @@ def test_independent_lca_with_directly_passing_array(monkeypatch):
     lca = ILCA({15: 1}, database_filepath=[inv_fp], method=[ia])
     lca.lci()
     lca.lcia()
-    print(lca.score)
     assert lca.score == 8020
+
+
+@bw2test
+def test_independent_lca_with_passing_bytes_array(monkeypatch):
+    monkeypatch.setattr(
+        'bw2calc.lca.global_index',
+        None
+    )
+
+    class ILCA(IndependentLCAMixin, LCA):
+        pass
+
+    with BytesIO() as buffer:
+        np.save(buffer, np.load(ia_fp))
+        buffer.seek(0)
+        lca = ILCA({15: 1}, database_filepath=[inv_fp], method=[buffer])
+        lca.lci()
+        lca.lcia()
+        assert lca.score == 8020
 
 
 if __name__ == '__main__':

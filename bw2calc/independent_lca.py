@@ -13,11 +13,6 @@ class IndependentLCAMixin(object):
     def get_array_filepaths(self):
         """Pass through already correct values"""
         assert self.database_filepath, "Must specify `database_filepath` in independent LCA"
-        for collection in (self.database_filepath, self.method, self.weighting, self.normalization):
-            if collection is not None:
-                for obj in collection:
-                    if not isinstance(obj, np.ndarray):
-                        assert os.path.exists(obj), "Can't find file {}".format(obj)
         return (
             self.database_filepath,
             self.method,
