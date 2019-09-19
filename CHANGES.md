@@ -1,15 +1,19 @@
 # Changelog
 
-## 1.7.4 (2019-08-23)
+### 1.7.5 (2019-09-19)
+
+Merged [Pull Request #4](https://bitbucket.org/cmutel/brightway2-calc/pull-requests/4/numpy-array-passthrough/diff) to directly pass Numpy or byte arrays instead of filepaths. Thanks Jan Machacek!
+
+### 1.7.4 (2019-08-23)
 
 * Improved support for independent LCA calculations (i.e. without Brightway2 databases, only processed arrays)
 * Added ability to calculate LCAs in a single matrix (for BONSAI)
 
-## 1.7.3 (2018-10-24)
+### 1.7.3 (2018-10-24)
 
 Updated Monte Carlo for upstream presamples changes
 
-## 1.7.2 (2018-08-21)
+### 1.7.2 (2018-08-21)
 
 Merged [Pull Request #3](https://bitbucket.org/cmutel/brightway2-calc/pull-requests/3/correcting-flow-and-impact-calculations/diff) to fix some attributes in graph traversals. Thanks Bernhard Steubing!
 
