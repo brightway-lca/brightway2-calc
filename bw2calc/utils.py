@@ -2,8 +2,7 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
-from .errors import MalformedFunctionalUnit
-import itertools
+from pathlib import Path
 import datetime
 import hashlib
 import json
@@ -11,10 +10,6 @@ import numpy as np
 import os
 import tarfile
 import tempfile
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 MAX_INT_32 = 4294967295
 MAX_SIGNED_INT_32 = 2147483647
@@ -27,13 +22,19 @@ def load_arrays(objs):
      ``numpy.ndarray`` arrays. Creates copies of objects"""
 
     arrays = []
-    for obj in objs:
-        if isinstance(obj, np.ndarray):
-            # we're done here as the object is already a numpy array
-            arrays.append(obj.copy())
-        else:
-            # treat object as loadable by numpy and try to load it from disk
-            arrays.append(np.load(obj))
+
+    is_array = lambda x: isinstance(x, np.ndarray)
+    is_filepath = lambda x: isinstance(x, (str, Path))
+    is_other = lambda x: not is_array(x) and not is_filepath(x)
+
+    for obj in (o for o in objs if is_array(o)):
+        arrays.append(obj.copy())
+
+    for obj in sorted([o for o in objs if is_filepath(o)]):
+        arrays.append(np.load(obj))
+
+    for obj in sorted([o for o in objs if is_other(o)]):
+        arrays.append(np.load(obj))
 
     return np.hstack(arrays)
 

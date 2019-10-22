@@ -1,8 +1,8 @@
 from io import BytesIO
 
-import numpy as np
+# import numpy as np
 
-from bw2calc.utils import get_seed, wrap_functional_unit, os, load_arrays
+from bw2calc.utils import get_seed, wrap_functional_unit, os, load_arrays, np
 import multiprocessing
 import pytest
 import sys
@@ -15,6 +15,7 @@ def test_get_seeds_different_under_mp_pool():
     with multiprocessing.Pool(processes=4) as pool:
         results = list(pool.map(get_seed, [None] * 10))
     assert sorted(set(results)) == sorted(results)
+
 
 def test_wrap_functional_unit():
     given = {17: 42}
@@ -35,6 +36,16 @@ def test_wrap_functional_unit():
     given = {Foo(): 42}
     expected = {'database': 'a', 'code': 'b', 'amount': 42}
     assert wrap_functional_unit(given) == [expected]
+
+
+def test_load_arrays_order(monkeypatch):
+    monkeypatch.setattr(np, "load", lambda x: x)
+    monkeypatch.setattr(np, "hstack", lambda x: x)
+    given = [1, "a", np.ones(5), 2, "b", np.zeros(3)]
+    result = load_arrays(given)
+    assert result[0].sum() == 5
+    assert result[1].sum() == 0
+    assert result[2:] == ["a", "b", 1, 2]
 
 
 def test_load_arrays_string():
