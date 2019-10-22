@@ -21,7 +21,7 @@ __all__ = [
     'TechnosphereBiosphereMatrixBuilder',
 ]
 
-__version__ = (1, 7, 5)
+__version__ = (1, 7, 6)
 
 from .lca import LCA
 from .dense_lca import DenseLCA

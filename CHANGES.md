@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.7.6 (2019-10-22)
+
+Fixed [#25](https://bitbucket.org/cmutel/brightway2-calc/issues/25/function-load_arrays-in-utilspy-unsorted): Sort array filepaths when loading. Thanks Pedro Anchieta!
+
 ### 1.7.5 (2019-09-19)
 
 Merged [Pull Request #4](https://bitbucket.org/cmutel/brightway2-calc/pull-requests/4/numpy-array-passthrough/diff) to directly pass Numpy or byte arrays instead of filepaths. Thanks Jan Machacek!
