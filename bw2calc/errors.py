@@ -34,3 +34,8 @@ class MalformedFunctionalUnit(BW2CalcError):
 class EmptyBiosphere(BW2CalcError):
     """Can't do impact assessment with no biosphere flows"""
     pass
+
+
+class AllArraysEmpty(BW2CalcError):
+    """Can't load the numpy arrays if all of them are empty"""
+    pass

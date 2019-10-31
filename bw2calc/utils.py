@@ -2,6 +2,7 @@
 from __future__ import print_function, unicode_literals
 from eight import *
 
+from .errors import AllArraysEmpty
 from pathlib import Path
 import datetime
 import hashlib
@@ -35,6 +36,9 @@ def load_arrays(objs):
 
     for obj in sorted([o for o in objs if is_other(o)]):
         arrays.append(np.load(obj))
+
+    if all(arr.shape[0] == 0 for arr in arrays):
+        raise AllArraysEmpty
 
     return np.hstack(arrays)
 

@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.7.8 (DEV)
+
+* Add check to make sure not all arrays are empty during matrix construction
+
 ### 1.7.7 (2019-10-31)
 
 Switch `lca.demand` when running `.redo_lci` or `.redo_lcia`. Thanks Aleksandra Kim!
