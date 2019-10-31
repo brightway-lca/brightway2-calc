@@ -512,6 +512,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         if demand is not None:
             self.build_demand_array(demand)
         self.lci_calculation()
+        self.demand = demand
         self.logger.info("Redoing LCI", extra={'demand': wrap_functional_unit(demand or self.demand)})
 
     def redo_lcia(self, demand=None):
@@ -527,6 +528,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         if demand is not None:
             self.redo_lci(demand)
         self.lcia_calculation()
+        self.demand = demand
         self.logger.info("Redoing LCIA", extra={'demand': wrap_functional_unit(demand or self.demand)})
 
     def to_dataframe(self, cutoff=200):

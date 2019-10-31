@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.7.7 (2019-10-31)
+
+Switch `lca.demand` when running `.redo_lci` or `.redo_lcia`. Thanks Aleksandra Kim!
+
 ### 1.7.6 (2019-10-22)
 
 Fixed [#25](https://bitbucket.org/cmutel/brightway2-calc/issues/25/function-load_arrays-in-utilspy-unsorted): Sort array filepaths when loading. Thanks Pedro Anchieta!

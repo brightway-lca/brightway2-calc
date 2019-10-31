@@ -646,6 +646,38 @@ class LCACalculationTestCase(BW2DataTest):
         lca.redo_lci({("t", "1"): 2})
         self.assertEqual(lca.supply_array.sum(), supply * 2)
 
+    def test_redo_lci_switches_demand(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [{
+                    'amount': 0.5,
+                    'input': ('t', "2"),
+                    'type': 'technosphere',
+                    'uncertainty type': 0},
+                    {'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                    'uncertainty type': 0}],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            ("t", "2"): {
+                'exchanges': [],
+                'type': 'process',
+                'unit': 'kg'
+                },
+            }
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.write(test_data)
+
+        lca = LCA({("t", "1"): 1})
+        lca.lci()
+        self.assertEqual(lca.demand, {("t", "1"): 1})
+
+        lca.redo_lci({("t", "1"): 2})
+        self.assertEqual(lca.demand, {("t", "1"): 2})
+
     def test_basic_lcia(self):
         test_data = {
             ("t", "1"): {
@@ -678,6 +710,41 @@ class LCACalculationTestCase(BW2DataTest):
         lca.lcia()
 
         self.assertTrue(np.allclose(42, lca.score))
+
+    def test_redo_lcia_switches_demand(self):
+        test_data = {
+            ("t", "1"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('t', "2"),
+                    'type': 'technosphere',
+                }],
+            },
+            ("t", "2"): {
+                'exchanges': [{
+                    'amount': 1,
+                    'input': ('biosphere', "1"),
+                    'type': 'biosphere',
+                }],
+            },
+        }
+        method_data = [(('biosphere', "1"), 42)]
+        self.add_basic_biosphere()
+        test_db = Database("t")
+        test_db.register()
+        test_db.write(test_data)
+
+        method = Method(("a method",))
+        method.register()
+        method.write(method_data)
+
+        lca = LCA({("t", "1"): 1}, ("a method",))
+        lca.lci()
+        lca.lcia()
+        self.assertEqual(lca.demand, {("t", "1"): 1})
+
+        lca.redo_lcia({("t", "2"): 2})
+        self.assertEqual(lca.demand, {("t", "2"): 2})
 
     def test_lcia_regionalized_ignored(self):
         test_data = {

@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='bw2calc',
-    version="1.7.6",
+    version="1.7.7",
     packages=["bw2calc"],
     author="Chris Mutel",
     author_email="cmutel@gmail.com",
