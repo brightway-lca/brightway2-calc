@@ -32,10 +32,10 @@ def load_arrays(objs):
         arrays.append(obj.copy())
 
     for obj in sorted([o for o in objs if is_filepath(o)]):
-        arrays.append(np.load(obj))
+        arrays.append(np.load(obj, allow_pickle=True))
 
     for obj in sorted([o for o in objs if is_other(o)]):
-        arrays.append(np.load(obj))
+        arrays.append(np.load(obj, allow_pickle=True))
 
     if all(arr.shape[0] == 0 for arr in arrays):
         raise AllArraysEmpty

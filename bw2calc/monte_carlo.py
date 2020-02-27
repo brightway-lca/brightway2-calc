@@ -63,6 +63,7 @@ class IterativeMonteCarlo(LCA):
                 self.technosphere_matrix,
                 self.demand_array,
                 x0=self.guess,
+                atol='legacy',
                 maxiter=1000)
             if status != 0:
                 return spsolve(

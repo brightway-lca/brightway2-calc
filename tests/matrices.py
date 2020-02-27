@@ -31,7 +31,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             "values", "a", "row",
             row_dict=row_dict, one_d=True)[3]
         self.assertTrue(np.allclose(
-            matrix.todense(),
+            matrix.toarray(),
             np.array(((99, 0), (0, 100)))
         ))
 
@@ -147,7 +147,7 @@ class MatrixBuilderTestCase(BW2DataTest):
             (0, 6.6, 0),
             (0, 1.3, 10)
         ))
-        self.assertTrue(np.allclose(answer, matrix.todense()))
+        self.assertTrue(np.allclose(answer, matrix.toarray()))
 
     def test_multiple_values_same_exchange(self):
         """Values for same (row, col) should add together"""
@@ -172,4 +172,4 @@ class MatrixBuilderTestCase(BW2DataTest):
             (0, 42, 0),
             (0, 0, 0)
         ))
-        self.assertTrue(np.allclose(answer, matrix.todense()))
+        self.assertTrue(np.allclose(answer, matrix.toarray()))

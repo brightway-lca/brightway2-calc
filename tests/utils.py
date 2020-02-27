@@ -39,7 +39,7 @@ def test_wrap_functional_unit():
 
 
 def test_load_arrays_order(monkeypatch):
-    monkeypatch.setattr(np, "load", lambda x: x)
+    monkeypatch.setattr(np, "load", lambda x, allow_pickle: x)
     monkeypatch.setattr(np, "hstack", lambda x: x)
     given = [1, "a", np.ones(5), 2, "b", np.zeros(3)]
     result = load_arrays(given)
@@ -83,7 +83,7 @@ def test_load_arrays_bytesio():
         dtype=dtype)
 
     with BytesIO() as b:
-        np.save(b, expected_array)
+        np.save(b, expected_array, allow_pickle=False)
         b.seek(0)  # return to beginning of file
         actual_array = load_arrays([b])
 

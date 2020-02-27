@@ -1,8 +1,14 @@
 # Changelog
 
-### 1.7.8 (DEV)
+### DEV
+
+* Replace `.todense` with `.toarray` to satisfy changes in Scipy API
+* Add `atol` parameter to iterative solver to satisfy changes in Scipy API
+
+### 1.7.8 (2019-11-01)
 
 * Add check to make sure not all arrays are empty during matrix construction
+* Allow numpy loading pickled data
 
 ### 1.7.7 (2019-10-31)
 

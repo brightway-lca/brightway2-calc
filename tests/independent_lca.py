@@ -54,7 +54,7 @@ def test_independent_lca_with_directly_passing_array(monkeypatch):
     class ILCA(IndependentLCAMixin, LCA):
         pass
 
-    ia = np.load(ia_fp)
+    ia = np.load(ia_fp, allow_pickle=True)
     lca = ILCA({15: 1}, database_filepath=[inv_fp], method=[ia])
     lca.lci()
     lca.lcia()
@@ -72,7 +72,7 @@ def test_independent_lca_with_passing_bytes_array(monkeypatch):
         pass
 
     with BytesIO() as buffer:
-        np.save(buffer, np.load(ia_fp))
+        np.save(buffer, np.load(ia_fp, allow_pickle=False))
         buffer.seek(0)
         lca = ILCA({15: 1}, database_filepath=[inv_fp], method=[buffer])
         lca.lci()

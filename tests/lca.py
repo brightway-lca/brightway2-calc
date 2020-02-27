@@ -139,6 +139,26 @@ class LCACalculationTestCase(BW2DataTest):
         with self.assertRaises(OutsideTechnosphere):
             lca.redo_lci({("z", "1"): 1})
 
+    # def test_redo_lci_with_no_new_demand_no_error(self):
+    #     self.add_basic_biosphere()
+    #     test_data = {("t", "1"): {
+    #         'exchanges': [
+    #             {'amount': 1, 'input': ('biosphere', "1"), 'type': 'biosphere'}
+    #     ]}}
+    #     test_db = Database("t")
+    #     test_db.register()
+    #     test_db.write(test_data)
+    #     more_test_data = {("z", "1"): {
+    #         'exchanges': [
+    #             {'amount': 1, 'input': ('t', "1"), 'type': 'technosphere'}
+    #     ]}}
+    #     more_test_db = Database("z")
+    #     more_test_db.register()
+    #     more_test_db.write(more_test_data)
+    #     lca = LCA({("t", "1"): 1})
+    #     lca.lci()
+    #     lca.redo_lci()
+
     def test_passing_falsey_key(self):
         self.add_basic_biosphere()
         with self.assertRaises(ValueError):

@@ -20,4 +20,4 @@ We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a
 If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
 
         """
-        return solve(self.technosphere_matrix.todense(), self.demand_array)
+        return solve(self.technosphere_matrix.toarray(), self.demand_array)

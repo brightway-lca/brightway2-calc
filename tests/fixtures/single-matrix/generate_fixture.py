@@ -67,7 +67,7 @@ def generate_fixture():
     with tempfile.TemporaryDirectory() as t:
         with tarfile.open("sm-fixture.tar.bz2", "w:bz2") as f:
             path = os.path.join(t, "array.npy")
-            np.save(path, array)
+            np.save(path, array, allow_pickle=False)
             f.add(path, "array.npy")
 
             path = os.path.join(t, "row.mapping")
