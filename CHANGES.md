@@ -1,9 +1,10 @@
 # Changelog
 
-### DEV
+### 1.8.0 (2020-02-27)
 
 * Replace `.todense` with `.toarray` to satisfy changes in Scipy API
 * Add `atol` parameter to iterative solver to satisfy changes in Scipy API
+* Fix regression in 1.7.7 which raises errors when no new `demand` was present ([PR #6](https://bitbucket.org/cmutel/brightway2-calc/pull-requests/6))
 
 ### 1.7.8 (2019-11-01)
 
