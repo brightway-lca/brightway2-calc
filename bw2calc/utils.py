@@ -66,7 +66,8 @@ try:
         weightings,
     )
 
-    from bw2data.utils import TYPE_DICTIONARY, safe_filename
+    from bw2data.utils import TYPE_DICTIONARY
+    from bw2data.filesystem import safe_filename
 
     TYPE_DICTIONARY["generic production"] = 11
     TYPE_DICTIONARY["generic consumption"] = 12
