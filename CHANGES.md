@@ -1,5 +1,49 @@
 # Changelog
 
+# 2.0.DEV1
+
+Version 2.0 brings a number of large changes, while maintaining backwards compatibility (except for dropping Py2). The net result of these changes is to prepare for a future where data management is separated from calculations, and where working with large, complicated models is much easier.
+
+## Major changes
+
+### Python 2 compatibility removed
+
+Removing the Python 2 compatibility layer allows for much cleaner and more compact code, and the use of some components from the in-development Brightway version 3 libraries. Compatible with `bw2data` version 4.0.
+
+### Use of `bw_processing`
+
+We now use [bw_processing](https://github.com/brightway-lca/bw_processing) to load processed arrays. `bw_processing` has separate files for the technosphere and biosphere arrays, and explicit indication of . Therefore, the `TechnosphereBiosphereMatrixBuilder` is no longer necessary, and is removed.
+
+## Smaller changes
+
+### New LCA input specification
+
+The existing input specification is still there, but this release also adds the ability to specify input arguments compatible with Brightway version 3. Previously, we would write `LCA({some demand}, method=foo)` - this requires `bw2calc` to use `bw2data` to figure out the dependent databases of the functional unit in `some demand`, and then to get the file paths of all the necessary files for both the inventory and impact assessment. The new syntax is `LCA({some demand}, data_objs)`, where `some demand` is already integer IDs, and `data_objects` is a lists of data packages (either in memory or on the filesystem).
+
+`bw2data` has a helper function to prepare arguments in the new syntax: `prepare_lca_inputs`.
+
+This new input syntax removes the need for `IndependentLCAMixin`, which is deleted.
+
+### Simplified handling of mapping dictionaries
+
+Added a new class (`DictionaryManager`) and made it simpler reverse, remap, and get the original dictionaries inside an `LCA`. Here is an example:
+
+```python
+LCA.dicts.biosphere[x]
+>> y
+LCA.dicts.biosphere.original # if remapped with activity keys
+LCA.dicts.biosphere.reversed[y]  # (generated on demand)
+>> x
+```
+
+The dictionaries in a conventional LCA are:
+
+* LCA.dicts.product
+* LCA.dicts.activity
+* LCA.dicts.biosphere
+
+`LCA.reverse_dict` is removed; all reversed dictionaries are available at `LCA.dicts.{name}.reversed`.
+
 ### 1.8.0 (2020-02-27)
 
 * Replace `.todense` with `.toarray` to satisfy changes in Scipy API
