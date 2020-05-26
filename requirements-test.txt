@@ -1,6 +1,7 @@
 brightway2
-eight
+bw_processing
 numpy
+pandas
 pytest
 pytest-cov
 python-coveralls

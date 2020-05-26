@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
-from eight import *
-
 import numpy as np
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import coo_matrix
 from time import time
 
 
-class SpeedTest(object):
+class SpeedTest:
     """Compare speed of sparse matrix operations on this machine compared to a reference machine."""
+
     size = 1000
     density = 0.02
     seed = 42
@@ -29,7 +27,7 @@ class SpeedTest(object):
     def get_sparse_matrix(self):
         """Adapted from scipy to use seeded RNG"""
         self.size = 1000
-        k = long(self.density * self.size ** 2)
+        k = self.density * self.size ** 2
         rng = np.random.RandomState(self.seed)
         i = rng.randint(self.size, size=k)
         j = rng.randint(self.size, size=k)

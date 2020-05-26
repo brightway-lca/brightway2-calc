@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division
-from eight import *
-
 from . import LCA
 from heapq import heappush, heappop
 import numpy as np
 import warnings
+
 try:
     from bw2data import databases
 except ImportError:
     databases = {}
 
 
-class GraphTraversal(object):
+class GraphTraversal:
     """
 Traverse a supply chain, following paths of greatest impact.
 
@@ -27,7 +25,10 @@ Should be used by calling the ``calculate`` method.
 .. warning:: Graph traversal with multioutput processes only works when other inputs are substituted (see `Multioutput processes in LCA <http://chris.mutel.org/multioutput.html>`__ for a description of multiputput process math in LCA).
 
     """
-    def calculate(self, demand, method, cutoff=0.005, max_calc=1e5, skip_coproducts=False):
+
+    def calculate(
+        self, demand, method, cutoff=0.005, max_calc=1e5, skip_coproducts=False
+    ):
         """
 Traverse the supply chain graph.
 
@@ -47,21 +48,32 @@ Returns:
 
         # Create matrix of LCIA CFs times biosphere flows, as these don't
         # change. This is also the unit score of each activity.
-        characterized_biosphere = np.array((
-            lca.characterization_matrix *
-            lca.biosphere_matrix).sum(axis=0)).ravel()
+        characterized_biosphere = np.array(
+            (lca.characterization_matrix * lca.biosphere_matrix).sum(axis=0)
+        ).ravel()
 
         heap, nodes, edges = self.initialize_heap(
-            demand, lca, supply, characterized_biosphere)
+            demand, lca, supply, characterized_biosphere
+        )
         nodes, edges, counter = self.traverse(
-            heap, nodes, edges, 0, max_calc, cutoff, score, supply,
-            characterized_biosphere, lca, skip_coproducts)
+            heap,
+            nodes,
+            edges,
+            0,
+            max_calc,
+            cutoff,
+            score,
+            supply,
+            characterized_biosphere,
+            lca,
+            skip_coproducts,
+        )
 
         return {
-            'nodes': nodes,
-            'edges': edges,
-            'lca': lca,
-            'counter': counter,
+            "nodes": nodes,
+            "edges": edges,
+            "lca": lca,
+            "counter": counter,
         }
 
     def initialize_heap(self, demand, lca, supply, characterized_biosphere):
@@ -74,13 +86,9 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
 
         """
         heap, edges = [], []
-        nodes = {-1: {
-            'amount': 1,
-            'cum': lca.score,
-            'ind': 1e-6 * lca.score
-        }}
+        nodes = {-1: {"amount": 1, "cum": lca.score, "ind": 1e-6 * lca.score}}
         for activity_key, activity_amount in demand.items():
-            index = lca.activity_dict[activity_key]
+            index = lca.dicts.activity[activity_key]
             cum_score = self.cumulative_score(
                 index, supply, characterized_biosphere, lca
             )
@@ -88,15 +96,17 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
             nodes[index] = {
                 "amount": float(supply[index]),
                 "cum": cum_score,
-                "ind": self.unit_score(index, supply, characterized_biosphere)
+                "ind": self.unit_score(index, supply, characterized_biosphere),
             }
-            edges.append({
-                "to": -1,
-                "from": index,
-                "amount": activity_amount,
-                "exc_amount": activity_amount,
-                "impact": cum_score * activity_amount / float(supply[index]),
-            })
+            edges.append(
+                {
+                    "to": -1,
+                    "from": index,
+                    "amount": activity_amount,
+                    "exc_amount": activity_amount,
+                    "impact": cum_score * activity_amount / float(supply[index]),
+                }
+            )
         return heap, nodes, edges
 
     def build_lca(self, demand, method):
@@ -117,9 +127,20 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
         """Compute the LCA impact caused by the direct emissions and resource consumption of a given activity"""
         return float(characterized_biosphere[index] * supply[index])
 
-    def traverse(self, heap, nodes, edges, counter, max_calc, cutoff,
-                 total_score, supply, characterized_biosphere, lca,
-                 skip_coproducts):
+    def traverse(
+        self,
+        heap,
+        nodes,
+        edges,
+        counter,
+        max_calc,
+        cutoff,
+        total_score,
+        supply,
+        characterized_biosphere,
+        lca,
+        skip_coproducts,
+    ):
         """
 Build a directed graph by traversing the supply chain.
 
@@ -129,8 +150,8 @@ Returns:
     (nodes, edges, number of calculations)
 
         """
-        static_databases = {name for name in databases if databases[name].get('static')}
-        reverse, _, _ = lca.reverse_dict()
+        static_databases = {name for name in databases if databases[name].get("static")}
+        reverse = lca.dicts.activity.reversed
 
         while heap:
             if counter >= max_calc:
@@ -144,13 +165,16 @@ Returns:
             # Assume that this activity produces its reference product
             scale_value = lca.technosphere_matrix[parent_index, parent_index]
             if scale_value == 0:
-                raise ValueError(u"Can't rescale activities that produce "
-                                 u"zero reference product")
+                raise ValueError(
+                    u"Can't rescale activities that produce " u"zero reference product"
+                )
             col = lca.technosphere_matrix[:, parent_index].tocoo()
             # Multiply by -1 because technosphere values are negative
             # (consumption of inputs) and rescale
-            children = [(int(col.row[i]), float(-1 * col.data[i] / scale_value))
-                for i in range(col.row.shape[0])]
+            children = [
+                (int(col.row[i]), float(-1 * col.data[i] / scale_value))
+                for i in range(col.row.shape[0])
+            ]
             for activity, amount in children:
                 # Skip values on technosphere diagonal
                 if activity == parent_index:
@@ -160,25 +184,34 @@ Returns:
                     continue
                 counter += 1
                 cumulative_score = self.cumulative_score(
-                    activity, supply, characterized_biosphere, lca)
+                    activity, supply, characterized_biosphere, lca
+                )
                 if abs(cumulative_score) < abs(total_score * cutoff):
                     continue
-                
+
                 # flow between activity and parent (Multiply by -1 because technosphere values are negative)
-                flow = -1.0 * lca.technosphere_matrix[activity, parent_index] * supply[parent_index]
-                total_activity_output = lca.technosphere_matrix[activity, activity] * supply[activity]
-                    
+                flow = (
+                    -1.0
+                    * lca.technosphere_matrix[activity, parent_index]
+                    * supply[parent_index]
+                )
+                total_activity_output = (
+                    lca.technosphere_matrix[activity, activity] * supply[activity]
+                )
+
                 # Edge format is (to, from, mass amount, cumulative impact)
-                edges.append({
-                    "to": parent_index,
-                    "from": activity,
-                    # Amount of this link * amount of parent demanding link
-                    "amount": flow,
-                    # Raw exchange value
-                    "exc_amount": amount,
-                    # Impact related to this flow
-                    "impact": flow / total_activity_output * cumulative_score
-                })
+                edges.append(
+                    {
+                        "to": parent_index,
+                        "from": activity,
+                        # Amount of this link * amount of parent demanding link
+                        "amount": flow,
+                        # Raw exchange value
+                        "exc_amount": amount,
+                        # Impact related to this flow
+                        "impact": flow / total_activity_output * cumulative_score,
+                    }
+                )
                 # Want multiple incoming edges, but don't add existing node
                 if activity in nodes:
                     continue
@@ -189,8 +222,7 @@ Returns:
                     "cum": cumulative_score,
                     # Individual score attributable to environmental flows
                     # coming directory from or to this activity
-                    "ind": self.unit_score(activity, supply,
-                                           characterized_biosphere)
+                    "ind": self.unit_score(activity, supply, characterized_biosphere),
                 }
                 heappush(heap, (abs(1 / cumulative_score), activity))
 

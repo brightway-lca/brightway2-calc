@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
-from eight import *
-
 from .errors import EfficiencyWarning, NoSolutionFound
 from .lca import LCA
-from scipy.sparse.linalg import lsqr, lsmr
+from scipy.sparse.linalg import lsmr
 import warnings
 
 
@@ -18,18 +15,17 @@ class LeastSquaresLCA(LCA):
     * `Another least-squares algorithm in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsqr.html#scipy.sparse.linalg.lsqr>`_
 
     """
+
     def solve_linear_system(self, solver=lsmr):
         if self.technosphere_matrix.shape[0] == self.technosphere_matrix.shape[1]:
-            warnings.warn("Don't use LeastSquaresLCA for square matrices",
-                          EfficiencyWarning)
-        self.solver_results = solver(
-            self.technosphere_matrix,
-            self.demand_array
-        )
+            warnings.warn(
+                "Don't use LeastSquaresLCA for square matrices", EfficiencyWarning
+            )
+        self.solver_results = solver(self.technosphere_matrix, self.demand_array)
         if self.solver_results[1] not in {1, 2}:
             warnings.warn(
                 "No suitable solution found - supply array is probably nonsense",
-                NoSolutionFound
+                NoSolutionFound,
             )
         return self.solver_results[0]
 

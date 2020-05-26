@@ -19,7 +19,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -32,33 +32,6 @@ jobs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
-
-- job:
-  displayName: ubuntu-18.04-27
-  pool:
-    vmImage: 'ubuntu-18.04'
-  strategy:
-    matrix:
-      Python27:
-        python.version: '2.7'
-
-  steps:
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
-
-  - bash: conda create --yes --quiet --name bw2
-    displayName: Create Anaconda environment
-
-  - bash: |
-      source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest=4.6.4 pytest-azurepipelines pytest-cov=2.6.0 pathlib
-    displayName: Install Anaconda packages
-
-  - bash: |
-      source activate bw2
-      pwd
-      pytest --cov=bw2calc --cov-report=xml --cov-report=html
-    displayName: pytest
 
 - job:
   displayName: macOS-10.14-38
@@ -80,33 +53,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
-    displayName: Install Anaconda packages
-
-  - bash: |
-      source activate bw2
-      pytest --cov=bw2calc --cov-report=xml --cov-report=html
-    displayName: pytest
-
-- job:
-  displayName: macOS-10.14-27
-  pool:
-    vmImage: 'macOS-10.14'
-  strategy:
-    matrix:
-      Python27:
-        python.version: '2.7'
-
-  steps:
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
-
-  - bash: conda create --yes --quiet --name bw2
-    displayName: Create Anaconda environment
-
-  - bash: |
-      source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest=4.6.4 pytest-azurepipelines pytest-cov=2.6.0 pathlib
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -134,33 +81,7 @@ jobs:
 
   - script: |
       call activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
-    displayName: Install Anaconda packages
-
-  - script: |
-      call activate bw2
-      pytest --cov=bw2calc --cov-report=xml --cov-report=html
-    displayName: pytest
-
-- job:
-  displayName: vs2017-win2016-27
-  pool:
-    vmImage: 'vs2017-win2016'
-  strategy:
-    matrix:
-      Python27:
-        python.version: '2.7'
-
-  steps:
-  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-    displayName: Add conda to PATH
-
-  - script: conda create --yes --quiet --name bw2
-    displayName: Create Anaconda environment
-
-  - script: |
-      call activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy scipy psutil pypardiso eight pytest peewee brightway2 pytest=4.6.4 pytest-azurepipelines pytest-cov=2.6.0 pathlib
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - script: |

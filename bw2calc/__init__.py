@@ -1,36 +1,47 @@
 # -*- coding: utf-8 -*-
 
 __all__ = [
-    'ComparativeMonteCarlo',
-    'DenseLCA',
-    'direct_solving_worker',
-    'DirectSolvingMixin',
-    'DirectSolvingMonteCarloLCA',
-    'GraphTraversal',
-    'IndependentLCAMixin',
-    'LCA',
-    'LeastSquaresLCA',
-    'load_calculation_package',
-    'MatrixBuilder',
-    'MonteCarloLCA',
-    'MultiLCA',
-    'MultiMonteCarlo',
-    'ParallelMonteCarlo',
-    'ParameterVectorLCA',
-    'save_calculation_package',
-    'TechnosphereBiosphereMatrixBuilder',
+    "ComparativeMonteCarlo",
+    "DenseLCA",
+    "direct_solving_worker",
+    "DirectSolvingMixin",
+    "DirectSolvingMonteCarloLCA",
+    "GraphTraversal",
+    "LCA",
+    "LeastSquaresLCA",
+    # "load_calculation_package",
+    "MonteCarloLCA",
+    "MultiLCA",
+    "MultiMonteCarlo",
+    "ParallelMonteCarlo",
+    "ParameterVectorLCA",
+    # "save_calculation_package",
 ]
 
-__version__ = (1, 8, 0)
+from .version import version as __version__
+
+try:
+    from pypardiso import factorized, spsolve
+except ImportError:
+    from scipy.sparse.linalg import factorized, spsolve
+try:
+    from presamples import PackagesDataLoader
+except ImportError:
+    PackagesDataLoader = None
+try:
+    from bw2data import prepare_lca_inputs, __version__ as _bw2data_version
+    if not _bw2data_version >= (4, 0):
+        raise ImportError
+except ImportError:
+    prepare_lca_inputs = None
+
 
 from .lca import LCA
 from .dense_lca import DenseLCA
-from .independent_lca import IndependentLCAMixin
 from .least_squares import LeastSquaresLCA
 from .multi_lca import MultiLCA
 from .graph_traversal import GraphTraversal
-from .matrices import MatrixBuilder, TechnosphereBiosphereMatrixBuilder
-from .utils import save_calculation_package, load_calculation_package
+# from .utils import save_calculation_package, load_calculation_package
 
 try:
     from .monte_carlo import (

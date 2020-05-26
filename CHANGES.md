@@ -4,6 +4,15 @@
 
 Version 2.0 brings a number of large changes, while maintaining backwards compatibility (except for dropping Py2). The net result of these changes is to prepare for a future where data management is separated from calculations, and where working with large, complicated models is much easier.
 
+## Future DEV releases
+
+Before 2.0 is released, the following features will be added:
+
+* Presamples will be adapted to use `bw_processing`
+* Logging will be taken seriously :)
+* LCA results to dataframes
+* Contribution analysis shifted from `bw2analyzer` to `bw2calc`.
+
 ## Major changes
 
 ### Python 2 compatibility removed
@@ -14,6 +23,10 @@ Removing the Python 2 compatibility layer allows for much cleaner and more compa
 
 We now use [bw_processing](https://github.com/brightway-lca/bw_processing) to load processed arrays. `bw_processing` has separate files for the technosphere and biosphere arrays, and explicit indication of . Therefore, the `TechnosphereBiosphereMatrixBuilder` is no longer necessary, and is removed.
 
+### No dependency on `bw2data`
+
+`bw2data` is now an optional install, and even if available only a single utility function is used to prepare input data. `bw2calc` is primarily intended to be used as an independent library.
+
 ## Smaller changes
 
 ### New LCA input specification
@@ -22,7 +35,7 @@ The existing input specification is still there, but this release also adds the 
 
 `bw2data` has a helper function to prepare arguments in the new syntax: `prepare_lca_inputs`.
 
-This new input syntax removes the need for `IndependentLCAMixin`, which is deleted.
+This new input syntax, with consistent column labels for all structured arrays, removes the need for `IndependentLCAMixin`. This is deleted, and the methods `get_vector`, `get_vector_metadata`, and `set_vector` are added.
 
 ### Simplified handling of mapping dictionaries
 
@@ -43,6 +56,10 @@ The dictionaries in a conventional LCA are:
 * LCA.dicts.biosphere
 
 `LCA.reverse_dict` is removed; all reversed dictionaries are available at `LCA.dicts.{name}.reversed`.
+
+### More robust matrix building
+
+More tests were identified, and undefined behaviour is now specified. For example, the previous matrix builders assumed that the values in the provided row or column dictionaries were sequential integers starting from zero - this assumption is now relaxed, and we allow this dictionary values to start with an offset. There are also tests and documentation on what happens under various cases when `drop_missing` is `False`, but missing values are present.
 
 ### 1.8.0 (2020-02-27)
 

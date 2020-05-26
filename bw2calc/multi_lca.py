@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division
-from eight import *
-
 from .lca import LCA
-from .utils import wrap_functional_unit
+import numpy as np
+
 try:
     from bw2data import calculation_setups
 except ImportError:
     calculation_setups = None
-import numpy as np
 
 
-class MultiLCA(object):
+class MultiLCA:
     """Wrapper class for performing LCA calculations with many functional units and LCIA methods.
 
     Needs to be passed a ``calculation_setup`` name.
@@ -21,6 +18,7 @@ class MultiLCA(object):
     Initialization creates `self.results`, which is a NumPy array of LCA scores, with rows of functional units and columns of LCIA methods. Ordering is the same as in the `calculation_setup`.
 
     """
+
     def __init__(self, cs_name, log_config=None):
         if calculation_setups is None:
             raise ImportError
@@ -28,17 +26,17 @@ class MultiLCA(object):
         try:
             cs = calculation_setups[cs_name]
         except KeyError:
-            raise ValueError(
-                "{} is not a known `calculation_setup`.".format(cs_name)
-            )
-        self.func_units = cs['inv']
-        self.methods = cs['ia']
+            raise ValueError("{} is not a known `calculation_setup`.".format(cs_name))
+        self.func_units = cs["inv"]
+        self.methods = cs["ia"]
         self.lca = LCA(demand=self.all, method=self.methods[0], log_config=log_config)
-        self.lca.logger.info({
-            'message': 'Started MultiLCA calculation',
-            'methods': list(self.methods),
-            'functional units': [wrap_functional_unit(o) for o in self.func_units]
-        })
+        self.lca.logger.info(
+            {
+                "message": "Started MultiLCA calculation",
+                "methods": list(self.methods),
+                "functional units": [wrap_functional_unit(o) for o in self.func_units],
+            }
+        )
         self.lca.lci(factorize=True)
         self.method_matrices = []
         self.results = np.zeros((len(self.func_units), len(self.methods)))

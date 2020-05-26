@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals, division
-from eight import *
-
-from scipy import sparse
 from io import BytesIO
-import numpy as np
 from .errors import (
     NonsquareTechnosphere,
     OutsideTechnosphere,
@@ -18,10 +13,10 @@ from .utils import (
     load_arrays,
     mapping,
 )
-import copy
-import numpy as np
+from collections.abc import Mapping
 import json
 import logging
+import numpy as np
 import tarfile
 import warnings
 
@@ -30,25 +25,25 @@ try:
 except ImportError:
     from scipy.sparse.linalg import factorized, spsolve
 try:
-    import pandas
-except ImportError:
-    pandas = None
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
-try:
     from presamples import PackagesDataLoader
 except ImportError:
     PackagesDataLoader = None
 
 
-class SingleMatrixLCA(object):
+class SingleMatrixLCA:
     """An LCA which puts everything into one matrix.
 
     Comes with advantages and disadvantages, and designed exclusively for `BONSAI <https://bonsai.uno/>`__ via `beebee <https://github.com/BONSAMURAIS/beebee/>`__."""
-    def __init__(self, demand, data_filepath, log_config=None, presamples=None,
-                 seed=None, override_presamples_seed=False):
+
+    def __init__(
+        self,
+        demand,
+        data_filepath,
+        log_config=None,
+        presamples=None,
+        seed=None,
+        override_presamples_seed=False,
+    ):
         """Create a new single-matrix LCA calculation.
 
         Args:
@@ -63,7 +58,7 @@ class SingleMatrixLCA(object):
 
         if log_config:
             create_logger(**log_config)
-        self.logger = logging.getLogger('bw2calc')
+        self.logger = logging.getLogger("bw2calc")
 
         self.demand = demand
         self.filepath = data_filepath
@@ -77,16 +72,19 @@ class SingleMatrixLCA(object):
             self.presamples = PackagesDataLoader(
                 dirpaths=presamples,
                 seed=self.seed if override_presamples_seed else None,
-                lca=self
+                lca=self,
             )
         else:
             self.presamples = None
 
-        self.logger.info("Created LCA object", extra={
-            'demand': str(self.demand),
-            'data_filepath': self.filepath,
-            'presamples': str(self.presamples),
-        })
+        self.logger.info(
+            "Created LCA object",
+            extra={
+                "demand": str(self.demand),
+                "data_filepath": self.filepath,
+                "presamples": str(self.presamples),
+            },
+        )
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -105,12 +103,16 @@ class SingleMatrixLCA(object):
                 self.demand_array[self.row_dict[key]] = demand[key]
             except KeyError:
                 if key in self.col_dict:
-                    raise ValueError((u"LCA can only be performed on products,"
-                        u" not activities ({} is the wrong dimension)"
+                    raise ValueError(
+                        (
+                            u"LCA can only be performed on products,"
+                            u" not activities ({} is the wrong dimension)"
                         ).format(key)
                     )
                 else:
-                    raise OutsideTechnosphere("Can't find key {} in product dictionary".format(key))
+                    raise OutsideTechnosphere(
+                        "Can't find key {} in product dictionary".format(key)
+                    )
 
     #########################
     ### Data manipulation ###
@@ -118,14 +120,18 @@ class SingleMatrixLCA(object):
 
     def fix_dictionaries(self, row_mapping, col_mapping):
         """Fix the row and column dictionaries from ``{integer: row/col index}`` to ``{label: row/col index}``."""
-        self.row_dict = {label: self.row_dict[index] for label, index in row_mapping.items()}
-        self.col_dict = {label: self.col_dict[index] for label, index in col_mapping.items()}
+        self.row_dict = {
+            label: self.row_dict[index] for label, index in row_mapping.items()
+        }
+        self.col_dict = {
+            label: self.col_dict[index] for label, index in col_mapping.items()
+        }
 
     def reverse_dict(self):
         """Construct reverse dicts from technosphere and biosphere row and col indices to activity_dict/product_dict/biosphere_dict keys.
 
         Returns:
-            (reversed ``self.activity_dict``, ``self.product_dict`` and ``self.biosphere_dict``)
+            (reversed ``self.dicts.activity``, ``self.dicts.product`` and ``self.dicts.biosphere``)
         """
         rev_row = {v: k for k, v in self.row_dict.items()}
         rev_col = {v: k for k, v in self.col_dict.items()}
@@ -146,38 +152,39 @@ class SingleMatrixLCA(object):
         * A mapping dictionary from ``{"method URI": {labels}}`` which allows for LCIA sums
 
         """
-        with tarfile.open(self.filepath, 'r:bz2') as f:
+        with tarfile.open(self.filepath, "r:bz2") as f:
 
             # Hack needed because of https://github.com/numpy/numpy/issues/7989
             array_file = BytesIO()
             array_file.write(f.extractfile("array.npy").read())
             array_file.seek(0)
 
-            self.params, self.row_dict, self.col_dict, \
-                self.matrix = builder.build(array_file)
+            self.params, self.row_dict, self.col_dict, self.matrix = builder.build(
+                array_file
+            )
             row_mapping = json.load(f.extractfile("row.mapping"))
             col_mapping = json.load(f.extractfile("col.mapping"))
             categories = json.load(f.extractfile("categories.mapping"))
         if len(self.row_dict) != len(self.col_dict):
-            raise NonsquareTechnosphere((
-                "Single matrix is not square: {} columns and {} rows."
-                ).format(len(self.row_dict), len(self.col_dict))
+            raise NonsquareTechnosphere(
+                ("Single matrix is not square: {} columns and {} rows.").format(
+                    len(self.row_dict), len(self.col_dict)
+                )
             )
         self.fix_dictionaries(row_mapping, col_mapping)
 
         self.category_index_arrays = {
             name: np.array(
                 [(self.row_dict[label], 1) for label in labels],
-                dtype=[('INDEX', np.uint32), ('CONSTANT', np.uint32)]
-            ) for name, labels in categories.items()
+                dtype=[("INDEX", np.uint32), ("CONSTANT", np.uint32)],
+            )
+            for name, labels in categories.items()
         }
 
         # Only need to index here for traditional LCA
         if self.presamples:
             self.presamples.index_arrays(self)
-            self.presamples.update_matrices(
-                matrices=('matrix',)
-            )
+            self.presamples.update_matrices(matrices=("matrix",))
 
     def decompose_technosphere(self):
         """
@@ -206,15 +213,12 @@ If the technosphere matrix has already been factorized, then the decomposed tech
         if hasattr(self, "solver"):
             return self.solver(self.demand_array)
         else:
-            return spsolve(
-                self.matrix,
-                self.demand_array)
+            return spsolve(self.matrix, self.demand_array)
 
     def lcia(self, *args, **kwargs):
         warnings.warn("LCIA does nothing in a SingleMatrixLCA")
 
-    def calculate(self, factorize=False,
-            builder=SingleMatrixBuilder):
+    def calculate(self, factorize=False, builder=SingleMatrixBuilder):
         """Calculate an LCA score.
 
         Creates ``self.supply_array``, a vector of activities, flows, and characterization pathways which satisfy the demand.
@@ -241,7 +245,7 @@ If the technosphere matrix has already been factorized, then the decomposed tech
         self.scores, self.contributions = {}, {}
         for name, array in self.category_index_arrays.items():
             matrix = MatrixBuilder.build_diagonal_matrix(
-                array, self.row_dict, 'INDEX', data_label='CONSTANT'
+                array, self.row_dict, "INDEX", data_label="CONSTANT"
             )
             self.scores[name] = float((self.matrix * matrix * self.supply_array).sum())
 
@@ -273,4 +277,4 @@ If the technosphere matrix has already been factorized, then the decomposed tech
         if demand is not None:
             self.build_demand_array(demand)
         self.calculate_scores()
-        self.logger.info("Redoing LCI", extra={'demand': str(demand or self.demand)})
+        self.logger.info("Redoing LCI", extra={"demand": str(demand or self.demand)})

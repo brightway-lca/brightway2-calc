@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, unicode_literals
-from eight import *
-
-from .utils import MAX_INT_32
+from bw_processing import MAX_SIGNED_32BIT_INT
 import itertools
 import numpy as np
 
@@ -43,7 +40,7 @@ def index_with_arrays(array_from, array_to, mapping):
     mask = array_from <= keys.max()
     array_to[:] = -1
     array_to[mask] = index_array[array_from[mask]]
-    array_to[array_to == -1] = MAX_INT_32
+    array_to[array_to == -1] = MAX_SIGNED_32BIT_INT
 
 
 def index_with_searchsorted(array_from, array_to):
@@ -68,7 +65,4 @@ def index_with_searchsorted(array_from, array_to):
     unique = np.unique(array_from)
     idx = np.searchsorted(unique, array_from)
     array_to[:] = idx
-    return dict(zip(
-        (int(x) for x in unique),
-        itertools.count()
-    ))
+    return dict(zip((int(x) for x in unique), itertools.count()))
