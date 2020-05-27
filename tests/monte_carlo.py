@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-from bw2calc import MonteCarloLCA, DirectSolvingMonteCarloLCA, MultiMonteCarlo, LCA, ParallelMonteCarlo
+from bw2calc import (
+    MonteCarloLCA,
+    DirectSolvingMonteCarloLCA,
+    MultiMonteCarlo,
+    LCA,
+    ParallelMonteCarlo,
+)
 from bw2data import config, Database, Method, projects
 from bw2data.utils import random_string
 from numbers import Number
@@ -62,9 +68,7 @@ def test_direct_solving():
 def test_multi_mc():
     k1, k2, packages = mc_fixture()
     mc = MultiMonteCarlo(
-        [{k1: 1}, {k2: 1}, {k1: 1, k2: 1}],
-        data_objs=packages,
-        iterations=10,
+        [{k1: 1}, {k2: 1}, {k1: 1, k2: 1}], data_objs=packages, iterations=10,
     )
     results = mc.calculate()
     assert results

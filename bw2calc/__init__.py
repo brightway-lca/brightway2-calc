@@ -30,6 +30,7 @@ except ImportError:
     PackagesDataLoader = None
 try:
     from bw2data import prepare_lca_inputs, __version__ as _bw2data_version
+
     if not _bw2data_version >= (4, 0):
         raise ImportError
 except ImportError:
@@ -41,6 +42,7 @@ from .dense_lca import DenseLCA
 from .least_squares import LeastSquaresLCA
 from .multi_lca import MultiLCA
 from .graph_traversal import GraphTraversal
+
 # from .utils import save_calculation_package, load_calculation_package
 
 try:

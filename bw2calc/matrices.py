@@ -116,9 +116,9 @@ def flip_amounts(params, vector=None):
     Uses ``vector`` or ``array['amount']`` (modifying in place).
 
     Used primarily in the technosphere matrix for consumed inputs."""
-    mask = params['flip']
+    mask = params["flip"]
     if vector is None:
-        vector = params['amount']
+        vector = params["amount"]
     vector[mask] *= -1
     return vector
 

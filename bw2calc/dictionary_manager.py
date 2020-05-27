@@ -32,6 +32,7 @@ class ReversibleRemappableDictionary(Mapping):
         Out[9]: 2
 
     """
+
     def __init__(self, obj):
         if not isinstance(obj, Mapping):
             raise ValueError("Input must be a dict")
@@ -73,7 +74,7 @@ class ReversibleRemappableDictionary(Mapping):
         self._dict = self._original
         delattr(self, "_original")
 
-    def __getitem__ (self, key):
+    def __getitem__(self, key):
         return self._dict[key]
 
     def __iter__(self):
@@ -97,6 +98,7 @@ class DictionaryManager:
         >> 2
 
     """
+
     def __init__(self):
         self._dicts = {}
 

@@ -25,7 +25,7 @@ def create_example_database():
     with temporary_project_dir() as td:
         bw2io.add_example_database()
         db = bw2data.Database("Mobility example")
-        method = bw2data.Method(('IPCC', 'simple'))
+        method = bw2data.Method(("IPCC", "simple"))
 
         fixture_dir = this_dir / "example_db"
         fixture_dir.mkdir(exist_ok=True)
@@ -52,7 +52,9 @@ def create_empty_biosphere():
 
         test_data = {
             ("t", "1"): {
-                "exchanges": [{"amount": 1, "input": ("t", "2"), "type": "technosphere",}],
+                "exchanges": [
+                    {"amount": 1, "input": ("t", "2"), "type": "technosphere",}
+                ],
             },
             ("t", "2"): {"exchanges": []},
         }
@@ -137,9 +139,7 @@ def create_mc_single_activity_only_production():
     with temporary_project_dir() as td:
         biosphere = bw2data.Database("biosphere")
         biosphere.write(
-            {
-                ("biosphere", "1"): {"type": "emission"},
-            }
+            {("biosphere", "1"): {"type": "emission"},}
         )
         saop = bw2data.Database("saop")
         saop.write(

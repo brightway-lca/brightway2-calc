@@ -15,9 +15,7 @@ class IterativeMonteCarlo(LCA):
         self, demand, method=None, iter_solver=iterative.cgs, seed=None, *args, **kwargs
     ):
         self.seed = seed or get_seed()
-        super().__init__(
-            demand, method=method, seed=self.seed, *args, **kwargs
-        )
+        super().__init__(demand, method=method, seed=self.seed, *args, **kwargs)
         self.iter_solver = iter_solver
         self.guess = None
         # self.logger.info("Seeded RNGs", extra={"seed": self.seed})
@@ -170,9 +168,7 @@ class ParallelMonteCarlo:
             if not prepare_lca_inputs:
                 raise ImportError("bw2data version >= 4 not found")
             demand, data_objs, _ = prepare_lca_inputs(
-                demand=demand,
-                method=method,
-                remapping=False
+                demand=demand, method=method, remapping=False
             )
 
         self.demand = demand
@@ -243,9 +239,7 @@ Call ``.calculate()`` to generate results.
             if not prepare_lca_inputs:
                 raise ImportError("bw2data version >= 4 not found")
             demands, data_objs, _ = prepare_lca_inputs(
-                demands=demands,
-                method=method,
-                remapping=False
+                demands=demands, method=method, remapping=False
             )
 
         self.demands = demands
@@ -277,10 +271,6 @@ Call ``.calculate()`` to generate results.
         """
         with multiprocessing.Pool(processes=self.cpus) as pool:
             results = pool.map(
-                worker,
-                [
-                    (self.demands, self.packages)
-                    for _ in range(self.iterations)
-                ],
+                worker, [(self.demands, self.packages) for _ in range(self.iterations)],
             )
         return self.merge_results(results)

@@ -51,4 +51,5 @@ class AllArraysEmpty(BW2CalcError):
 
 class NoArrays(BW2CalcError):
     """No arrays for given matrix"""
+
     pass

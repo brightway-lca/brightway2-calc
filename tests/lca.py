@@ -54,7 +54,10 @@ def test_example_db_basic():
         fd / "ipcc.zip",
     ]
 
-    lca = LCA({mapping[('Mobility example', 'Driving an electric car')]: 1}, data_objs=packages)
+    lca = LCA(
+        {mapping[("Mobility example", "Driving an electric car")]: 1},
+        data_objs=packages,
+    )
     lca.lci()
     lca.lcia()
     assert lca.supply_array.sum()
@@ -71,7 +74,10 @@ def test_lca_has():
         fd / "ipcc.zip",
     ]
 
-    lca = LCA({mapping[('Mobility example', 'Driving an electric car')]: 1}, data_objs=packages)
+    lca = LCA(
+        {mapping[("Mobility example", "Driving an electric car")]: 1},
+        data_objs=packages,
+    )
     assert lca.has("technosphere")
     assert lca.has("characterization")
     assert not lca.has("foo")
