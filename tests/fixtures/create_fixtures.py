@@ -71,6 +71,69 @@ def create_empty_biosphere():
             json.dump(list(bw2data.mapping.items()), f)
 
 
+def create_mc_basic():
+    with temporary_project_dir() as td:
+        biosphere = bw2data.Database("biosphere")
+        biosphere.write(
+            {
+                ("biosphere", "1"): {"type": "emission"},
+                ("biosphere", "2"): {"type": "emission"},
+            }
+        )
+        test_db = bw2data.Database("test")
+        test_db.write(
+            {
+                ("test", "1"): {
+                    "exchanges": [
+                        {
+                            "amount": 0.5,
+                            "minimum": 0.2,
+                            "maximum": 0.8,
+                            "input": ("test", "2"),
+                            "type": "technosphere",
+                            "uncertainty type": 4,
+                        },
+                        {
+                            "amount": 1,
+                            "minimum": 0.5,
+                            "maximum": 1.5,
+                            "input": ("biosphere", "1"),
+                            "type": "biosphere",
+                            "uncertainty type": 4,
+                        },
+                    ],
+                    "type": "process",
+                },
+                ("test", "2"): {
+                    "exchanges": [
+                        {
+                            "amount": 0.1,
+                            "minimum": 0,
+                            "maximum": 0.2,
+                            "input": ("biosphere", "2"),
+                            "type": "biosphere",
+                            "uncertainty type": 4,
+                        }
+                    ],
+                    "type": "process",
+                    "unit": "kg",
+                },
+            }
+        )
+        method = bw2data.Method(("a", "method"))
+        method.write(
+            [(("biosphere", "1"), 1), (("biosphere", "2"), 2),]
+        )
+        fixture_dir = this_dir / "mc_basic"
+        fixture_dir.mkdir(exist_ok=True)
+        biosphere.filepath_processed().rename(fixture_dir / "biosphere.zip")
+        test_db.filepath_processed().rename(fixture_dir / "test_db.zip")
+        method.filepath_processed().rename(fixture_dir / "method.zip")
+        with open(fixture_dir / "mapping.json", "w") as f:
+            json.dump(list(bw2data.mapping.items()), f)
+
+
 if __name__ == "__main__":
-    create_example_database()
+    # create_example_database()
     # create_empty_biosphere()
+    create_mc_basic()
