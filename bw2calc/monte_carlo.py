@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from . import spsolve
+from . import spsolve, prepare_lca_inputs
 from .lca import LCA
 from .utils import get_seed
 from bw2data import projects
@@ -15,12 +15,11 @@ class IterativeMonteCarlo(LCA):
         self, demand, method=None, iter_solver=iterative.cgs, seed=None, *args, **kwargs
     ):
         self.seed = seed or get_seed()
-        super(IterativeMonteCarlo, self).__init__(
+        super().__init__(
             demand, method=method, seed=self.seed, *args, **kwargs
         )
         self.iter_solver = iter_solver
         self.guess = None
-        self.lcia = method is not None
         # self.logger.info("Seeded RNGs", extra={"seed": self.seed})
 
     def __iter__(self):
@@ -61,10 +60,10 @@ class MonteCarloLCA(IterativeMonteCarlo):
         self.load_lci_data()
         self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)
         self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=self.seed)
-        if self.lcia:
+        if self.has("characterization"):
             self.load_lcia_data()
             self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
-        if getattr(self, "weighting", None):
+        if self.has("weighting"):
             self.load_weighting_data()
             self.weighting_rng = MCRandomNumberGenerator(
                 self.weighting_params, seed=self.seed
@@ -77,9 +76,9 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.load_data()
         self.rebuild_technosphere_matrix(self.tech_rng.next())
         self.rebuild_biosphere_matrix(self.bio_rng.next())
-        if self.lcia:
+        if self.has("characterization"):
             self.rebuild_characterization_matrix(self.cf_rng.next())
-        if getattr(self, "weighting", None):
+        if self.has("weighting"):
             self.weighting_value = self.weighting_rng.next()
 
         if getattr(self, "presamples", None):
@@ -89,9 +88,9 @@ class MonteCarloLCA(IterativeMonteCarlo):
             self.build_demand_array()
 
         self.lci_calculation()
-        if self.lcia:
+        if self.has("characterization"):
             self.lcia_calculation()
-            if getattr(self, "weighting", None):
+            if self.has("weighting"):
                 self.weighting_calculation()
             return self.score
         else:
@@ -108,10 +107,8 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
     def __init__(self, demands, *args, **kwargs):
         self.demands = demands
         # Get all possibilities for database retrieval
-        demand_all = demands[0].copy()
-        for other in demands[1:]:
-            demand_all.update(other)
-        super(ComparativeMonteCarlo, self).__init__(demand_all, *args, **kwargs)
+        demand_all = {key: 1 for d in demands for key in d}
+        super().__init__(demand_all, *args, **kwargs)
 
     def load_data(self):
         if not getattr(self, "method"):
@@ -143,16 +140,14 @@ class ComparativeMonteCarlo(IterativeMonteCarlo):
 
 
 def single_worker(args):
-    project, demand, method, iterations = args
-    projects.set_current(project, writable=False)
-    mc = MonteCarloLCA(demand=demand, method=method)
+    demand, data_objs, iterations = args
+    mc = MonteCarloLCA(demand=demand, data_objs=data_objs)
     return [next(mc) for x in range(iterations)]
 
 
 def direct_solving_worker(args):
-    project, demand, method, iterations = args
-    projects.set_current(project, writable=False)
-    mc = DirectSolvingMonteCarloLCA(demand=demand, method=method)
+    demand, data_objs, iterations = args
+    mc = DirectSolvingMonteCarloLCA(demand=demand, data_objs=data_objs)
     return [next(mc) for x in range(iterations)]
 
 
@@ -162,14 +157,24 @@ class ParallelMonteCarlo:
     def __init__(
         self,
         demand,
-        method,
+        method=None,
+        data_objs=None,
         iterations=1000,
         chunk_size=None,
         cpus=None,
         log_config=None,
     ):
+        if data_objs is None:
+            if not prepare_lca_inputs:
+                raise ImportError("bw2data version >= 4 not found")
+            demand, data_objs, _ = prepare_lca_inputs(
+                demand=demand,
+                method=method,
+                remapping=False
+            )
+
         self.demand = demand
-        self.method = method
+        self.packages = data_objs
         self.cpus = cpus or multiprocessing.cpu_count()
         if chunk_size:
             self.chunk_size = chunk_size
@@ -185,7 +190,7 @@ class ParallelMonteCarlo:
             results = pool.map(
                 worker,
                 [
-                    (projects.current, self.demand, self.method, self.chunk_size)
+                    (self.demand, self.packages, self.chunk_size)
                     for _ in range(self.num_jobs)
                 ],
             )
@@ -203,9 +208,8 @@ def multi_worker(args):
     Returns a list of results: ``[(demand dictionary, result)]``
 
     """
-    project, demands, method = args
-    projects.set_current(project, writable=False)
-    mc = MonteCarloLCA(demands[0], method)
+    demands, data_objs = args
+    mc = MonteCarloLCA(demands[0], data_objs=data_objs)
     next(mc)
     results = []
     for demand in demands:
@@ -231,10 +235,19 @@ Call ``.calculate()`` to generate results.
 
     """
 
-    def __init__(self, demands, method, iterations, cpus=None):
+    def __init__(self, demands, method=None, data_objs=None, iterations=100, cpus=None):
         # Convert from activity proxies if necessary
-        self.demands = [{(k[0], k[1]): v for k, v in obj.items()} for obj in demands]
-        self.method = method
+        if data_objs is None:
+            if not prepare_lca_inputs:
+                raise ImportError("bw2data version >= 4 not found")
+            demands, data_objs, _ = prepare_lca_inputs(
+                demands=demands,
+                method=method,
+                remapping=False
+            )
+
+        self.demands = demands
+        self.packages = data_objs
         self.iterations = iterations
         self.cpus = cpus or multiprocessing.cpu_count()
 
@@ -260,11 +273,11 @@ Call ``.calculate()`` to generate results.
         There is no guarantee that the results are returned in the same order as the ``demand`` input variable.
 
         """
-        with pool_adapter(multiprocessing.Pool(processes=self.cpus)) as pool:
+        with multiprocessing.Pool(processes=self.cpus) as pool:
             results = pool.map(
                 worker,
                 [
-                    (projects.current, self.demands, self.method)
+                    (self.demands, self.packages)
                     for _ in range(self.iterations)
                 ],
             )
