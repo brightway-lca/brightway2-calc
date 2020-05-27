@@ -133,7 +133,50 @@ def create_mc_basic():
             json.dump(list(bw2data.mapping.items()), f)
 
 
+def create_mc_single_activity_only_production():
+    with temporary_project_dir() as td:
+        biosphere = bw2data.Database("biosphere")
+        biosphere.write(
+            {
+                ("biosphere", "1"): {"type": "emission"},
+            }
+        )
+        saop = bw2data.Database("saop")
+        saop.write(
+            {
+                ("saop", "1"): {
+                    "exchanges": [
+                        {
+                            "amount": 0.5,
+                            "minimum": 0.2,
+                            "maximum": 0.8,
+                            "input": ("biosphere", "1"),
+                            "type": "biosphere",
+                            "uncertainty type": 4,
+                        },
+                        {
+                            "amount": 1,
+                            "minimum": 0.5,
+                            "maximum": 1.5,
+                            "input": ("saop", "1"),
+                            "type": "production",
+                            "uncertainty type": 4,
+                        },
+                    ],
+                    "type": "process",
+                },
+            }
+        )
+        fixture_dir = this_dir / "mc_saop"
+        fixture_dir.mkdir(exist_ok=True)
+        biosphere.filepath_processed().rename(fixture_dir / "biosphere.zip")
+        saop.filepath_processed().rename(fixture_dir / "saop.zip")
+        with open(fixture_dir / "mapping.json", "w") as f:
+            json.dump(list(bw2data.mapping.items()), f)
+
+
 if __name__ == "__main__":
-    # create_example_database()
-    # create_empty_biosphere()
+    create_example_database()
+    create_empty_biosphere()
     create_mc_basic()
+    create_mc_single_activity_only_production()

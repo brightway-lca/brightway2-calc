@@ -119,38 +119,16 @@ def test_parallel_monte_carlo():
     assert results
 
 
-# https://github.com/brightway-lca/brightway2-calc/issues/28
-# pm25_key=('biosphere3', '051aaf7a-6c1a-4e86-999f-85d5f0830df6')
+def test_single_activity_only_production():
+    # https://github.com/brightway-lca/brightway2-calc/issues/28
+    fd = fixture_dir / "mc_saop"
+    mapping = {tuple(x): y for x, y in json.load(open(fd / "mapping.json"))}
+    packages = [
+        fd / "biosphere.zip",
+        fd / "saop.zip",
+    ]
+    k1 = mapping[("saop", "1")]
 
-# act1_key=('test_1_act','activity_1')
-
-# biosphere_exchange_1={'amount':1,
-#                     'input':pm25_key,
-#                     'output':act1_key,
-#                     'type':'biosphere',
-#                     'uncertainty type': 0}
-
-# production_exchange_1={'amount':1,
-#                      'input':act1_key,
-#                      'output':act1_key,
-#                      'type':'production',
-#                      'uncertainty type':0}
-
-# act_1_dict={'name':'activity_1',
-#              'unit':'megajoule',
-#              'exchanges':[production_exchange_1,biosphere_exchange_1]}
-
-# database_dict={act1_key:act_1_dict}
-
-# db=bw.Database('test_1_act')
-
-# db.write(database_dict)
-
-# a1=bw.get_activity(act1_key)
-
-# # montecarlo, problem after first iteration
-# mc1a=bw.MonteCarloLCA({a1:1},bw.methods.random())
-
-# next(mc1a)
-
-# next(mc1a)
+    mc = MonteCarloLCA({k1: 1}, data_objs=packages)
+    next(mc)
+    next(mc)
