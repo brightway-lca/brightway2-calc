@@ -3,7 +3,6 @@ from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere, EmptyBios
 from bw2calc.lca import LCA
 from pathlib import Path
 import json
-import numpy as np
 import pytest
 
 
@@ -61,6 +60,21 @@ def test_example_db_basic():
     assert lca.supply_array.sum()
     assert lca.technosphere_matrix.sum()
     assert lca.score
+
+
+def test_lca_has():
+    fd = fixture_dir / "example_db"
+    mapping = load_mapping(fd / "mapping.json")
+
+    packages = [
+        fd / "example_db.zip",
+        fd / "ipcc.zip",
+    ]
+
+    lca = LCA({mapping[('Mobility example', 'Driving an electric car')]: 1}, data_objs=packages)
+    assert lca.has("technosphere")
+    assert lca.has("characterization")
+    assert not lca.has("foo")
 
 
 # class LCACalculationTestCase(BW2DataTest):

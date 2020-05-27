@@ -570,3 +570,9 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     #     except ImportError:
     #         raise ImportError("`bw2analyzer` is not installed")
     #     return ContributionAnalysis().annotated_top_processes(self, **kwargs)
+
+    def has(self, label):
+        """Shortcut to find out if matrix data for type ``{label}_matrix`` is present in the given data objects.
+
+        Returns a boolean. Will return ``True`` even if data for a zero-dimensional matrix is given."""
+        return any(True for package in self.packages for resource in package["datapackage"]["resources"] if resource["matrix"] == f"{label}_matrix")
