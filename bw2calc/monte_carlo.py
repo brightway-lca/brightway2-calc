@@ -34,6 +34,8 @@ class IterativeMonteCarlo(LCA):
     def solve_linear_system(self):
         if not self.iter_solver or self.guess is None:
             self.guess = spsolve(self.technosphere_matrix, self.demand_array)
+            if not self.guess.shape:
+                self.guess = self.guess.reshape((1,))
             return self.guess
         else:
             solution, status = self.iter_solver(
