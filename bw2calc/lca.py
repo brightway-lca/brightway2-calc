@@ -517,39 +517,47 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         #     extra={"demand": wrap_functional_unit(demand or self.demand)},
         # )
 
-    # def to_dataframe(self, cutoff=200):
-    #     """Return all nonzero elements of characterized inventory as Pandas dataframe"""
-    #     assert mapping, "This method doesn't work with independent LCAs"
-    #     assert (
-    #         pandas
-    #     ), "This method requires the `pandas` (http://pandas.pydata.org/) library"
-    #     assert hasattr(
-    #         self, "characterized_inventory"
-    #     ), "Must do LCIA calculation first"
+    def to_dataframe(self, cutoff=200):
+        """Return all nonzero elements of characterized inventory as Pandas dataframe"""
+        # assert mapping, "This method doesn't work with independent LCAs"
+        assert (
+            pandas
+        ), "This method requires the `pandas` (http://pandas.pydata.org/) library"
+        assert hasattr(
+            self, "characterized_inventory"
+        ), "Must do LCIA calculation first"
 
-    #     from bw2data import get_activity
+        from bw2data import get_activity
 
-    #     coo = self.characterized_inventory.tocoo()
-    #     stacked = np.vstack([np.abs(coo.data), coo.row, coo.col, coo.data])
-    #     stacked.sort()
-    #     rev_activity, _, rev_bio = self.reverse_dict()
-    #     length = stacked.shape[1]
+        coo = self.characterized_inventory.tocoo()
 
-    #     data = []
-    #     for x in range(min(cutoff, length)):
-    #         if stacked[3, length - x - 1] == 0.0:
-    #             continue
-    #         activity = get_activity(rev_activity[stacked[2, length - x - 1]])
-    #         flow = get_activity(rev_bio[stacked[1, length - x - 1]])
-    #         data.append(
-    #             (
-    #                 activity["name"],
-    #                 flow["name"],
-    #                 activity.get("location"),
-    #                 stacked[3, length - x - 1],
-    #             )
-    #         )
-    #     return pandas.DataFrame(data, columns=["Activity", "Flow", "Region", "Amount"])
+        # initiate dataframe
+        df = pandas.DataFrame({
+            'Amount': coo.data,
+            'row': coo.row,
+            'col': coo.col,
+        })
+
+        # sort abs(data) descending
+        # reindex
+        # cut off after n-th contribution
+        df = df\
+            .reindex( df['Amount'].abs().sort_values(ascending=False).index ) \
+            .reset_index(drop=True) \
+            .iloc[:cutoff,:]
+
+        # add activity name, flow name, location
+        rev_activity, rev_bio = self.dicts.activity.reversed, self.dicts.biosphere.reversed
+        df["Flow"] = df['row'].apply(lambda x: get_activity(rev_bio[x])["name"])
+        df["Activity"] = df['col'].apply(lambda x: get_activity(rev_activity[x]))
+        df["Region"] = df['Activity'].apply(lambda x: x.get("location"))
+
+        # keep only activity name
+        df["Activity"] = df["Activity"].apply(lambda x: x["name"])
+
+        # delete unnecessary columns
+        del df['col'], df['row']
+        return df
 
     ####################
     ### Contribution ###
