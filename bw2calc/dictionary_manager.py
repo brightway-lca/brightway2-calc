@@ -1,4 +1,16 @@
 from collections.abc import Mapping
+from functools import partial
+
+
+def resolved(f):
+    """Decorator that resolves a ``partial`` function before it can be used"""
+    def wrapper(self, *args):
+        if not self._resolved:
+            self._dict = self._partial()
+            self._resolved = True
+            delattr(self, "_partial")
+        return f(self, *args)
+    return wrapper
 
 
 class ReversibleRemappableDictionary(Mapping):
@@ -34,22 +46,30 @@ class ReversibleRemappableDictionary(Mapping):
     """
 
     def __init__(self, obj):
-        if not isinstance(obj, Mapping):
+        if isinstance(obj, partial):
+            self._resolved = False
+            self._partial = obj
+        elif isinstance(obj, Mapping):
+            self._resolved = True
+            self._dict = obj
+        else:
             raise ValueError("Input must be a dict")
-        self._dict = obj
 
     @property
+    @resolved
     def reversed(self):
         if not hasattr(self, "_reversed"):
             self._reversed = {v: k for k, v in self.items()}
         return self._reversed
 
     @property
+    @resolved
     def original(self):
         if not hasattr(self, "_original"):
             return self
         return self._original
 
+    @resolved
     def remap(self, mapping):
         """Transform the keys based on the mapping dict ``mapping``.
 
@@ -67,6 +87,7 @@ class ReversibleRemappableDictionary(Mapping):
         self._original = self._dict.copy()
         self._dict = {mapping.get(k, k): v for k, v in self.items()}
 
+    @resolved
     def unmap(self):
         """Restore dict to original state."""
         if hasattr(self, "_reversed"):
@@ -74,15 +95,19 @@ class ReversibleRemappableDictionary(Mapping):
         self._dict = self._original
         delattr(self, "_original")
 
+    @resolved
     def __getitem__(self, key):
         return self._dict[key]
 
+    @resolved
     def __iter__(self):
         return iter(self._dict)
 
+    @resolved
     def __len__(self):
         return len(self._dict)
 
+    @resolved
     def __str__(self):
         return self._dict.__str__()
 
@@ -121,4 +146,4 @@ class DictionaryManager:
         return iter(self._dicts)
 
     def __str__(self):
-        return "Dictionary manager with {} keys:".format(len(self), "\n\t".join(self))
+        return "Dictionary manager with {} keys:".format(len(self))
