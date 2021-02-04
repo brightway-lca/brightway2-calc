@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from . import prepare_lca_inputs, PackagesDataLoader, factorized, spsolve
+from . import prepare_lca_inputs, factorized, spsolve
+import bw_processing as bwp
+import matrix_utils as mu
 from .errors import (
     EmptyBiosphere,
     NonsquareTechnosphere,
@@ -7,22 +9,19 @@ from .errors import (
 )
 
 # from .log_utils import create_logger
-from .matrices import build_labelled_matrix, build_diagonal_matrix, build_matrix
+# from .matrices import build_labelled_matrix, build_diagonal_matrix, build_matrix
 from .dictionary_manager import DictionaryManager
-from .utils import filter_matrix_data
-from bw_processing import load_package
+
+# from .utils import filter_matrix_data
+# from bw_processing import load_package
 from collections.abc import Mapping
 from scipy import sparse
+from functools import partial
 
 # import logging
 import numpy as np
 import pandas
 import warnings
-
-try:
-    import presamples
-except ImportError:
-    presamples = None
 
 
 class LCA:
@@ -45,9 +44,9 @@ class LCA:
         data_objs=None,
         remapping_dicts=None,
         log_config=None,
-        overrides=None,
-        seed=None,
-        ignore_override_seed=False,
+        # overrides=None,
+        seed_override=None,
+        # ignore_override_seed=False,
     ):
         """Create a new LCA calculation.
 
@@ -82,12 +81,12 @@ class LCA:
 
         self.dicts = DictionaryManager()
         self.demand = demand
-        self.packages = [load_package(obj) for obj in data_objs]
+        self.packages = [bwp.load_datapackage(obj) for obj in data_objs]
         self.remapping_dicts = remapping_dicts or {}
         # self.method = method
         # self.normalization = normalization
         # self.weighting = weighting
-        self.seed = seed
+        self.seed_override = seed_override
 
         # if presamples and PackagesDataLoader is None:
         #     warnings.warn("Skipping presamples; `presamples` not installed")
@@ -116,6 +115,9 @@ class LCA:
         #         "weighting_filepath": self.weighting_filepath,
         #     },
         # )
+
+    def __next__(self):
+        pass
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -148,41 +150,45 @@ class LCA:
 
     def load_lci_data(self):
         """Load data and create technosphere and biosphere matrices."""
-        (
-            self.tech_params,
-            self.dicts.product,
-            self.dicts.activity,
-            self.technosphere_matrix,
-        ) = build_labelled_matrix(
-            filter_matrix_data(self.packages, "technosphere_matrix")
+        self.technosphere_mm = mu.MappedMatrix(
+            packages=self.packages,
+            matrix="technosphere_matrix",
+            use_arrays=False,
+            seed_override=self.seed_override,
         )
+        self.technosphere_matrix = self.technosphere_mm.matrix
+        self.dicts.product = partial(self.technosphere_mm.row_mapper.to_dict)
+        self.dicts.activity = partial(self.technosphere_mm.col_mapper.to_dict)
 
-        if len(self.dicts.activity) != len(self.dicts.product):
+        if len(self.technosphere_mm.row_mapper) != len(self.technosphere_mm.col_mapper):
             raise NonsquareTechnosphere(
                 (
                     "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "
                     "Use LeastSquaresLCA to solve this system, or fix the input "
                     "data"
-                ).format(len(self.dicts.activity), len(self.dicts.product))
+                ).format(
+                    len(self.technosphere_mm.col_mapper),
+                    len(self.technosphere_mm.row_mapper),
+                )
             )
 
-        (
-            self.bio_params,
-            self.dicts.biosphere,
-            _,
-            self.biosphere_matrix,
-        ) = build_labelled_matrix(
-            filter_matrix_data(self.packages, "biosphere_matrix", empty_ok=True),
-            col_dict=self.dicts.activity,
+        self.biosphere_mm = mu.MappedMatrix(
+            packages=self.packages,
+            matrix="biosphere_matrix",
+            use_arrays=False,
+            seed_override=self.seed_override,
+            col_mapper=self.technosphere_mm.col_mapper,
         )
+        self.biosphere_matrix = self.biosphere_mm.matrix
+        self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
 
-        if not self.dicts.biosphere:
+        if not all(self.biosphere_matrix.shape):
             warnings.warn(
-                "No biosphere flows found. No inventory results can "
+                "No valid biosphere flows found. No inventory results can "
                 "be calculated, `lcia` will raise an error"
             )
 
-        self.remap_inventory()
+        # self.remap_inventory()
 
     def remap_inventory(self):
         """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand``.
@@ -212,27 +218,30 @@ class LCA:
         """
         if packages is None:
             packages = self.packages
-        self.cf_params, _, _, self.characterization_matrix = build_labelled_matrix(
-            filter_matrix_data(packages, "characterization_matrix"),
-            self.dicts.biosphere.original,
-            one_d=True,
-        )
-        lcia_resource = [
-            resource
-            for package in packages
-            for resource in package["datapackage"]["resources"]
-            if resource["matrix"] == "characterization_matrix"
-        ]
-        global_index = lcia_resource[0].get("global_index")
-        if global_index is not None:
-            mask = self.cf_params["col_value"] == global_index
-            self.cf_params = self.cf_params[mask]
-            self.characterization_matrix = build_diagonal_matrix(
-                self.cf_params, len(self.dicts.biosphere)
-            )
 
-        # if self.presamples:
-        #     self.presamples.update_matrices(matrices=["characterization_matrix"])
+        self.characterization_mm = mu.MappedMatrix(
+            packages=self.packages,
+            matrix="characterization_matrix",
+            use_arrays=False,
+            seed_override=self.seed_override,
+            row_mapper=self.biosphere_mm.row_mapper,
+            col_mapper=self.biosphere_mm.row_mapper,
+        )
+        self.characterization_matrix = self.characterization_mm.matrix
+
+        # lcia_resource = [
+        #     resource
+        #     for package in packages
+        #     for resource in package["datapackage"]["resources"]
+        #     if resource["matrix"] == "characterization_matrix"
+        # ]
+        # global_index = lcia_resource[0].get("global_index")
+        # if global_index is not None:
+        #     mask = self.cf_params["col_value"] == global_index
+        #     self.cf_params = self.cf_params[mask]
+        #     self.characterization_matrix = build_diagonal_matrix(
+        #         self.cf_params, len(self.dicts.biosphere)
+        #     )
 
     # def load_normalization_data(self):
     #     """Load normalization data."""
@@ -406,61 +415,61 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     ### Redo calculations ###
     #########################
 
-    def rebuild_technosphere_matrix(self, vector):
-        """Build a new technosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
+    # def rebuild_technosphere_matrix(self, vector):
+    #     """Build a new technosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
-        Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of technosphere parameters), in same order as ``self.tech_params``.
+    #     Args:
+    #         * *vector* (array): 1-dimensional NumPy array with length (# of technosphere parameters), in same order as ``self.tech_params``.
 
-        Doesn't return anything, but overwrites ``self.technosphere_matrix``.
+    #     Doesn't return anything, but overwrites ``self.technosphere_matrix``.
 
-        """
-        self.technosphere_matrix = build_matrix(
-            self.tech_params,
-            len(self.dicts.activity.original),
-            len(self.dicts.product.original),
-            new_data=vector,
-        )
+    #     """
+    #     self.technosphere_matrix = build_matrix(
+    #         self.tech_params,
+    #         len(self.dicts.activity.original),
+    #         len(self.dicts.product.original),
+    #         new_data=vector,
+    #     )
 
-    def rebuild_biosphere_matrix(self, vector):
-        """Build a new biosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
+    # def rebuild_biosphere_matrix(self, vector):
+    #     """Build a new biosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
-        Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of biosphere parameters), in same order as ``self.bio_params``.
+    #     Args:
+    #         * *vector* (array): 1-dimensional NumPy array with length (# of biosphere parameters), in same order as ``self.bio_params``.
 
-        Doesn't return anything, but overwrites ``self.biosphere_matrix``.
+    #     Doesn't return anything, but overwrites ``self.biosphere_matrix``.
 
-        """
-        self.biosphere_matrix = build_matrix(
-            self.bio_params,
-            len(self.dicts.biosphere.original),
-            len(self.dicts.activity),
-            new_data=vector,
-        )
+    #     """
+    #     self.biosphere_matrix = build_matrix(
+    #         self.bio_params,
+    #         len(self.dicts.biosphere.original),
+    #         len(self.dicts.activity),
+    #         new_data=vector,
+    #     )
 
-    def rebuild_characterization_matrix(self, vector):
-        """Build a new characterization matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
+    # def rebuild_characterization_matrix(self, vector):
+    #     """Build a new characterization matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
 
-        Args:
-            * *vector* (array): 1-dimensional NumPy array with length (# of characterization parameters), in same order as ``self.cf_params``.
+    #     Args:
+    #         * *vector* (array): 1-dimensional NumPy array with length (# of characterization parameters), in same order as ``self.cf_params``.
 
-        Doesn't return anything, but overwrites ``self.characterization_matrix``.
+    #     Doesn't return anything, but overwrites ``self.characterization_matrix``.
 
-        """
-        self.characterization_matrix = build_diagonal_matrix(
-            self.cf_params, len(self.dicts.biosphere), new_data=vector
-        )
+    #     """
+    #     self.characterization_matrix = build_diagonal_matrix(
+    #         self.cf_params, len(self.dicts.biosphere), new_data=vector
+    #     )
 
-    def switch_method(self, method):
-        """Switch to LCIA method `method`"""
-        try:
-            _, data_objs, _ = prepare_lca_inputs(method=method)
-            packages = [load_package(obj) for obj in data_objs]
-        except AssertionError:
-            packages = method
-        self.method = method
-        self.load_lcia_data(packages)
-        # self.logger.info("Switching LCIA method", extra={"method": method})
+    # def switch_method(self, method):
+    #     """Switch to LCIA method `method`"""
+    #     try:
+    #         _, data_objs, _ = prepare_lca_inputs(method=method)
+    #         packages = [load_package(obj) for obj in data_objs]
+    #     except AssertionError:
+    #         packages = method
+    #     self.method = method
+    #     self.load_lcia_data(packages)
+    #     # self.logger.info("Switching LCIA method", extra={"method": method})
 
     # def switch_normalization(self, normalization):
     #     """Switch to LCIA normalization `normalization`"""
@@ -578,6 +587,6 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         return any(
             True
             for package in self.packages
-            for resource in package["datapackage"]["resources"]
+            for resource in package.resources
             if resource["matrix"] == f"{label}_matrix"
         )

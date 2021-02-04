@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from .errors import AllArraysEmpty, NoArrays
-from bw_processing import MAX_SIGNED_32BIT_INT
 import numpy as np
 
 
@@ -22,7 +21,7 @@ def get_seed(seed=None):
     """Get valid Numpy random seed value"""
     # https://groups.google.com/forum/#!topic/briansupport/9ErDidIBBFM
     random = np.random.RandomState(seed)
-    return random.randint(0, MAX_SIGNED_32BIT_INT)
+    return random.randint(0, 2147483647)
 
 
 # def save_calculation_package(name, demand, **kwargs):

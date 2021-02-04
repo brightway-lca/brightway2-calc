@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from bw_processing import MAX_SIGNED_32BIT_INT
 import itertools
 import numpy as np
 
@@ -40,7 +39,7 @@ def index_with_arrays(array_from, array_to, mapping):
     mask = array_from <= keys.max()
     array_to[:] = -1
     array_to[mask] = index_array[array_from[mask]]
-    array_to[array_to == -1] = MAX_SIGNED_32BIT_INT
+    array_to[array_to == -1] = np.nan
 
 
 def index_with_searchsorted(array_from, array_to):
