@@ -46,6 +46,7 @@ class LCA:
         log_config=None,
         # overrides=None,
         seed_override=None,
+        use_arrays=False,
         # ignore_override_seed=False,
     ):
         """Create a new LCA calculation.
@@ -81,6 +82,7 @@ class LCA:
 
         self.dicts = DictionaryManager()
         self.demand = demand
+        self.use_arrays = use_arrays
         self.packages = [bwp.load_datapackage(obj) for obj in data_objs]
         self.remapping_dicts = remapping_dicts or {}
         # self.method = method
@@ -153,7 +155,7 @@ class LCA:
         self.technosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="technosphere_matrix",
-            use_arrays=False,
+            use_arrays=self.use_arrays,
             seed_override=self.seed_override,
         )
         self.technosphere_matrix = self.technosphere_mm.matrix
@@ -175,7 +177,7 @@ class LCA:
         self.biosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="biosphere_matrix",
-            use_arrays=False,
+            use_arrays=self.use_arrays,
             seed_override=self.seed_override,
             col_mapper=self.technosphere_mm.col_mapper,
         )
@@ -222,7 +224,7 @@ class LCA:
         self.characterization_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="characterization_matrix",
-            use_arrays=False,
+            use_arrays=self.use_arrays,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             col_mapper=self.biosphere_mm.row_mapper,
