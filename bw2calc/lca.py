@@ -119,7 +119,18 @@ class LCA:
         # )
 
     def __next__(self):
-        pass
+        matrices = [
+            "technosphere_mm",
+            "biosphere_mm",
+            "characterization_mm"
+        ]
+        for matrix in matrices:
+            if hasattr(self, matrix):
+                next(getattr(self, matrix))
+        if hasattr(self, "inventory"):
+            self.lci_calculation()
+        if hasattr(self, "characterized_inventory"):
+            self.lcia_calculation()
 
     def build_demand_array(self, demand=None):
         """Turn the demand dictionary into a *NumPy* array of correct size.
