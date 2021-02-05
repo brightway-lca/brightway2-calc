@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from .indexing import index_with_searchsorted, index_with_arrays
-from bw_processing import MAX_SIGNED_32BIT_INT
 from scipy import sparse
 import numpy as np
 
@@ -55,8 +54,8 @@ Raises:
             index_with_arrays(array["col_value"], array["col_index"], col_dict)
 
         if drop_missing:
-            array = array[np.where(array["row_index"] != MAX_SIGNED_32BIT_INT)]
-            array = array[np.where(array["col_index"] != MAX_SIGNED_32BIT_INT)]
+            array = array[np.where(np.isfinite(array["row_index"]))]
+            array = array[np.where(np.isfinite(array["col_index"]))]
         nrows = max(row_dict.values()) + 1 if row_dict else 0
         ncols = max(col_dict.values()) + 1 if col_dict else 0
         matrix = build_matrix(array, nrows, ncols)
