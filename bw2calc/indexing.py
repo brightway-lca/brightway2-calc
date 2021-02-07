@@ -36,11 +36,11 @@ def index_with_arrays(array_from, array_to, mapping):
 
     index_array = np.zeros(keys.max() + 1) - 1
     index_array[keys] = values
+    index_array[index_array == -1] = MAX_SIGNED_32BIT_INT
 
     mask = array_from <= keys.max()
-    array_to[:] = -1
+    array_to[:] = MAX_SIGNED_32BIT_INT
     array_to[mask] = index_array[array_from[mask]]
-    array_to[array_to == -1] = MAX_SIGNED_32BIT_INT
 
 
 def index_with_searchsorted(array_from, array_to):
