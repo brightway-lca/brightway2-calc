@@ -238,7 +238,7 @@ class LCA:
             use_arrays=self.use_arrays,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
-            col_mapper=self.biosphere_mm.row_mapper,
+            diagonal=True,
         )
         self.characterization_matrix = self.characterization_mm.matrix
 
