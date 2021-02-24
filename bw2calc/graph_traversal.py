@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-from . import LCA
+from . import spsolve
 from heapq import heappush, heappop
 import numpy as np
 import warnings
-
-try:
-    from bw2data import databases
-except ImportError:
-    databases = {}
 
 
 class GraphTraversal:
@@ -26,23 +20,27 @@ Should be used by calling the ``calculate`` method.
 
     """
 
-    def calculate(
-        self, demand, method, cutoff=0.005, max_calc=1e5, skip_coproducts=False
-    ):
+    def calculate(self, lca, cutoff=0.005, max_calc=1e5, skip_coproducts=False):
         """
 Traverse the supply chain graph.
 
 Args:
-    * *demand* (dict): The functional unit. Same format as in LCA class.
-    * *method* (tuple): LCIA method. Same format as in LCA class.
+    * *lca* (dict): An instance of ``bw2calc.lca.LCA``.
     * *cutoff* (float, default=0.005): Cutoff criteria to stop LCA calculations. Relative score of total, i.e. 0.005 will cutoff if a dataset has a score less than 0.5 percent of the total.
     * *max_calc* (int, default=10000): Maximum number of LCA calculations to perform.
 
 Returns:
-    Dictionary of nodes, edges, LCA object, and number of LCA calculations.
+    Dictionary of nodes, edges, and number of LCA calculations.
 
         """
-        lca, supply, score = self.build_lca(demand, method)
+        if not hasattr(lca, "supply_array"):
+            lca.lci()
+        if not hasattr(lca, "characterized_inventory"):
+            lca.lcia()
+
+        supply = lca.supply_array.copy()
+        score = lca.score
+
         if score == 0:
             raise ValueError("Zero total LCA score makes traversal impossible")
 
@@ -52,9 +50,7 @@ Returns:
             (lca.characterization_matrix * lca.biosphere_matrix).sum(axis=0)
         ).ravel()
 
-        heap, nodes, edges = self.initialize_heap(
-            demand, lca, supply, characterized_biosphere
-        )
+        heap, nodes, edges = self.initialize_heap(lca, supply, characterized_biosphere)
         nodes, edges, counter = self.traverse(
             heap,
             nodes,
@@ -72,11 +68,10 @@ Returns:
         return {
             "nodes": nodes,
             "edges": edges,
-            "lca": lca,
             "counter": counter,
         }
 
-    def initialize_heap(self, demand, lca, supply, characterized_biosphere):
+    def initialize_heap(self, lca, supply, characterized_biosphere):
         """
 Create a `priority queue <http://docs.python.org/2/library/heapq.html>`_ or ``heap`` to store inventory datasets, sorted by LCA score.
 
@@ -87,8 +82,9 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
         """
         heap, edges = [], []
         nodes = {-1: {"amount": 1, "cum": lca.score, "ind": 1e-6 * lca.score}}
-        for activity_key, activity_amount in demand.items():
-            index = lca.dicts.activity[activity_key]
+        for index, amount in enumerate(lca.demand_array):
+            if amount == 0:
+                continue
             cum_score = self.cumulative_score(
                 index, supply, characterized_biosphere, lca
             )
@@ -102,26 +98,20 @@ The *functional unit* is an abstract dataset (as it doesn't exist in the matrix)
                 {
                     "to": -1,
                     "from": index,
-                    "amount": activity_amount,
-                    "exc_amount": activity_amount,
-                    "impact": cum_score * activity_amount / float(supply[index]),
+                    "amount": amount,
+                    "exc_amount": amount,
+                    "impact": cum_score * amount / float(supply[index]),
                 }
             )
         return heap, nodes, edges
 
-    def build_lca(self, demand, method):
-        """Build LCA object from *demand* and *method*."""
-        lca = LCA(demand, method)
-        lca.lci()
-        lca.lcia()
-        lca.decompose_technosphere()
-        return lca, lca.solve_linear_system(), lca.score
-
     def cumulative_score(self, index, supply, characterized_biosphere, lca):
         """Compute cumulative LCA score for a given activity"""
         demand = np.zeros((supply.shape[0],))
-        demand[index] = supply[index] * lca.technosphere_matrix[index, index]
-        return float((characterized_biosphere * lca.solver(demand)).sum())
+        demand[index] = (supply[index] *
+                         # Normalize by the production amount
+                         lca.technosphere_matrix[index, index])
+        return float((characterized_biosphere * spsolve(lca.technosphere_matrix, demand)).sum())
 
     def unit_score(self, index, supply, characterized_biosphere):
         """Compute the LCA impact caused by the direct emissions and resource consumption of a given activity"""
@@ -150,8 +140,8 @@ Returns:
     (nodes, edges, number of calculations)
 
         """
-        static_databases = {name for name in databases if databases[name].get("static")}
-        reverse = lca.dicts.activity.reversed
+        # static_databases = {name for name in databases if databases[name].get("static")}
+        # reverse = lca.dicts.activity.reversed
 
         while heap:
             if counter >= max_calc:
@@ -159,14 +149,14 @@ Returns:
                 break
             parent_index = heappop(heap)[1]
             # Skip links from static databases
-            if static_databases and reverse[parent_index][0] in static_databases:
-                continue
+            # if static_databases and reverse[parent_index][0] in static_databases:
+            #     continue
 
             # Assume that this activity produces its reference product
             scale_value = lca.technosphere_matrix[parent_index, parent_index]
             if scale_value == 0:
                 raise ValueError(
-                    u"Can't rescale activities that produce " u"zero reference product"
+                    "Can't rescale activities that produce zero reference product"
                 )
             col = lca.technosphere_matrix[:, parent_index].tocoo()
             # Multiply by -1 because technosphere values are negative

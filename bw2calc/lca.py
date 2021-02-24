@@ -119,11 +119,7 @@ class LCA:
         # )
 
     def __next__(self):
-        matrices = [
-            "technosphere_mm",
-            "biosphere_mm",
-            "characterization_mm"
-        ]
+        matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm"]
         for matrix in matrices:
             if hasattr(self, matrix):
                 next(getattr(self, matrix))
