@@ -181,22 +181,22 @@ class LCA:
                 )
             )
 
-        self.biosphere_mm = mu.MappedMatrix(
-            packages=self.packages,
-            matrix="biosphere_matrix",
-            use_arrays=self.use_arrays,
-            seed_override=self.seed_override,
-            col_mapper=self.technosphere_mm.col_mapper,
-        )
-        self.biosphere_matrix = self.biosphere_mm.matrix
-        self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
-
-        if not all(self.biosphere_matrix.shape):
+        try:
+            self.biosphere_mm = mu.MappedMatrix(
+                packages=self.packages,
+                matrix="biosphere_matrix",
+                use_arrays=self.use_arrays,
+                seed_override=self.seed_override,
+                col_mapper=self.technosphere_mm.col_mapper,
+            )
+            self.biosphere_matrix = self.biosphere_mm.matrix
+            self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
+        except mu.errors.EmptyArray:
             warnings.warn(
                 "No valid biosphere flows found. No inventory results can "
                 "be calculated, `lcia` will raise an error"
             )
-
+            self.biosphere_matrix = sparse.csr_matrix(np.zeros(shape=(0, len(self.dicts.activity))))
         # self.remap_inventory()
 
     def remap_inventory(self):
