@@ -22,7 +22,7 @@ def generate_fixture():
         ("shape", np.float32),
         ("minimum", np.float32),
         ("maximum", np.float32),
-        ("negative", np.bool),
+        ("negative", bool),
     ]
 
     # Exchange types
