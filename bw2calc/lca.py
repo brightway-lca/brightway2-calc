@@ -47,6 +47,7 @@ class LCA:
         # overrides=None,
         seed_override=None,
         use_arrays=False,
+        use_distributions=False,
         # ignore_override_seed=False,
     ):
         """Create a new LCA calculation.
@@ -83,6 +84,7 @@ class LCA:
         self.dicts = DictionaryManager()
         self.demand = demand
         self.use_arrays = use_arrays
+        self.use_distributions = use_distributions
         self.packages = [bwp.load_datapackage(obj) for obj in data_objs]
         self.remapping_dicts = remapping_dicts or {}
         # self.method = method
@@ -163,6 +165,7 @@ class LCA:
             packages=self.packages,
             matrix="technosphere_matrix",
             use_arrays=self.use_arrays,
+            use_distributions=self.use_distributions,
             seed_override=self.seed_override,
         )
         self.technosphere_matrix = self.technosphere_mm.matrix
