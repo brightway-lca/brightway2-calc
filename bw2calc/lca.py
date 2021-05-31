@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from . import prepare_lca_inputs, factorized, spsolve
 import bw_processing as bwp
 import matrix_utils as mu
@@ -9,14 +8,14 @@ from .errors import (
 )
 
 # from .log_utils import create_logger
-# from .matrices import build_labelled_matrix, build_diagonal_matrix, build_matrix
 from .dictionary_manager import DictionaryManager
+from .utils import consistent_global_index
 
-# from .utils import filter_matrix_data
-# from bw_processing import load_package
 from collections.abc import Mapping
 from scipy import sparse
 from functools import partial
+from fs.base import FS
+from typing import Iterable, Union, Optional
 
 # import logging
 import numpy as np
@@ -25,9 +24,9 @@ import warnings
 
 
 class LCA:
-    """A static LCI or LCIA calculation.
+    """An LCI or LCIA calculation.
 
-    Following the general philosophy of Brightway2, and good software practices, there is a clear separation of concerns between retrieving and formatting data and doing an LCA. Building the necessary matrices is done with MatrixBuilder objects (:ref:`matrixbuilders`). The LCA class only does the LCA calculations themselves.
+    Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
 
     """
 
@@ -37,23 +36,23 @@ class LCA:
 
     def __init__(
         self,
-        demand,
-        method=None,
-        weighting=None,
-        normalization=None,
-        data_objs=None,
-        remapping_dicts=None,
-        log_config=None,
-        # overrides=None,
-        seed_override=None,
-        use_arrays=False,
-        use_distributions=False,
-        # ignore_override_seed=False,
+        demand: dict,
+        # Brightway 2 calling convention
+        method: Optional[tuple] = None,
+        weighting: Optional[str] = None,
+        normalization: Optional[str] = None,
+        # Brightway 2.5 calling convention
+        data_objs: Optional[Iterable[FS, bwp.DatapackageBase]] = None,
+        remapping_dicts: Optional[Iterable[dict]] = None,
+        log_config: Optional[dict] = None,
+        seed_override: Optional[int] = None,
+        use_arrays: bool = False,
+        use_distributions: bool = False,
     ):
         """Create a new LCA calculation.
 
         Args:
-            * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{("my database", "my process"): 2.5}``.
+            * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{7: 2.5}``.
             * *method* (tuple, optional): LCIA Method tuple, e.g. ``("My", "great", "LCIA", "method")``. Can be omitted if only interested in calculating the life cycle inventory.
 
         Returns:
@@ -80,6 +79,9 @@ class LCA:
                 weighting=weighting,
                 normalization=normalization,
             )
+            self.method = method
+            self.weighting = weighting
+            self.normalization = normalization
 
         self.dicts = DictionaryManager()
         self.demand = demand
@@ -87,23 +89,7 @@ class LCA:
         self.use_distributions = use_distributions
         self.packages = [bwp.load_datapackage(obj) for obj in data_objs]
         self.remapping_dicts = remapping_dicts or {}
-        # self.method = method
-        # self.normalization = normalization
-        # self.weighting = weighting
         self.seed_override = seed_override
-
-        # if presamples and PackagesDataLoader is None:
-        #     warnings.warn("Skipping presamples; `presamples` not installed")
-        #     self.presamples = None
-        # elif presamples:
-        #     # Iterating over a `Campaign` object will also return the presample filepaths
-        #     self.presamples = PackagesDataLoader(
-        #         dirpaths=presamples,
-        #         seed=self.seed if ignore_override_seed else None,
-        #         lca=self,
-        #     )
-        # else:
-        #     self.presamples = None
 
         # self.logger.info(
         #     "Created LCA object",
@@ -120,7 +106,7 @@ class LCA:
         #     },
         # )
 
-    def __next__(self):
+    def __next__(self) -> None:
         matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm"]
         for matrix in matrices:
             if hasattr(self, matrix):
@@ -130,7 +116,7 @@ class LCA:
         if hasattr(self, "characterized_inventory"):
             self.lcia_calculation()
 
-    def build_demand_array(self, demand=None):
+    def build_demand_array(self, demand: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
 
         Args:
@@ -159,8 +145,8 @@ class LCA:
     ### Data retrieval ###
     ######################
 
-    def load_lci_data(self):
-        """Load data and create technosphere and biosphere matrices."""
+    def load_lci_data(self) -> None:
+        """Load inventory data and create technosphere and biosphere matrices."""
         self.technosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="technosphere_matrix",
@@ -199,11 +185,12 @@ class LCA:
                 "No valid biosphere flows found. No inventory results can "
                 "be calculated, `lcia` will raise an error"
             )
-            self.biosphere_matrix = sparse.csr_matrix(np.zeros(shape=(0, len(self.dicts.activity))))
-        # self.remap_inventory()
+            self.biosphere_matrix = sparse.csr_matrix(
+                np.zeros(shape=(0, len(self.dicts.activity)))
+            )
 
-    def remap_inventory(self):
-        """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand``.
+    def remap_inventory_dicts(self) -> None:
+        """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand`` from database integer IDs to keys (``(database name, code)``).
 
         Uses remapping dictionaries in ``self.remapping_dicts``."""
         if "product" in self.remapping_dicts:
@@ -215,45 +202,28 @@ class LCA:
             if label in self.remapping_dicts:
                 getattr(self.dicts, label).remap(self.remapping_dicts[label])
 
-        # Only need to index here for traditional LCA
-        # if self.presamples:
-        #     self.presamples.index_arrays(self)
-        #     self.presamples.update_matrices(
-        #         matrices=("technosphere_matrix", "biosphere_matrix")
-        #     )
-
-    def load_lcia_data(self, packages=None):
+    def load_lcia_data(
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
         """Load data and create characterization matrix.
 
         This method will filter out regionalized characterization factors.
 
         """
-        if packages is None:
-            packages = self.packages
+        global_index, kwargs = consistent_global_index(data_objs or self.packages), {}
+        if global_index is not None:
+            kwargs["custom_filter"] = lambda x: x["col"] == global_index
 
         self.characterization_mm = mu.MappedMatrix(
-            packages=self.packages,
+            packages=data_objs or self.packages,
             matrix="characterization_matrix",
             use_arrays=self.use_arrays,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
+            **kwargs,
         )
         self.characterization_matrix = self.characterization_mm.matrix
-
-        # lcia_resource = [
-        #     resource
-        #     for package in packages
-        #     for resource in package["datapackage"]["resources"]
-        #     if resource["matrix"] == "characterization_matrix"
-        # ]
-        # global_index = lcia_resource[0].get("global_index")
-        # if global_index is not None:
-        #     mask = self.cf_params["col_value"] == global_index
-        #     self.cf_params = self.cf_params[mask]
-        #     self.characterization_matrix = build_diagonal_matrix(
-        #         self.cf_params, len(self.dicts.biosphere)
-        #     )
 
     # def load_normalization_data(self):
     #     """Load normalization data."""
@@ -283,28 +253,28 @@ class LCA:
     ### Calculations ###
     ####################
 
-    def decompose_technosphere(self):
+    def decompose_technosphere(self) -> None:
         """
-Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
+        Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
 
-Doesn't return anything, but creates ``self.solver``.
+        Doesn't return anything, but creates ``self.solver``.
 
-.. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
+        .. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
 
         """
         self.solver = factorized(self.technosphere_matrix.tocsc())
 
-    def solve_linear_system(self):
+    def solve_linear_system(self) -> None:
         """
-Master solution function for linear system :math:`Ax=B`.
+        Master solution function for linear system :math:`Ax=B`.
 
-    To most numerical analysts, matrix inversion is a sin.
+            To most numerical analysts, matrix inversion is a sin.
 
-    -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
+            -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
 
-We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
+        We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
 
-If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
+        If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
 
         """
         if hasattr(self, "solver"):
@@ -312,19 +282,19 @@ If the technosphere matrix has already been factorized, then the decomposed tech
         else:
             return spsolve(self.technosphere_matrix, self.demand_array)
 
-    def lci(self, factorize=False):
+    def lci(self, factorize: bool = False) -> None:
         """
-Calculate a life cycle inventory.
+        Calculate a life cycle inventory.
 
-#. Load LCI data, and construct the technosphere and biosphere matrices.
-#. Build the demand array
-#. Solve the linear system to get the supply array and life cycle inventory.
+        #. Load LCI data, and construct the technosphere and biosphere matrices.
+        #. Build the demand array
+        #. Solve the linear system to get the supply array and life cycle inventory.
 
-Args:
-    * *factorize* (bool, optional): Factorize the technosphere matrix. Makes additional calculations with the same technosphere matrix much faster. Default is ``False``; not useful is only doing one LCI calculation.
-    * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the matrices.
+        Args:
+            * *factorize* (bool, optional): Factorize the technosphere matrix. Makes additional calculations with the same technosphere matrix much faster. Default is ``False``; not useful is only doing one LCI calculation.
+            * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the matrices.
 
-Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory``.
+        Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory``.
 
         """
         self.load_lci_data()
@@ -333,7 +303,7 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
             self.decompose_technosphere()
         self.lci_calculation()
 
-    def lci_calculation(self):
+    def lci_calculation(self) -> None:
         """The actual LCI calculation.
 
         Separated from ``lci`` to be reusable in cases where the matrices are already built, e.g. ``redo_lci`` and Monte Carlo classes.
@@ -346,28 +316,27 @@ Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory`
             [self.supply_array], [0], count, count
         )
 
-    def lcia(self):
+    def lcia(self) -> None:
         """
-Calculate the life cycle impact assessment.
+        Calculate the life cycle impact assessment.
 
-#. Load and construct the characterization matrix
-#. Multiply the characterization matrix by the life cycle inventory
+        #. Load and construct the characterization matrix
+        #. Multiply the characterization matrix by the life cycle inventory
 
-Args:
-    * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the characterization matrix.
+        Args:
+            * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the characterization matrix.
 
-Doesn't return anything, but creates ``self.characterized_inventory``.
+        Doesn't return anything, but creates ``self.characterized_inventory``.
 
         """
         assert hasattr(self, "inventory"), "Must do lci first"
-        # assert self.method, "Must specify a method to perform LCIA"
         if not self.dicts.biosphere:
             raise EmptyBiosphere
 
         self.load_lcia_data()
         self.lcia_calculation()
 
-    def lcia_calculation(self):
+    def lcia_calculation(self) -> None:
         """The actual LCIA calculation.
 
         Separated from ``lcia`` to be reusable in cases where the matrices are already built, e.g. ``redo_lcia`` and Monte Carlo classes.
@@ -375,14 +344,14 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         """
         self.characterized_inventory = self.characterization_matrix * self.inventory
 
-    def normalize(self):
+    def normalize(self) -> None:
         """Multiply characterized inventory by flow-specific normalization factors."""
         assert hasattr(self, "characterized_inventory"), "Must do lcia first"
         if not hasattr(self, "normalization_matrix"):
             self.load_normalization_data()
         self.normalization_calculation()
 
-    def normalization_calculation(self):
+    def normalization_calculation(self) -> None:
         """The actual normalization calculation.
 
         Creates ``self.normalized_inventory``."""
@@ -390,7 +359,7 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
             self.normalization_matrix * self.characterized_inventory
         )
 
-    def weight(self):
+    def weight(self) -> None:
         """Multiply characterized inventory by weighting value.
 
         Can be done with or without normalization."""
@@ -398,7 +367,7 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         if not hasattr(self, "weighting_value"):
             self.load_weighting_data()
 
-    def weighting_calculation(self):
+    def weighting_calculation(self) -> None:
         """The actual weighting calculation.
 
         Multiples weighting value by normalized inventory, if available, otherwise by characterized inventory.
@@ -411,11 +380,11 @@ Doesn't return anything, but creates ``self.characterized_inventory``.
         self.weighted_inventory = self.weighting_value[0] * obj
 
     @property
-    def score(self):
+    def score(self) -> float:
         """
-The LCIA score as a ``float``.
+        The LCIA score as a ``float``.
 
-Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
+        Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
         if hasattr(self, "weighting"):
@@ -427,61 +396,17 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     ### Redo calculations ###
     #########################
 
-    # def rebuild_technosphere_matrix(self, vector):
-    #     """Build a new technosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
-
-    #     Args:
-    #         * *vector* (array): 1-dimensional NumPy array with length (# of technosphere parameters), in same order as ``self.tech_params``.
-
-    #     Doesn't return anything, but overwrites ``self.technosphere_matrix``.
-
-    #     """
-    #     self.technosphere_matrix = build_matrix(
-    #         self.tech_params,
-    #         len(self.dicts.activity.original),
-    #         len(self.dicts.product.original),
-    #         new_data=vector,
-    #     )
-
-    # def rebuild_biosphere_matrix(self, vector):
-    #     """Build a new biosphere matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
-
-    #     Args:
-    #         * *vector* (array): 1-dimensional NumPy array with length (# of biosphere parameters), in same order as ``self.bio_params``.
-
-    #     Doesn't return anything, but overwrites ``self.biosphere_matrix``.
-
-    #     """
-    #     self.biosphere_matrix = build_matrix(
-    #         self.bio_params,
-    #         len(self.dicts.biosphere.original),
-    #         len(self.dicts.activity),
-    #         new_data=vector,
-    #     )
-
-    # def rebuild_characterization_matrix(self, vector):
-    #     """Build a new characterization matrix using the same row and column indices, but different values. Useful for Monte Carlo iteration or sensitivity analysis.
-
-    #     Args:
-    #         * *vector* (array): 1-dimensional NumPy array with length (# of characterization parameters), in same order as ``self.cf_params``.
-
-    #     Doesn't return anything, but overwrites ``self.characterization_matrix``.
-
-    #     """
-    #     self.characterization_matrix = build_diagonal_matrix(
-    #         self.cf_params, len(self.dicts.biosphere), new_data=vector
-    #     )
-
-    # def switch_method(self, method):
-    #     """Switch to LCIA method `method`"""
-    #     try:
-    #         _, data_objs, _ = prepare_lca_inputs(method=method)
-    #         packages = [load_package(obj) for obj in data_objs]
-    #     except AssertionError:
-    #         packages = method
-    #     self.method = method
-    #     self.load_lcia_data(packages)
-    #     # self.logger.info("Switching LCIA method", extra={"method": method})
+    def switch_method(
+        self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
+        """Switch to LCIA method `method`"""
+        try:
+            _, data_objs, _ = prepare_lca_inputs(method=method)
+            self.method = method
+        except AssertionError:
+            data_objs = method
+        self.load_lcia_data(data_objs=data_objs)
+        # self.logger.info("Switching LCIA method", extra={"method": method})
 
     # def switch_normalization(self, normalization):
     #     """Switch to LCIA normalization `normalization`"""
@@ -499,7 +424,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     #     self.load_weighting_data()
     #     self.logger.info("Switching LCIA weighting", extra={"weighting": weighting})
 
-    def redo_lci(self, demand=None):
+    def redo_lci(self, demand: Optional[dict] = None) -> None:
         """Redo LCI with same databases but different demand.
 
         Args:
@@ -519,7 +444,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
         #     "Redoing LCI", extra={"demand": wrap_functional_unit(demand or self.demand)}
         # )
 
-    def redo_lcia(self, demand=None):
+    def redo_lcia(self, demand: Optional[dict] = None) -> None:
         """Redo LCIA, optionally with new demand.
 
         Args:
@@ -592,7 +517,7 @@ Note that this is a `property <http://docs.python.org/2/library/functions.html#p
     #         raise ImportError("`bw2analyzer` is not installed")
     #     return ContributionAnalysis().annotated_top_processes(self, **kwargs)
 
-    def has(self, label):
+    def has(self, label: str) -> bool:
         """Shortcut to find out if matrix data for type ``{label}_matrix`` is present in the given data objects.
 
         Returns a boolean. Will return ``True`` even if data for a zero-dimensional matrix is given."""
