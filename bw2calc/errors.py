@@ -53,3 +53,9 @@ class NoArrays(BW2CalcError):
     """No arrays for given matrix"""
 
     pass
+
+
+class InconsistentGlobalIndex(BW2CalcError):
+    """LCIA matrices are diagonal, and use the ``col`` field for regionalization. If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."""
+
+    pass
