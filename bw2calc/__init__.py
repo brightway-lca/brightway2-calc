@@ -21,6 +21,13 @@ __all__ = [
 from .version import version as __version__
 
 try:
+    import json_logging
+    json_logging.init_non_web(enable_json=True)
+except ImportError:
+    pass
+
+
+try:
     from pypardiso import factorized, spsolve
 except ImportError:
     from scipy.sparse.linalg import factorized, spsolve
