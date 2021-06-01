@@ -29,8 +29,10 @@ except ImportError:
 
 try:
     from pypardiso import factorized, spsolve
+    PYPARDISO = True
 except ImportError:
     from scipy.sparse.linalg import factorized, spsolve
+    PYPARDISO = False
 try:
     from presamples import PackagesDataLoader
 except ImportError:

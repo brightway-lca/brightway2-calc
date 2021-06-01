@@ -1,4 +1,4 @@
-from . import prepare_lca_inputs, factorized, spsolve
+from . import prepare_lca_inputs, factorized, spsolve, __version__, PYPARDISO
 import bw_processing as bwp
 import matrix_utils as mu
 from .errors import (
@@ -7,9 +7,8 @@ from .errors import (
     OutsideTechnosphere,
 )
 
-# from .log_utils import create_logger
 from .dictionary_manager import DictionaryManager
-from .utils import consistent_global_index
+from .utils import consistent_global_index, wrap_functional_unit
 
 from collections.abc import Mapping
 from scipy import sparse
@@ -17,10 +16,13 @@ from functools import partial
 from fs.base import FS
 from typing import Iterable, Union, Optional
 
-# import logging
+import datetime
+import logging
 import numpy as np
 import pandas
 import warnings
+
+logger = logging.getLogger("bw2calc")
 
 
 class LCA:
@@ -42,7 +44,7 @@ class LCA:
         weighting: Optional[str] = None,
         normalization: Optional[str] = None,
         # Brightway 2.5 calling convention
-        data_objs: Optional[Iterable[FS, bwp.DatapackageBase]] = None,
+        data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
@@ -66,10 +68,6 @@ class LCA:
         #     if not key:
         #         raise ValueError("Invalid demand dictionary")
 
-        # if log_config:
-        #     create_logger(**log_config)
-        # self.logger = logging.getLogger("bw2calc")
-
         if data_objs is None:
             if not prepare_lca_inputs:
                 raise ImportError("bw2data version >= 4 not found")
@@ -91,26 +89,37 @@ class LCA:
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
 
-        # self.logger.info(
-        #     "Created LCA object",
-        #     extra={
-        #         "demand": wrap_functional_unit(self.demand),
-        #         "database_filepath": self.database_filepath,
-        #         "method": self.method,
-        #         "method_filepath": self.method_filepath,
-        #         "normalization": self.normalization,
-        #         "normalization_filepath": self.normalization_filepath,
-        #         "presamples": str(self.presamples),
-        #         "weighting": self.weighting,
-        #         "weighting_filepath": self.weighting_filepath,
-        #     },
-        # )
+        message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(demand=self.demand, data_objs=self.packages)
+        logger.info(
+            message,
+            extra={
+                "demand": wrap_functional_unit(self.demand),
+                "data_objs": str(self.packages),
+                "bw2calc": __version__,
+                "pypardiso": PYPARDISO,
+                "numpy": np.__version__,
+                "matrix_utils": mu.__version__,
+                "bw_processing": bwp.__version__,
+                "utc": datetime.datetime.utcnow(),
+            },
+        )
 
     def __next__(self) -> None:
         matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm"]
         for matrix in matrices:
             if hasattr(self, matrix):
-                next(getattr(self, matrix))
+                obj = getattr(self, matrix)
+                next(obj)
+                message = """Iterating {matrix}. Indexers: {indexer_state}""".format(matrix=matrix, indexer_state=[(str(p), p.indexer.index) for p in obj.packages])
+                logger.info(
+                    message,
+                    extra={
+                        "matrix": matrix,
+                        "indexers": [(str(p), p.indexer.index) for p in obj.packages],
+                        "matrix_sum": obj.matrix.sum(),
+                        "utc": datetime.datetime.utcnow(),
+                    },
+                )
         if hasattr(self, "inventory"):
             self.lci_calculation()
         if hasattr(self, "characterized_inventory"):
