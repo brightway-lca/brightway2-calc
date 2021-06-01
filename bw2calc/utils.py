@@ -96,3 +96,19 @@ def get_seed(seed=None):
 #         config[field] = [os.path.join(temp_dir, fn) for fn in config[field]]
 
 #     return config
+def wrap_functional_unit(dct):
+    """Transform functional units for effective logging.
+    Turns ``Activity`` objects into their keys."""
+    data = []
+    for key, amount in dct.items():
+        if isinstance(key, int):
+            data.append({"id": key, "amount": amount})
+        else:
+            try:
+                data.append({'database': key[0],
+                             'code': key[1],
+                             'amount': amount})
+            except TypeError:
+                data.append({'key': key,
+                             'amount': amount})
+    return data
