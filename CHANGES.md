@@ -11,33 +11,26 @@ Before 2.0 is released, the following features will be added:
 * Presamples will be adapted to use `bw_processing`
 * Logging will be taken seriously :)
 * LCA results to dataframes
-* Contribution analysis shifted from `bw2analyzer` to `bw2calc`.
 
-## Major changes
+## Breaking changes
+
+### Simplification of user endpoints
+
+The structure of this library has been simplified, as the `LCA` class can now perform static, stochasitc (Monte Carlo), and iterative (scenario-based) LCA calculations, and matrix building has been moved to the [matrix_utils](https://github.com/brightway-lca/matrix_utils) library.
 
 ### Python 2 compatibility removed
 
 Removing the Python 2 compatibility layer allows for much cleaner and more compact code, and the use of some components from the in-development Brightway version 3 libraries. Compatible with `bw2data` version 4.0.
 
-### Use of `bw_processing`
+### Removal of classes and methods
 
-We now use [bw_processing](https://github.com/brightway-lca/bw_processing) to load processed arrays. `bw_processing` has separate files for the technosphere and biosphere arrays, and explicit indication of . Therefore, the `TechnosphereBiosphereMatrixBuilder` is no longer necessary, and is removed.
-
-### No dependency on `bw2data`
-
-`bw2data` is now an optional install, and even if available only a single utility function is used to prepare input data. `bw2calc` is primarily intended to be used as an independent library.
-
-## Smaller changes
-
-### New LCA input specification
-
-The existing input specification is still there, but this release also adds the ability to specify input arguments compatible with Brightway version 3. Previously, we would write `LCA({some demand}, method=foo)` - this requires `bw2calc` to use `bw2data` to figure out the dependent databases of the functional unit in `some demand`, and then to get the file paths of all the necessary files for both the inventory and impact assessment. The new syntax is `LCA({some demand}, data_objs)`, where `some demand` is already integer IDs, and `data_objects` is a lists of data packages (either in memory or on the filesystem).
-
-`bw2data` has a helper function to prepare arguments in the new syntax: `prepare_lca_inputs`.
-
-This new input syntax, with consistent column labels for all structured arrays, removes the need for `IndependentLCAMixin`. This is deleted, and the methods `get_vector`, `get_vector_metadata`, and `set_vector` are added.
+* `LCA.rebuild_*_matrix` methods are removed. See the [TODO]() notebook for alternatives.
+* `DirectSolvingMixin` and `DirectSolvingMonteCarloLCA` are removed, direct solving is now the default
+* `MonteCarloLCA` is removed, use `LCA(use_distributions=True)` instead
 
 ### Simplified handling of mapping dictionaries
+
+Mapping dictionaries map the database identifiers to row and column indices. In 2.5, these mapping dictionaries are only created on demand; avoiding their creation saves a bit of time and memory.
 
 Added a new class (`DictionaryManager`) and made it simpler reverse, remap, and get the original dictionaries inside an `LCA`. Here is an example:
 
@@ -56,6 +49,32 @@ The dictionaries in a conventional LCA are:
 * LCA.dicts.biosphere
 
 `LCA.reverse_dict` is removed; all reversed dictionaries are available at `LCA.dicts.{name}.reversed`.
+
+In 2.5, these mapping dictionaries are not automatically "remapped" to the `(database name, activity code)` keys. You will need to call `.remap_inventory_dicts()` to after doing an inventory calculation to get mapping dictionaries in this format.
+
+
+## AArchitectual changes
+
+### Use of `bw_processing`
+
+We now use [bw_processing](https://github.com/brightway-lca/bw_processing) to load processed arrays. `bw_processing` has separate files for the technosphere and biosphere arrays, and explicit indication of . Therefore, the `TechnosphereBiosphereMatrixBuilder` is no longer necessary, and is removed.
+
+### No dependency on `bw2data`
+
+`bw2data` is now an optional install, and even if available only a single utility function is used to prepare input data. `bw2calc` is primarily intended to be used as an independent library.
+
+### Changes in Monte Carlo
+
+
+## Smaller changes
+
+### New LCA input specification
+
+The existing input specification is still there, but this release also adds the ability to specify input arguments compatible with Brightway version 3. Previously, we would write `LCA({some demand}, method=foo)` - this requires `bw2calc` to use `bw2data` to figure out the dependent databases of the functional unit in `some demand`, and then to get the file paths of all the necessary files for both the inventory and impact assessment. The new syntax is `LCA({some demand}, data_objs)`, where `some demand` is already integer IDs, and `data_objects` is a lists of data packages (either in memory or on the filesystem).
+
+`bw2data` has a helper function to prepare arguments in the new syntax: `prepare_lca_inputs`.
+
+This new input syntax, with consistent column labels for all structured arrays, removes the need for `IndependentLCAMixin`. This is deleted, and the methods `get_vector`, `get_vector_metadata`, and `set_vector` are added.
 
 ### More robust matrix building
 

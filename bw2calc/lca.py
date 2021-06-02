@@ -8,13 +8,14 @@ from .errors import (
 )
 
 from .dictionary_manager import DictionaryManager
-from .utils import consistent_global_index, wrap_functional_unit
+from .utils import consistent_global_index, wrap_functional_unit, get_datapackage
 
 from collections.abc import Mapping
 from scipy import sparse
 from functools import partial
 from fs.base import FS
 from typing import Iterable, Union, Optional
+from pathlib import Path
 
 import datetime
 import logging
@@ -44,7 +45,7 @@ class LCA:
         weighting: Optional[str] = None,
         normalization: Optional[str] = None,
         # Brightway 2.5 calling convention
-        data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None,
+        data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
@@ -80,6 +81,8 @@ class LCA:
             self.method = method
             self.weighting = weighting
             self.normalization = normalization
+        else:
+            data_objs = [get_datapackage(obj) for obj in data_objs]
 
         self.dicts = DictionaryManager()
         self.demand = demand
@@ -179,23 +182,21 @@ class LCA:
                 )
             )
 
-        try:
-            self.biosphere_mm = mu.MappedMatrix(
+        self.biosphere_mm = mu.MappedMatrix(
                 packages=self.packages,
                 matrix="biosphere_matrix",
                 use_arrays=self.use_arrays,
                 seed_override=self.seed_override,
                 col_mapper=self.technosphere_mm.col_mapper,
+                empty_ok=True
             )
-            self.biosphere_matrix = self.biosphere_mm.matrix
-            self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
-        except mu.errors.EmptyArray:
+        self.biosphere_matrix = self.biosphere_mm.matrix
+        self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
+
+        if self.biosphere_mm.matrix.shape[0] == 0:
             warnings.warn(
                 "No valid biosphere flows found. No inventory results can "
                 "be calculated, `lcia` will raise an error"
-            )
-            self.biosphere_matrix = sparse.csr_matrix(
-                np.zeros(shape=(0, len(self.dicts.activity)))
             )
 
     def remap_inventory_dicts(self) -> None:
@@ -212,7 +213,7 @@ class LCA:
                 getattr(self.dicts, label).remap(self.remapping_dicts[label])
 
     def load_lcia_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load data and create characterization matrix.
 
@@ -230,24 +231,20 @@ class LCA:
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
-            **kwargs,
         )
         self.characterization_matrix = self.characterization_mm.matrix
 
-    # def load_normalization_data(self):
-    #     """Load normalization data."""
-    #     self.normalization_params, _, _, self.normalization_matrix = builder.build(
-    #         self.normalization_filepath,
-    #         "amount",
-    #         "flow",
-    #         "index",
-    #         row_dict=self._biosphere_dict,
-    #         one_d=True,
-    #     )
-    #     if self.presamples:
-    #         self.presamples.update_matrices(
-    #             matrices=["normalization_matrix",]
-    #         )
+    def load_normalization_data(self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
+        """Load normalization data."""
+        self.normalization_mm = mu.MappedMatrix(
+            packages=data_objs or self.packages,
+            matrix="normalization_matrix",
+            use_arrays=self.use_arrays,
+            seed_override=self.seed_override,
+            row_mapper=self.biosphere_mm.row_mapper,
+            diagonal=True,
+        )
+        self.normalization_matrix = self.normalization_mm.matrix
 
     # def load_weighting_data(self):
     #     """Load weighting data, a 1-element array."""

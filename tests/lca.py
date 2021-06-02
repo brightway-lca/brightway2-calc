@@ -9,53 +9,31 @@ import pytest
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
 
-def load_mapping(fp):
-    return {tuple(x): y for x, y in json.load(open(fp))}
-
-
 @pytest.mark.filterwarnings("ignore:no biosphere")
 def test_empty_biosphere_lcia():
-    fd = fixture_dir / "empty_biosphere"
-    key = load_mapping(fd / "mapping.json")[("t", "1")]
-
-    packages = [
-        fd / "biosphere.zip",
-        fd / "test_db.zip",
-        fd / "method.zip",
-    ]
-
-    lca = LCA({key: 1}, data_objs=packages)
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
     lca.lci()
+    assert lca.biosphere_matrix.shape[0] == 0
     with pytest.raises(EmptyBiosphere):
         lca.lcia()
 
 
 def test_warning_empty_biosphere():
-    fd = fixture_dir / "empty_biosphere"
-    key = load_mapping(fd / "mapping.json")[("t", "1")]
-
-    packages = [
-        fd / "biosphere.zip",
-        fd / "test_db.zip",
-        fd / "method.zip",
-    ]
-
-    lca = LCA({key: 1}, data_objs=packages)
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
     with pytest.warns(UserWarning):
         lca.lci()
 
 
 def test_example_db_basic():
-    fd = fixture_dir / "example_db"
-    mapping = load_mapping(fd / "mapping.json")
-
+    mapping = dict(json.load(open(fixture_dir / "bw2io_example_db_mapping.json")))
+    print(mapping)
     packages = [
-        fd / "example_db.zip",
-        fd / "ipcc.zip",
+        fixture_dir / "bw2io_example_db.zip",
+        fixture_dir / "ipcc_simple.zip",
     ]
 
     lca = LCA(
-        {mapping[("Mobility example", "Driving an electric car")]: 1},
+        {mapping["Driving an electric car"]: 1},
         data_objs=packages,
     )
     lca.lci()
@@ -66,18 +44,18 @@ def test_example_db_basic():
 
 
 def test_lca_has():
-    fd = fixture_dir / "example_db"
-    mapping = load_mapping(fd / "mapping.json")
-
+    mapping = dict(json.load(open(fixture_dir / "bw2io_example_db_mapping.json")))
     packages = [
-        fd / "example_db.zip",
-        fd / "ipcc.zip",
+        fixture_dir / "bw2io_example_db.zip",
+        fixture_dir / "ipcc_simple.zip",
     ]
 
     lca = LCA(
-        {mapping[("Mobility example", "Driving an electric car")]: 1},
+        {mapping["Driving an electric car"]: 1},
         data_objs=packages,
     )
+    lca.lci()
+    lca.lcia()
     assert lca.has("technosphere")
     assert lca.has("characterization")
     assert not lca.has("foo")

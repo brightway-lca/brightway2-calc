@@ -1,20 +1,10 @@
-# -*- coding: utf-8 -*-
-from .errors import AllArraysEmpty, NoArrays
+from .errors import InconsistentGlobalIndex
+from fs.base import FS
+from fs.osfs import OSFS
+from fs.zipfs import ZipFS
+from pathlib import Path
+import bw_processing as bwp
 import numpy as np
-
-
-def filter_matrix_data(packages, matrix_label, empty_ok=False):
-    arrays = [
-        package[resource["path"]]
-        for package in packages
-        for resource in package["datapackage"]["resources"]
-        if resource["matrix"] == matrix_label
-    ]
-    if all(arr.shape[0] == 0 for arr in arrays) and not empty_ok:
-        raise AllArraysEmpty
-    elif not arrays:
-        raise NoArrays(f"No arrays for '{matrix_label}'")
-    return np.hstack(arrays)
 
 
 def get_seed(seed=None):
@@ -24,78 +14,12 @@ def get_seed(seed=None):
     return random.randint(0, 2147483647)
 
 
-# def save_calculation_package(name, demand, **kwargs):
-#     """Save a calculation package for later use in an independent LCA.
+def consistent_global_index(packages, matrix="characterization"):
+    global_list = {p.metadata.get("global_index") for p in (obj.filter_by_attribute("matrix", matrix) for obj in packages)}
+    if len(global_list.difference({None})) > 1:
+        raise InconsistentGlobalIndex(f"Multiple global index values found ({global_list}). If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly.")
 
-#     Args:
-#         * name (str): Name of file to create. Will have datetime appended.
-#         * demand (dict): Demand dictionary.
-#         * kwargs: Any additional keyword arguments, e.g. ``method``, ``iterations``...
 
-#     Returns the filepath of the calculation package archive.
-
-#     """
-#     _ = lambda x: [os.path.basename(y) for y in x]
-
-#     filepaths = get_filepaths(demand, "demand")
-#     data = {
-#         "demand": {mapping[k]: v for k, v in demand.items()},
-#         "database_filepath": _(filepaths),
-#         "adjust_filepaths": ["database_filepath"],
-#     }
-#     for key, value in kwargs.items():
-#         if key in OBJECT_MAPPING:
-#             data[key] = _(get_filepaths(value, key))
-#             data["adjust_filepaths"].append(key)
-#             filepaths.extend(get_filepaths(value, key))
-#         else:
-#             data[key] = value
-
-#     config_fp = os.path.join(
-#         projects.output_dir, "{}.config.json".format(safe_filename(name))
-#     )
-#     with open(config_fp, "w") as f:
-#         json.dump(data, f, indent=2, ensure_ascii=False)
-#     archive = os.path.join(
-#         projects.output_dir,
-#         "{}.{}.tar.gz".format(
-#             safe_filename(name, False),
-#             datetime.datetime.now().strftime("%d-%B-%Y-%I-%M%p"),
-#         ),
-#     )
-#     with tarfile.open(archive, "w:gz") as tar:
-#         tar.add(config_fp, arcname=os.path.basename(config_fp))
-#         for filepath in filepaths:
-#             tar.add(filepath, arcname=os.path.basename(filepath))
-
-#     os.remove(config_fp)
-#     return archive
-
-# def load_calculation_package(fp):
-#     """Load a calculation package created by ``save_calculation_package``.
-
-#     NumPy arrays are saved to a temporary directory, and file paths are adjusted.
-
-#     ``fp`` is the absolute file path of a calculation package file.
-
-#     Returns a dictionary suitable for passing to an LCA object, e.g. ``LCA(**load_calculation_package(fp))``.
-
-#     """
-#     assert os.path.exists(fp), "Can't find file: {}".format(fp)
-
-#     temp_dir = tempfile.mkdtemp()
-#     with tarfile.open(fp, "r|gz") as tar:
-#         tar.extractall(temp_dir)
-
-#     config_fps = [x for x in os.listdir(temp_dir) if x.endswith(".config.json")]
-#     assert len(config_fps) == 1, "Can't find configuration file"
-#     config = json.load(open(os.path.join(temp_dir, config_fps[0])))
-#     config["demand"] = {int(k): v for k, v in config["demand"].items()}
-
-#     for field in config.pop("adjust_filepaths"):
-#         config[field] = [os.path.join(temp_dir, fn) for fn in config[field]]
-
-#     return config
 def wrap_functional_unit(dct):
     """Transform functional units for effective logging.
     Turns ``Activity`` objects into their keys."""
@@ -112,3 +36,16 @@ def wrap_functional_unit(dct):
                 data.append({'key': key,
                              'amount': amount})
     return data
+
+
+def get_datapackage(obj):
+    if isinstance(obj, bwp.DatapackageBase):
+        return obj
+    elif isinstance(obj, FS):
+        return bwp.load_datapackage(obj)
+    elif isinstance(obj, Path) and obj.suffix.lower() == ".zip":
+        return bwp.load_datapackage(ZipFS(obj))
+    elif isinstance(obj, Path) and obj.is_dir():
+        return bwp.load_datapackage(OSFS(obj))
+    else:
+        raise TypeError("Unknown input type for loading datapackage: {}: {}".format(type(obj), obj))
