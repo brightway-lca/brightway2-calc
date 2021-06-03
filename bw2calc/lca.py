@@ -10,7 +10,7 @@ from .errors import (
 from .dictionary_manager import DictionaryManager
 from .utils import consistent_global_index, wrap_functional_unit, get_datapackage
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Iterator
 from scipy import sparse
 from functools import partial
 from fs.base import FS
@@ -26,7 +26,7 @@ import warnings
 logger = logging.getLogger("bw2calc")
 
 
-class LCA:
+class LCA(Iterator):
     """An LCI or LCIA calculation.
 
     Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
@@ -186,6 +186,7 @@ class LCA:
                 packages=self.packages,
                 matrix="biosphere_matrix",
                 use_arrays=self.use_arrays,
+                use_distributions=self.use_distributions,
                 seed_override=self.seed_override,
                 col_mapper=self.technosphere_mm.col_mapper,
                 empty_ok=True
@@ -228,6 +229,7 @@ class LCA:
             packages=data_objs or self.packages,
             matrix="characterization_matrix",
             use_arrays=self.use_arrays,
+            use_distributions=self.use_distributions,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
@@ -240,6 +242,7 @@ class LCA:
             packages=data_objs or self.packages,
             matrix="normalization_matrix",
             use_arrays=self.use_arrays,
+            use_distributions=self.use_distributions,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,

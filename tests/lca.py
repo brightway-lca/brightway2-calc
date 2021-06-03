@@ -61,6 +61,44 @@ def test_lca_has():
     assert not lca.has("foo")
 
 
+def test_plain_monte_carlo():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    first = mc.score
+    next(mc)
+    assert first != mc.score
+
+
+def test_monte_carlo_as_iterator():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    for _, _ in zip(mc, range(10)):
+        assert mc.score > 0
+
+
+def test_monte_carlo_all_matrices_change():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    a = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    next(mc)
+    b = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    print(a, b)
+    for x, y in zip(a, b):
+        assert x != y
+
+
 # class LCACalculationTestCase(BW2DataTest):
 #     def add_basic_biosphere(self):
 #         biosphere = Database("biosphere")

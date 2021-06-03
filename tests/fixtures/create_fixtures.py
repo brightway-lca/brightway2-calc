@@ -1,4 +1,4 @@
-from bw_processing import create_datapackage, INDICES_DTYPE
+from bw_processing import create_datapackage, INDICES_DTYPE, UNCERTAINTY_DTYPE
 from fs.zipfs import ZipFS
 from pathlib import Path
 import json
@@ -66,66 +66,74 @@ def empty_biosphere():
     dp.finalize_serialization()
 
 
-# def create_mc_basic():
-#     with temporary_project_dir() as td:
-#         biosphere = bw2data.Database("biosphere")
-#         biosphere.write(
-#             {
-#                 ("biosphere", "1"): {"type": "emission"},
-#                 ("biosphere", "2"): {"type": "emission"},
-#             }
-#         )
-#         test_db = bw2data.Database("test")
-#         test_db.write(
-#             {
-#                 ("test", "1"): {
-#                     "exchanges": [
-#                         {
-#                             "amount": 0.5,
-#                             "minimum": 0.2,
-#                             "maximum": 0.8,
-#                             "input": ("test", "2"),
-#                             "type": "technosphere",
-#                             "uncertainty type": 4,
-#                         },
-#                         {
-#                             "amount": 1,
-#                             "minimum": 0.5,
-#                             "maximum": 1.5,
-#                             "input": ("biosphere", "1"),
-#                             "type": "biosphere",
-#                             "uncertainty type": 4,
-#                         },
-#                     ],
-#                     "type": "process",
-#                 },
-#                 ("test", "2"): {
-#                     "exchanges": [
-#                         {
-#                             "amount": 0.1,
-#                             "minimum": 0,
-#                             "maximum": 0.2,
-#                             "input": ("biosphere", "2"),
-#                             "type": "biosphere",
-#                             "uncertainty type": 4,
-#                         }
-#                     ],
-#                     "type": "process",
-#                     "unit": "kg",
-#                 },
-#             }
-#         )
-#         method = bw2data.Method(("a", "method"))
-#         method.write(
-#             [(("biosphere", "1"), 1), (("biosphere", "2"), 2),]
-#         )
-#         fixture_dir = this_dir / "mc_basic"
-#         fixture_dir.mkdir(exist_ok=True)
-#         biosphere.filepath_processed().rename(fixture_dir / "biosphere.zip")
-#         test_db.filepath_processed().rename(fixture_dir / "test_db.zip")
-#         method.filepath_processed().rename(fixture_dir / "method.zip")
-#         with open(fixture_dir / "mapping.json", "w") as f:
-#             json.dump(list(bw2data.mapping.items()), f)
+def create_mc_basic():
+    # Flow 1: biosphere
+    # Flow 2: biosphere
+    # Flow 3: activity 1
+    # Flow 4: activity 2
+    # Activity 1
+    # Activity 2
+    dp = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "mc_basic.zip"), write=True),
+    )
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(3, 1), (4, 2), (4, 1)], dtype=INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    distributions_array = np.array(
+        [
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+            (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE
+    )
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="mc-technosphere",
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        nrows=3,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([1, 0.1])
+    indices_array = np.array([(1, 1), (2, 2)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (4, 1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0, 0.2, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE
+    )
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="mc-biosphere",
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+    )
+
+    data_array = np.array([1, 2])
+    indices_array = np.array([(1, 0), (2, 0)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (4, 1, np.NaN, np.NaN, 0.5, 2, False),
+            (4, 2, np.NaN, np.NaN, 1, 4, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE
+    )
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="mc-characterization",
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        global_index=0,
+        nrows=3,
+    )
+    dp.finalize_serialization()
 
 
 # def create_mc_single_activity_only_production():
@@ -171,8 +179,8 @@ def empty_biosphere():
 if __name__ == "__main__":
     empty_biosphere()
     bw2io_example_database()
+    create_mc_basic()
 
 #     create_example_database()
 #     create_empty_biosphere()
-#     create_mc_basic()
 #     create_mc_single_activity_only_production()
