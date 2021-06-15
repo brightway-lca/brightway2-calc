@@ -72,7 +72,7 @@ class LCA(Iterator):
         if data_objs is None:
             if not prepare_lca_inputs:
                 raise ImportError("bw2data version >= 4 not found")
-            demand, data_objs, remapping_dicts = prepare_lca_inputs(
+            demand, self.packages, remapping_dicts = prepare_lca_inputs(
                 demand=demand,
                 method=method,
                 weighting=weighting,
@@ -82,13 +82,12 @@ class LCA(Iterator):
             self.weighting = weighting
             self.normalization = normalization
         else:
-            data_objs = [get_datapackage(obj) for obj in data_objs]
+            self.packages = [get_datapackage(obj) for obj in data_objs]
 
         self.dicts = DictionaryManager()
         self.demand = demand
         self.use_arrays = use_arrays
         self.use_distributions = use_distributions
-        self.packages = [bwp.load_datapackage(obj) for obj in data_objs]
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
 
