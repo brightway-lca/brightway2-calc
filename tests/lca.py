@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere, EmptyBiosphere
 from bw2calc.lca import LCA
 from pathlib import Path

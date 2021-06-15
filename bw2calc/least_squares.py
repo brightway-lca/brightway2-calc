@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from .errors import EfficiencyWarning, NoSolutionFound
 from .lca import LCA
 from scipy.sparse.linalg import lsmr

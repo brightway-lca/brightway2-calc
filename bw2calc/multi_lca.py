@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from .lca import LCA
 import numpy as np
 

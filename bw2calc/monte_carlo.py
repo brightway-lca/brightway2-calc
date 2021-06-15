@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from . import spsolve, prepare_lca_inputs
 from .lca import LCA
 from .utils import get_seed

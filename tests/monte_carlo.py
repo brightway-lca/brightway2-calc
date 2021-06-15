@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from bw2calc import (
     MonteCarloLCA,
     DirectSolvingMonteCarloLCA,
