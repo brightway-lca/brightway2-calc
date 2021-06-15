@@ -233,6 +233,7 @@ class LCA(Iterator):
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
+            custom_filter=kwargs.get("custom_filter")
         )
         self.characterization_matrix = self.characterization_mm.matrix
 
