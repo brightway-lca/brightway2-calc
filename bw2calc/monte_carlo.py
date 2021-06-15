@@ -1,32 +1,27 @@
 from . import spsolve, prepare_lca_inputs
 from .lca import LCA
-from .utils import get_seed
-from bw2data import projects
 from scipy.sparse.linalg import iterative
 from stats_arrays.random import MCRandomNumberGenerator
 import multiprocessing
 
 
-class IterativeMonteCarlo(LCA):
+class MonteCarloLCA(LCA):
+    """Normal ``LCA`` class now supports Monte Carlo and iterative use. You normally want to use itinstead."""
+    def __init__(self, *args, **kwargs):
+        if len(args) >= 9:
+            args[9] = True
+        else:
+            kwargs['use_distributions'] = True
+        super().__init__(*args, **kwargs)
+
+
+class IterativeMonteCarlo(MonteCarloLCA):
     """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
 
-    def __init__(
-        self, demand, method=None, iter_solver=iterative.cgs, seed=None, *args, **kwargs
-    ):
-        self.seed = seed or get_seed()
-        super().__init__(demand, method=method, seed=self.seed, *args, **kwargs)
+    def __init__(self, *args, iter_solver=iterative.cgs, **kwargs):
+        super().__init__(*args, **kwargs)
         self.iter_solver = iter_solver
         self.guess = None
-        # self.logger.info("Seeded RNGs", extra={"seed": self.seed})
-
-    def __iter__(self):
-        return self
-
-    def __call__(self):
-        return next(self)
-
-    def __next__(self):
-        raise NotImplementedError
 
     def solve_linear_system(self):
         if not self.iter_solver or self.guess is None:
@@ -45,59 +40,6 @@ class IterativeMonteCarlo(LCA):
             if status != 0:
                 return spsolve(self.technosphere_matrix, self.demand_array)
             return solution
-
-
-class DirectSolvingMixin(IterativeMonteCarlo):
-    def solve_linear_system(self):
-        return LCA.solve_linear_system(self)
-
-
-class MonteCarloLCA(IterativeMonteCarlo):
-    """Monte Carlo uncertainty analysis with separate `random number generators <http://en.wikipedia.org/wiki/Random_number_generation>`_ (RNGs) for each set of parameters."""
-
-    def load_data(self):
-        self.load_lci_data()
-        self.tech_rng = MCRandomNumberGenerator(self.tech_params, seed=self.seed)
-        self.bio_rng = MCRandomNumberGenerator(self.bio_params, seed=self.seed)
-        if self.has("characterization"):
-            self.load_lcia_data()
-            self.cf_rng = MCRandomNumberGenerator(self.cf_params, seed=self.seed)
-        if self.has("weighting"):
-            self.load_weighting_data()
-            self.weighting_rng = MCRandomNumberGenerator(
-                self.weighting_params, seed=self.seed
-            )
-        if getattr(self, "presamples", None):
-            self.presamples.reset_sequential_indices()
-
-    def __next__(self):
-        if not hasattr(self, "tech_rng"):
-            self.load_data()
-        self.rebuild_technosphere_matrix(self.tech_rng.next())
-        self.rebuild_biosphere_matrix(self.bio_rng.next())
-        if self.has("characterization"):
-            self.rebuild_characterization_matrix(self.cf_rng.next())
-        if self.has("weighting"):
-            self.weighting_value = self.weighting_rng.next()
-
-        if getattr(self, "presamples", None):
-            self.presamples.update_matrices()
-
-        if not hasattr(self, "demand_array"):
-            self.build_demand_array()
-
-        self.lci_calculation()
-        if self.has("characterization"):
-            self.lcia_calculation()
-            if self.has("weighting"):
-                self.weighting_calculation()
-            return self.score
-        else:
-            return self.supply_array
-
-
-class DirectSolvingMonteCarloLCA(MonteCarloLCA, DirectSolvingMixin):
-    pass
 
 
 class ComparativeMonteCarlo(IterativeMonteCarlo):
