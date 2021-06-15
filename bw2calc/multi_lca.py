@@ -1,10 +1,6 @@
 from .lca import LCA
+from bw2data import calculation_setups
 import numpy as np
-
-try:
-    from bw2data import calculation_setups
-except ImportError:
-    calculation_setups = None
 
 
 class MultiLCA:
