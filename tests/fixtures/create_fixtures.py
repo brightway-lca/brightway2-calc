@@ -66,6 +66,46 @@ def empty_biosphere():
     dp.finalize_serialization()
 
 
+def create_basic_fixture():
+    # Activities: 1, 2
+    # Products: 1, 2
+    # Biosphere flows: 1
+    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "basic_fixture.zip"), write=True),)
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(1, 1), (2, 2), (2, 1)], dtype=INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([1])
+    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1])
+    indices_array = np.array([(1, 0)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="eb-characterization",
+        indices_array=indices_array,
+        global_index=0,
+        nrows=1,
+    )
+
+    dp.finalize_serialization()
+
+
 def create_mc_basic():
     # Flow 1: biosphere
     # Flow 2: biosphere
@@ -180,6 +220,7 @@ if __name__ == "__main__":
     empty_biosphere()
     bw2io_example_database()
     create_mc_basic()
+    create_basic_fixture()
 
 #     create_example_database()
 #     create_empty_biosphere()
