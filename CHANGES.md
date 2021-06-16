@@ -52,8 +52,11 @@ The dictionaries in a conventional LCA are:
 
 In 2.5, these mapping dictionaries are not automatically "remapped" to the `(database name, activity code)` keys. You will need to call `.remap_inventory_dicts()` to after doing an inventory calculation to get mapping dictionaries in this format.
 
+### Weighting is a diagonal matrix instead of a single number
 
-## AArchitectual changes
+It is easier to have everything in the same mode of operation. This also allows for the use of arrays, distributions, interfaces, etc. in weighting. Implemented in new `SingleValueDiagonalMatrix` class.
+
+## Architectual changes
 
 ### Use of `bw_processing`
 

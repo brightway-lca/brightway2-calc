@@ -106,6 +106,49 @@ def create_basic_fixture():
     dp.finalize_serialization()
 
 
+def create_svdm_fixtures():
+    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "svdm.zip"), write=True), sequential=True)
+
+    data_array = np.array([42])
+    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE
+    )
+    dp.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=data_array,
+        name="weighting",
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+    )
+
+    data_array = np.array([1, 2, 3, 4, 5]).reshape((1, 5))
+    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    dp.add_persistent_array(
+        matrix="weighting_matrix",
+        data_array=data_array,
+        name="weighting2",
+        indices_array=indices_array,
+    )
+
+    dp.finalize_serialization()
+
+    dp2 = create_datapackage(fs=ZipFS(str(fixture_dir / "svdm2.zip"), write=True))
+
+    data_array = np.array([88])
+    indices_array = np.array([(2, 2)], dtype=INDICES_DTYPE)
+    dp2.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=data_array,
+        name="weighting3",
+        indices_array=indices_array,
+    )
+    dp2.finalize_serialization()
+
+
 def create_mc_basic():
     # Flow 1: biosphere
     # Flow 2: biosphere
@@ -221,6 +264,7 @@ if __name__ == "__main__":
     bw2io_example_database()
     create_mc_basic()
     create_basic_fixture()
+    create_svdm_fixtures()
 
 #     create_example_database()
 #     create_empty_biosphere()
