@@ -1,26 +1,17 @@
 from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere, EmptyBiosphere
 from bw2calc.lca import LCA
 from pathlib import Path
+import bw_processing as bwp
 import json
+import numpy as np
 import pytest
-
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
 
-@pytest.mark.filterwarnings("ignore:no biosphere")
-def test_empty_biosphere_lcia():
-    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
-    lca.lci()
-    assert lca.biosphere_matrix.shape[0] == 0
-    with pytest.raises(EmptyBiosphere):
-        lca.lcia()
-
-
-def test_warning_empty_biosphere():
-    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
-    with pytest.warns(UserWarning):
-        lca.lci()
+######
+### Basic functionality
+######
 
 
 def test_example_db_basic():
@@ -42,6 +33,195 @@ def test_example_db_basic():
     assert lca.score
 
 
+def test_basic():
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    answer = np.zeros((2,))
+    answer[lca.dicts.activity[1]] = 1
+    answer[lca.dicts.activity[2]] = 0.5
+    assert np.allclose(answer, lca.supply_array)
+
+
+######
+### __init__
+######
+
+
+def test_invalid_datapackage():
+    pass
+
+
+def test_demand_not_mapping():
+    pass
+
+
+def test_demand_mapping_not_dict():
+    pass
+
+
+
+######
+### __next__
+######
+
+
+def test_next_data_array():
+    pass
+
+
+def test_next_only_vectors():
+    pass
+
+
+def test_next_plain_monte_carlo():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    first = mc.score
+    next(mc)
+    assert first != mc.score
+
+
+def test_next_monte_carlo_as_iterator():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    for _, _ in zip(mc, range(10)):
+        assert mc.score > 0
+
+
+def test_next_monte_carlo_all_matrices_change():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc.lci()
+    mc.lcia()
+    a = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    next(mc)
+    b = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    print(a, b)
+    for x, y in zip(a, b):
+        assert x != y
+
+
+######
+### build_demand_array
+######
+
+
+def test_build_demand_array():
+    pass
+
+
+def test_build_demand_array_outside_technosphere():
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({100: 1}, data_objs=packages)
+    with pytest.raises(OutsideTechnosphere):
+        lca.lci()
+
+
+def test_build_demand_array_keyerror():
+    pass
+
+
+def test_build_demand_array_pass_object():
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+
+    class Foo:
+        pass
+
+    obj = Foo()
+    with pytest.raises(ValueError):
+        LCA(obj, data_objs=packages)
+
+######
+### load_lci_data
+######
+
+def test_load_lci_data():
+    pass
+    # matrices
+    # dictionaries
+
+
+def test_load_lci_data_nonsquare_technosphere():
+    pass
+
+#         test_data = {
+#             ("t", "p1"): {"type": "product"},
+#             ("t", "a1"): {
+#                 "exchanges": [
+#                     {"amount": 1, "input": ("t", "p1"), "type": "production",},
+#                     {"amount": 1, "input": ("t", "a1"), "type": "production",},
+#                 ]
+#             },
+#         }
+#         self.add_basic_biosphere()
+#         test_db = Database("t")
+#         test_db.write(test_data)
+#         lca = LCA({("t", "a1"): 1})
+#         with self.assertRaises(NonsquareTechnosphere):
+#             lca.lci()
+
+def test_load_lci_data_empty_biosphere_warning():
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
+    with pytest.warns(UserWarning):
+        lca.lci()
+
+
+######
+### remap_inventory_dicts
+######
+
+def test_remap_inventory_dicts():
+    pass
+
+
+######
+### load_lcia_data
+######
+
+
+def test_load_lcia_data():
+    pass
+
+# TODO test con_glo_index in utils
+
+
+def test_load_lcia_data_global_filtered():
+    pass
+
+
+######
+### Warnings on uncommon inputs
+######
+
+
+
+
+@pytest.mark.filterwarnings("ignore:no biosphere")
+def test_empty_biosphere_lcia():
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
+    lca.lci()
+    assert lca.biosphere_matrix.shape[0] == 0
+    with pytest.raises(EmptyBiosphere):
+        lca.lcia()
+
+
 def test_lca_has():
     mapping = dict(json.load(open(fixture_dir / "bw2io_example_db_mapping.json")))
     packages = [
@@ -60,162 +240,64 @@ def test_lca_has():
     assert not lca.has("foo")
 
 
-def test_plain_monte_carlo():
+######
+### redo_lci
+######
+
+
+def test_redo_lci():
+    pass
+
+
+def test_redo_lci_new_demand():
+    pass
+
+
+def test_redo_lci_fails_if_activity_outside_technosphere():
     packages = [
-        fixture_dir / "mc_basic.zip",
+        fixture_dir / "basic_fixture.zip"
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
-    mc.lci()
-    mc.lcia()
-    first = mc.score
-    next(mc)
-    assert first != mc.score
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    with pytest.raises(OutsideTechnosphere):
+        lca.redo_lci({10: 1})
 
 
-def test_monte_carlo_as_iterator():
+def test_redo_lci_with_no_new_demand_no_error():
     packages = [
-        fixture_dir / "mc_basic.zip",
+        fixture_dir / "basic_fixture.zip"
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
-    mc.lci()
-    mc.lcia()
-    for _, _ in zip(mc, range(10)):
-        assert mc.score > 0
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.redo_lci()
+
+######
+### redo_lcia
+######
 
 
-def test_monte_carlo_all_matrices_change():
+def test_redo_lcia():
+    pass
+
+
+def test_redo_lcia_new_demand():
+    pass
+
+
+######
+### has
+######
+
+
+def test_has():
     packages = [
-        fixture_dir / "mc_basic.zip",
+        fixture_dir / "basic_fixture.zip"
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
-    mc.lci()
-    mc.lcia()
-    a = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
-    next(mc)
-    b = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
-    print(a, b)
-    for x, y in zip(a, b):
-        assert x != y
+    lca = LCA({1: 1}, data_objs=packages)
+    assert lca.has("technosphere")
+    assert lca.has("biosphere")
+    assert lca.has("characterization")
 
-
-# class LCACalculationTestCase(BW2DataTest):
-#     def add_basic_biosphere(self):
-#         biosphere = Database("biosphere")
-#         biosphere.register()
-#         biosphere.write(
-#             {
-#                 ("biosphere", "1"): {
-#                     "categories": ["things"],
-#                     "exchanges": [],
-#                     "name": "an emission",
-#                     "type": "emission",
-#                     "unit": "kg",
-#                 }
-#             }
-#         )
-
-#     def test_basic(self):
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {
-#                         "amount": 0.5,
-#                         "input": ("t", "2"),
-#                         "type": "technosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                     {
-#                         "amount": 1,
-#                         "input": ("biosphere", "1"),
-#                         "type": "biosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                 ],
-#                 "type": "process",
-#                 "unit": "kg",
-#             },
-#             ("t", "2"): {"exchanges": [], "type": "process", "unit": "kg"},
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         answer = np.zeros((2,))
-#         answer[lca.dicts.activity[("t", "1")]] = 1
-#         answer[lca.dicts.activity[("t", "2")]] = 0.5
-#         self.assertTrue(np.allclose(answer, lca.supply_array))
-
-#     def test_redo_lci_fails_if_activity_outside_technosphere(self):
-#         self.add_basic_biosphere()
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("biosphere", "1"), "type": "biosphere"}
-#                 ]
-#             }
-#         }
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         more_test_data = {
-#             ("z", "1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("t", "1"), "type": "technosphere"}
-#                 ]
-#             }
-#         }
-#         more_test_db = Database("z")
-#         more_test_db.register()
-#         more_test_db.write(more_test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         with self.assertRaises(OutsideTechnosphere):
-#             lca.redo_lci({("z", "1"): 1})
-
-#     def test_redo_lci_with_no_new_demand_no_error(self):
-#         self.add_basic_biosphere()
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("biosphere", "1"), "type": "biosphere"}
-#                 ]
-#             }
-#         }
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         more_test_data = {
-#             ("z", "1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("t", "1"), "type": "technosphere"}
-#                 ]
-#             }
-#         }
-#         more_test_db = Database("z")
-#         more_test_db.register()
-#         more_test_db.write(more_test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         lca.redo_lci()
-
-#     def test_passing_falsey_key(self):
-#         self.add_basic_biosphere()
-#         with self.assertRaises(ValueError):
-#             LCA({None: 1})
-#         with self.assertRaises(ValueError):
-#             LCA({(): 1})
-
-#     def test_pass_object_as_demand(self):
-#         self.add_basic_biosphere()
-
-#         class Foo:
-#             pass
-
-#         obj = Foo()
-#         with self.assertRaises(ValueError):
-#             LCA(obj)
 
 #     def test_production_values(self):
 #         test_data = {
@@ -481,22 +563,7 @@ def test_monte_carlo_all_matrices_change():
 #             lca = LCA({("t", "a2"): 1})
 #             lca.lci()
 
-#     def test_nonsquare_technosphere_error(self):
-#         test_data = {
-#             ("t", "p1"): {"type": "product"},
-#             ("t", "a1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("t", "p1"), "type": "production",},
-#                     {"amount": 1, "input": ("t", "a1"), "type": "production",},
-#                 ]
-#             },
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.write(test_data)
-#         lca = LCA({("t", "a1"): 1})
-#         with self.assertRaises(NonsquareTechnosphere):
-#             lca.lci()
+
 
 #     def test_multiple_lci_calculations(self):
 #         test_data = {
