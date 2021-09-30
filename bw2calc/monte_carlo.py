@@ -6,7 +6,7 @@ import multiprocessing
 
 
 class MonteCarloLCA(LCA):
-    """Normal ``LCA`` class now supports Monte Carlo and iterative use. You normally want to use itinstead."""
+    """Normal ``LCA`` class now supports Monte Carlo and iterative use. You normally want to use it instead."""
     def __init__(self, *args, **kwargs):
         if len(args) >= 9:
             args[9] = True
