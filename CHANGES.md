@@ -26,7 +26,7 @@ Removing the Python 2 compatibility layer allows for much cleaner and more compa
 
 * `LCA.rebuild_*_matrix` methods are removed. See the [TODO]() notebook for alternatives.
 * `DirectSolvingMixin` and `DirectSolvingMonteCarloLCA` are removed, direct solving is now the default
-* `MonteCarloLCA` is removed, use `LCA(use_distributions=True)` instead
+* `ComparativeMonteCarlo` is removed, use `MultiLCA(use_distributions=True)` instead
 
 ### Simplified handling of mapping dictionaries
 
