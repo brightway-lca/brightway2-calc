@@ -19,7 +19,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -53,7 +53,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -81,7 +81,7 @@ jobs:
 
   - script: |
       call activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines pytest-cov
     displayName: Install Anaconda packages
 
   - script: |
