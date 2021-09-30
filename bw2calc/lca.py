@@ -9,7 +9,7 @@ from .errors import (
 
 from .dictionary_manager import DictionaryManager
 from .utils import consistent_global_index, wrap_functional_unit, get_datapackage
-
+from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from collections.abc import Mapping, Iterator
 from scipy import sparse
 from functools import partial
@@ -70,8 +70,7 @@ class LCA(Iterator):
         #         raise ValueError("Invalid demand dictionary")
 
         if data_objs is None:
-            if not prepare_lca_inputs:
-                raise ImportError("bw2data version >= 4 not found")
+            self.ensure_bw2data_available()
             demand, self.packages, remapping_dicts = prepare_lca_inputs(
                 demand=demand,
                 method=method,
@@ -107,13 +106,13 @@ class LCA(Iterator):
         )
 
     def __next__(self) -> None:
-        matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm"]
+        matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm", "normalization_mm", "weighting_mm"]
         for matrix in matrices:
             if hasattr(self, matrix):
                 obj = getattr(self, matrix)
                 next(obj)
                 message = """Iterating {matrix}. Indexers: {indexer_state}""".format(matrix=matrix, indexer_state=[(str(p), p.indexer.index) for p in obj.packages])
-                logger.info(
+                logger.debug(
                     message,
                     extra={
                         "matrix": matrix,
@@ -126,6 +125,11 @@ class LCA(Iterator):
             self.lci_calculation()
         if hasattr(self, "characterized_inventory"):
             self.lcia_calculation()
+
+    def ensure_bw2data_available(self):
+        """Raises ``ImportError`` is bw2data not available or version < 4."""
+        if prepare_lca_inputs is None:
+            raise ImportError("bw2data version >= 4 not found")
 
     def build_demand_array(self, demand: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -249,14 +253,18 @@ class LCA(Iterator):
         )
         self.normalization_matrix = self.normalization_mm.matrix
 
-    # def load_weighting_data(self):
-    #     """Load weighting data, a 1-element array."""
-    #     self.weighting_params = load_arrays(self.weighting_filepath)
-    #     self.weighting_value = self.weighting_params["amount"]
+    def load_weighting_data(self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
+        """Load normalization data."""
+        self.weighting_mm = SingleValueDiagonalMatrix(
+            packages=data_objs or self.packages,
+            matrix="weighting_matrix",
+            dimension=len(self.biosphere_mm.row_mapper),
+            use_arrays=self.use_arrays,
+            use_distributions=self.use_distributions,
+            seed_override=self.seed_override,
+        )
+        self.weighting_matrix = self.weighting_mm.matrix
 
-    #     # TODO: This won't work because weighting is a value not a matrix
-    #     # if self.presamples:
-    #     #     self.presamples.update_matrices(self, ['weighting_value',])
 
     ####################
     ### Calculations ###
@@ -368,7 +376,7 @@ class LCA(Iterator):
             self.normalization_matrix * self.characterized_inventory
         )
 
-    def weight(self) -> None:
+    def weighting(self) -> None:
         """Multiply characterized inventory by weighting value.
 
         Can be done with or without normalization."""
@@ -396,9 +404,9 @@ class LCA(Iterator):
         Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        if hasattr(self, "weighting"):
-            assert hasattr(self, "weighted_inventory"), "Must do weighting first"
-            return float(self.weighted_inventory.sum())
+        # if hasattr(self, "weighting"):
+        #     assert hasattr(self, "weighted_inventory"), "Must do weighting first"
+        #     return float(self.weighted_inventory.sum())
         return float(self.characterized_inventory.sum())
 
     #########################
@@ -409,29 +417,44 @@ class LCA(Iterator):
         self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
     ) -> None:
         """Switch to LCIA method `method`"""
-        try:
+        if isinstance(method, tuple):
+            self.ensure_bw2data_available()
             _, data_objs, _ = prepare_lca_inputs(method=method)
             self.method = method
-        except AssertionError:
+        else:
             data_objs = method
         self.load_lcia_data(data_objs=data_objs)
-        # self.logger.info("Switching LCIA method", extra={"method": method})
 
-    # def switch_normalization(self, normalization):
-    #     """Switch to LCIA normalization `normalization`"""
-    #     self.normalization = normalization
-    #     _, _, _, self.normalization_filepath = self.get_array_filepaths()
-    #     self.load_normalization_data()
-    #     self.logger.info(
-    #         "Switching LCIA normalization", extra={"normalization": normalization}
-    #     )
+        message = """Switched LCIA method. data_objs: {data_objs}""".format(data_objs=data_objs)
+        logger.info(
+            message,
+            extra={
+                "data_objs": str(data_objs),
+                "utc": datetime.datetime.utcnow(),
+            },
+        )
 
-    # def switch_weighting(self, weighting):
-    #     """Switch to LCIA weighting `weighting`"""
-    #     self.weighting = weighting
-    #     _, _, self.weighting_filepath, _ = self.get_array_filepaths()
-    #     self.load_weighting_data()
-    #     self.logger.info("Switching LCIA weighting", extra={"weighting": weighting})
+    def switch_normalization(self, normalization):
+        """Switch to LCIA normalization `normalization`"""
+        self.normalization = normalization
+        _, _, _, self.normalization_filepath = self.get_array_filepaths()
+        self.load_normalization_data()
+
+        message = """Switched LCIA method. data_objs: {data_objs}""".format(data_objs=data_objs)
+        logger.info(
+            message,
+            extra={
+                "data_objs": str(data_objs),
+                "utc": datetime.datetime.utcnow(),
+            },
+        )
+
+    def switch_weighting(self, weighting):
+        """Switch to LCIA weighting `weighting`"""
+        self.weighting = weighting
+        _, _, self.weighting_filepath, _ = self.get_array_filepaths()
+        self.load_weighting_data()
+        self.logger.info("Switching LCIA weighting", extra={"weighting": weighting})
 
     def redo_lci(self, demand: Optional[dict] = None) -> None:
         """Redo LCI with same databases but different demand.
