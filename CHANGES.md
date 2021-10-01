@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV2 (2021-10-01)
+
+* More 2.5 work and fixes
+
 # 2.0.DEV1
 
 Version 2.0 brings a number of large changes, while maintaining backwards compatibility (except for dropping Py2). The net result of these changes is to prepare for a future where data management is separated from calculations, and where working with large, complicated models is much easier.
