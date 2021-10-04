@@ -279,7 +279,10 @@ class LCA(Iterator):
         .. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
 
         """
-        self.solver = factorized(self.technosphere_matrix.tocsc())
+        if PYPARDISO:
+            warnings.warn("PARDISO installed; this is a no-op")
+        else:
+            self.solver = factorized(self.technosphere_matrix.tocsc())
 
     def solve_linear_system(self) -> None:
         """
@@ -316,7 +319,7 @@ class LCA(Iterator):
         """
         self.load_lci_data()
         self.build_demand_array()
-        if factorize:
+        if factorize and not PYPARDISO:
             self.decompose_technosphere()
         self.lci_calculation()
 
