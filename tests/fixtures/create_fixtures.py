@@ -116,7 +116,9 @@ def create_basic_fixture_directory():
 
 
 def create_svdm_fixtures():
-    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "svdm.zip"), write=True), sequential=True)
+    dp = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "svdm.zip"), write=True), sequential=True
+    )
 
     data_array = np.array([42])
     indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
@@ -124,7 +126,7 @@ def create_svdm_fixtures():
         [
             (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="weighting_matrix",
@@ -162,7 +164,9 @@ def create_array_fixtures():
     # Activities: 101, 102
     # Products: 1, 2
     # Biosphere flows: 1
-    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "array_sequential.zip"), write=True), sequential=True)
+    dp = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "array_sequential.zip"), write=True), sequential=True
+    )
 
     data_array = np.array([1, 1, 0.5])
     indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=INDICES_DTYPE)
@@ -218,7 +222,7 @@ def create_mc_basic():
             (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
             (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="technosphere_matrix",
@@ -237,7 +241,7 @@ def create_mc_basic():
             (4, 1, np.NaN, np.NaN, 0.5, 1.5, False),
             (4, 0.1, np.NaN, np.NaN, 0, 0.2, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="biosphere_matrix",
@@ -254,7 +258,7 @@ def create_mc_basic():
             (4, 1, np.NaN, np.NaN, 0.5, 2, False),
             (4, 2, np.NaN, np.NaN, 1, 4, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="characterization_matrix",
@@ -286,7 +290,7 @@ def create_mc_complete():
             (4, 100, np.NaN, np.NaN, 50, 200, False),
             (4, 200, np.NaN, np.NaN, 100, 400, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="normalization_matrix",
@@ -302,7 +306,7 @@ def create_mc_complete():
         [
             (4, 1, np.NaN, np.NaN, 0.5, 2, False),
         ],
-        dtype=UNCERTAINTY_DTYPE
+        dtype=UNCERTAINTY_DTYPE,
     )
     dp.add_persistent_vector(
         matrix="weighting_matrix",
@@ -312,7 +316,6 @@ def create_mc_complete():
         distributions_array=distributions_array,
     )
     dp.finalize_serialization()
-
 
 
 # def create_mc_single_activity_only_production():

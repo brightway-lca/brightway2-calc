@@ -1,17 +1,20 @@
-from . import spsolve, prepare_lca_inputs
-from .lca import LCA
+import multiprocessing
+
 from scipy.sparse.linalg import iterative
 from stats_arrays.random import MCRandomNumberGenerator
-import multiprocessing
+
+from . import prepare_lca_inputs, spsolve
+from .lca import LCA
 
 
 class MonteCarloLCA(LCA):
     """Normal ``LCA`` class now supports Monte Carlo and iterative use. You normally want to use it instead."""
+
     def __init__(self, *args, **kwargs):
         if len(args) >= 9:
             args[9] = True
         else:
-            kwargs['use_distributions'] = True
+            kwargs["use_distributions"] = True
         super().__init__(*args, **kwargs)
 
 
@@ -159,18 +162,18 @@ def multi_worker(args):
 
 class MultiMonteCarlo:
     """
-This is a class for the efficient calculation of *many* demand vectors from
-each Monte Carlo iteration.
+    This is a class for the efficient calculation of *many* demand vectors from
+    each Monte Carlo iteration.
 
-Args:
-    * ``args`` is a list of demand dictionaries
-    * ``method`` is a LCIA method
-    * ``iterations`` is the number of Monte Carlo iterations desired
-    * ``cpus`` is the (optional) number of CPUs to use
+    Args:
+        * ``args`` is a list of demand dictionaries
+        * ``method`` is a LCIA method
+        * ``iterations`` is the number of Monte Carlo iterations desired
+        * ``cpus`` is the (optional) number of CPUs to use
 
-The input list can have complex demands, so ``[{('foo', 'bar'): 1, ('foo', 'baz'): 1}, {('foo', 'another'): 1}]`` is OK.
+    The input list can have complex demands, so ``[{('foo', 'bar'): 1, ('foo', 'baz'): 1}, {('foo', 'another'): 1}]`` is OK.
 
-Call ``.calculate()`` to generate results.
+    Call ``.calculate()`` to generate results.
 
     """
 
@@ -212,6 +215,7 @@ Call ``.calculate()`` to generate results.
         """
         with multiprocessing.Pool(processes=self.cpus) as pool:
             results = pool.map(
-                worker, [(self.demands, self.packages) for _ in range(self.iterations)],
+                worker,
+                [(self.demands, self.packages) for _ in range(self.iterations)],
             )
         return self.merge_results(results)

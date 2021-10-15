@@ -1,27 +1,23 @@
-from . import prepare_lca_inputs, factorized, spsolve, __version__, PYPARDISO
-import bw_processing as bwp
-import matrix_utils as mu
-from .errors import (
-    EmptyBiosphere,
-    NonsquareTechnosphere,
-    OutsideTechnosphere,
-)
-
-from .dictionary_manager import DictionaryManager
-from .utils import consistent_global_index, wrap_functional_unit, get_datapackage
-from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from collections.abc import Mapping, Iterator
-from scipy import sparse
-from functools import partial
-from fs.base import FS
-from typing import Iterable, Union, Optional
-from pathlib import Path
-
 import datetime
 import logging
+import warnings
+from collections.abc import Iterator, Mapping
+from functools import partial
+from pathlib import Path
+from typing import Iterable, Optional, Union
+
+import bw_processing as bwp
+import matrix_utils as mu
 import numpy as np
 import pandas
-import warnings
+from fs.base import FS
+from scipy import sparse
+
+from . import PYPARDISO, __version__, factorized, prepare_lca_inputs, spsolve
+from .dictionary_manager import DictionaryManager
+from .errors import EmptyBiosphere, NonsquareTechnosphere, OutsideTechnosphere
+from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
+from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
 
 logger = logging.getLogger("bw2calc")
 
@@ -90,7 +86,9 @@ class LCA(Iterator):
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
 
-        message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(demand=self.demand, data_objs=self.packages)
+        message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(
+            demand=self.demand, data_objs=self.packages
+        )
         logger.info(
             message,
             extra={
@@ -106,12 +104,21 @@ class LCA(Iterator):
         )
 
     def __next__(self) -> None:
-        matrices = ["technosphere_mm", "biosphere_mm", "characterization_mm", "normalization_mm", "weighting_mm"]
+        matrices = [
+            "technosphere_mm",
+            "biosphere_mm",
+            "characterization_mm",
+            "normalization_mm",
+            "weighting_mm",
+        ]
         for matrix in matrices:
             if hasattr(self, matrix):
                 obj = getattr(self, matrix)
                 next(obj)
-                message = """Iterating {matrix}. Indexers: {indexer_state}""".format(matrix=matrix, indexer_state=[(str(p), p.indexer.index) for p in obj.packages])
+                message = """Iterating {matrix}. Indexers: {indexer_state}""".format(
+                    matrix=matrix,
+                    indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
+                )
                 logger.debug(
                     message,
                     extra={
@@ -186,14 +193,14 @@ class LCA(Iterator):
             )
 
         self.biosphere_mm = mu.MappedMatrix(
-                packages=self.packages,
-                matrix="biosphere_matrix",
-                use_arrays=self.use_arrays,
-                use_distributions=self.use_distributions,
-                seed_override=self.seed_override,
-                col_mapper=self.technosphere_mm.col_mapper,
-                empty_ok=True
-            )
+            packages=self.packages,
+            matrix="biosphere_matrix",
+            use_arrays=self.use_arrays,
+            use_distributions=self.use_distributions,
+            seed_override=self.seed_override,
+            col_mapper=self.technosphere_mm.col_mapper,
+            empty_ok=True,
+        )
         self.biosphere_matrix = self.biosphere_mm.matrix
         self.dicts.biosphere = partial(self.biosphere_mm.row_mapper.to_dict)
 
@@ -236,11 +243,13 @@ class LCA(Iterator):
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
-            custom_filter=kwargs.get("custom_filter")
+            custom_filter=kwargs.get("custom_filter"),
         )
         self.characterization_matrix = self.characterization_mm.matrix
 
-    def load_normalization_data(self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
+    def load_normalization_data(
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
         """Load normalization data."""
         self.normalization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
@@ -253,7 +262,9 @@ class LCA(Iterator):
         )
         self.normalization_matrix = self.normalization_mm.matrix
 
-    def load_weighting_data(self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
+    def load_weighting_data(
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
         """Load normalization data."""
         self.weighting_mm = SingleValueDiagonalMatrix(
             packages=data_objs or self.packages,
@@ -264,7 +275,6 @@ class LCA(Iterator):
             seed_override=self.seed_override,
         )
         self.weighting_matrix = self.weighting_mm.matrix
-
 
     ####################
     ### Calculations ###
@@ -428,7 +438,9 @@ class LCA(Iterator):
             data_objs = method
         self.load_lcia_data(data_objs=data_objs)
 
-        message = """Switched LCIA method. data_objs: {data_objs}""".format(data_objs=data_objs)
+        message = """Switched LCIA method. data_objs: {data_objs}""".format(
+            data_objs=data_objs
+        )
         logger.info(
             message,
             extra={
@@ -443,7 +455,9 @@ class LCA(Iterator):
         _, _, _, self.normalization_filepath = self.get_array_filepaths()
         self.load_normalization_data()
 
-        message = """Switched LCIA method. data_objs: {data_objs}""".format(data_objs=data_objs)
+        message = """Switched LCIA method. data_objs: {data_objs}""".format(
+            data_objs=data_objs
+        )
         logger.info(
             message,
             extra={

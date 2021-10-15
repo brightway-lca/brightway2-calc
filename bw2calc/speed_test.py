@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
-import numpy as np
-from scipy.sparse.linalg import spsolve
-from scipy.sparse import coo_matrix
 from time import time
+
+import numpy as np
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import spsolve
 
 
 class SpeedTest:

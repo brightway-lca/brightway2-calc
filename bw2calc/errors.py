@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 class BW2CalcError(Exception):
     """Base class for bw2calc errors"""
 

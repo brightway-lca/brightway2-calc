@@ -35,9 +35,7 @@ def test_example_db_basic():
 
 
 def test_basic():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
     answer = np.zeros((2,))
@@ -52,17 +50,13 @@ def test_basic():
 
 
 def test_invalid_datapackage():
-    packages = [
-        "basic_fixture.zip"
-    ]
+    packages = ["basic_fixture.zip"]
     with pytest.raises(TypeError):
         LCA({1: 1}, data_objs=packages)
 
 
 def test_demand_not_mapping():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     with pytest.raises(ValueError):
         LCA((1, 1), data_objs=packages)
 
@@ -78,9 +72,7 @@ def test_demand_mapping_but_not_dict():
         def __len__(self):
             return 1
 
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA(M(), data_objs=packages)
     lca.lci()
     answer = np.zeros((2,))
@@ -95,9 +87,7 @@ def test_demand_mapping_but_not_dict():
 
 
 def test_next_data_array():
-    packages = [
-        fixture_dir / "array_sequential.zip"
-    ]
+    packages = [fixture_dir / "array_sequential.zip"]
     lca = LCA({1: 1}, data_objs=packages, use_arrays=True)
     lca.lci()
     lca.lcia()
@@ -108,9 +98,7 @@ def test_next_data_array():
 
 
 def test_next_only_vectors():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
     lca.lcia()
@@ -150,9 +138,17 @@ def test_next_monte_carlo_all_matrices_change():
     mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
     mc.lci()
     mc.lcia()
-    a = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    a = [
+        mc.technosphere_matrix.sum(),
+        mc.biosphere_matrix.sum(),
+        mc.characterization_matrix.sum(),
+    ]
     next(mc)
-    b = [mc.technosphere_matrix.sum(), mc.biosphere_matrix.sum(), mc.characterization_matrix.sum()]
+    b = [
+        mc.technosphere_matrix.sum(),
+        mc.biosphere_matrix.sum(),
+        mc.characterization_matrix.sum(),
+    ]
     print(a, b)
     for x, y in zip(a, b):
         assert x != y
@@ -164,9 +160,7 @@ def test_next_monte_carlo_all_matrices_change():
 
 
 def test_build_demand_array():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
 
@@ -176,9 +170,7 @@ def test_build_demand_array():
 
 
 def test_build_demand_array_pass_dict():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
 
@@ -190,27 +182,21 @@ def test_build_demand_array_pass_dict():
 
 
 def test_build_demand_array_outside_technosphere():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({100: 1}, data_objs=packages)
     with pytest.raises(OutsideTechnosphere):
         lca.lci()
 
 
 def test_build_demand_array_activity_not_product():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({101: 1}, data_objs=packages)
     with pytest.raises(ValueError):
         lca.lci()
 
 
 def test_build_demand_array_pass_object():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
 
     class Foo:
         pass
@@ -219,9 +205,11 @@ def test_build_demand_array_pass_object():
     with pytest.raises(ValueError):
         LCA(obj, data_objs=packages)
 
+
 ######
 ### load_lci_data
 ######
+
 
 def test_load_lci_data():
     pass
@@ -231,6 +219,7 @@ def test_load_lci_data():
 
 def test_load_lci_data_nonsquare_technosphere():
     pass
+
 
 #         test_data = {
 #             ("t", "p1"): {"type": "product"},
@@ -248,6 +237,7 @@ def test_load_lci_data_nonsquare_technosphere():
 #         with self.assertRaises(NonsquareTechnosphere):
 #             lca.lci()
 
+
 def test_load_lci_data_empty_biosphere_warning():
     lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_biosphere.zip"])
     with pytest.warns(UserWarning):
@@ -257,6 +247,7 @@ def test_load_lci_data_empty_biosphere_warning():
 ######
 ### remap_inventory_dicts
 ######
+
 
 def test_remap_inventory_dicts():
     pass
@@ -270,6 +261,7 @@ def test_remap_inventory_dicts():
 def test_load_lcia_data():
     pass
 
+
 # TODO test con_glo_index in utils
 
 
@@ -280,8 +272,6 @@ def test_load_lcia_data_global_filtered():
 ######
 ### Warnings on uncommon inputs
 ######
-
-
 
 
 @pytest.mark.filterwarnings("ignore:no biosphere")
@@ -325,9 +315,7 @@ def test_redo_lci_new_demand():
 
 
 def test_redo_lci_fails_if_activity_outside_technosphere():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
     with pytest.raises(OutsideTechnosphere):
@@ -335,12 +323,11 @@ def test_redo_lci_fails_if_activity_outside_technosphere():
 
 
 def test_redo_lci_with_no_new_demand_no_error():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
     lca.redo_lci()
+
 
 ######
 ### redo_lcia
@@ -361,9 +348,7 @@ def test_redo_lcia_new_demand():
 
 
 def test_has():
-    packages = [
-        fixture_dir / "basic_fixture.zip"
-    ]
+    packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     assert lca.has("technosphere")
     assert lca.has("biosphere")
@@ -633,7 +618,6 @@ def test_has():
 #         with self.assertRaises(ValueError):
 #             lca = LCA({("t", "a2"): 1})
 #             lca.lci()
-
 
 
 #     def test_multiple_lci_calculations(self):

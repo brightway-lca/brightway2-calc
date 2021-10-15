@@ -133,7 +133,12 @@ def build_single_presample_array():
         (("test", "2"), ("test", "2"), "production"),
     ]
 
-    tech_samples = np.array(([1], [1],))
+    tech_samples = np.array(
+        (
+            [1],
+            [1],
+        )
+    )
 
     bio_indices = [
         (("bio", "a"), ("test", "2")),
@@ -141,7 +146,13 @@ def build_single_presample_array():
         (("bio", "b"), ("test", "1")),
     ]
 
-    bio_samples = np.array(([10], [1], [0],))
+    bio_samples = np.array(
+        (
+            [10],
+            [1],
+            [0],
+        )
+    )
 
     cf_indices = [("bio", "a")]
 
@@ -169,7 +180,12 @@ def build_multi_presample_array_unseeded():
         (("test", "2"), ("test", "2"), "production"),
     ]
 
-    tech_samples = np.array(([1, 2, 3], [100, 101, 102],))
+    tech_samples = np.array(
+        (
+            [1, 2, 3],
+            [100, 101, 102],
+        )
+    )
 
     bio_indices = [
         (("bio", "a"), ("test", "2")),
@@ -177,7 +193,13 @@ def build_multi_presample_array_unseeded():
         (("bio", "b"), ("test", "1")),
     ]
 
-    bio_samples = np.array(([10, 11, 12], [1, 2, 3], [0, -1, -2],))
+    bio_samples = np.array(
+        (
+            [10, 11, 12],
+            [1, 2, 3],
+            [0, -1, -2],
+        )
+    )
 
     create_presamples_package(
         matrix_data=[
@@ -199,7 +221,12 @@ def build_multi_presample_array():
         (("test", "2"), ("test", "2"), "production"),
     ]
 
-    tech_samples = np.array(([1, 2, 3], [100, 101, 102],))
+    tech_samples = np.array(
+        (
+            [1, 2, 3],
+            [100, 101, 102],
+        )
+    )
 
     bio_indices = [
         (("bio", "a"), ("test", "2")),
@@ -207,7 +234,13 @@ def build_multi_presample_array():
         (("bio", "b"), ("test", "1")),
     ]
 
-    bio_samples = np.array(([10, 11, 12], [1, 2, 3], [0, -1, -2],))
+    bio_samples = np.array(
+        (
+            [10, 11, 12],
+            [1, 2, 3],
+            [0, -1, -2],
+        )
+    )
 
     create_presamples_package(
         matrix_data=[
@@ -230,7 +263,12 @@ def build_multi_presample_sequential_array():
         (("test", "2"), ("test", "2"), "production"),
     ]
 
-    tech_samples = np.array(([1, 2, 3], [100, 101, 102],))
+    tech_samples = np.array(
+        (
+            [1, 2, 3],
+            [100, 101, 102],
+        )
+    )
 
     bio_indices = [
         (("bio", "a"), ("test", "2")),
@@ -238,7 +276,13 @@ def build_multi_presample_sequential_array():
         (("bio", "b"), ("test", "1")),
     ]
 
-    bio_samples = np.array(([10, 11, 12], [1, 2, 3], [0, -1, -2],))
+    bio_samples = np.array(
+        (
+            [10, 11, 12],
+            [1, 2, 3],
+            [0, -1, -2],
+        )
+    )
 
     create_presamples_package(
         matrix_data=[

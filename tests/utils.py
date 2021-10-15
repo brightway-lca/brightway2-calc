@@ -24,11 +24,16 @@ def test_get_datapackage():
     dp = bwp.load_datapackage(ZipFS(fixture_dir / "basic_fixture.zip"))
     assert get_datapackage(dp) is dp
 
-    assert get_datapackage(ZipFS(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
+    assert (
+        get_datapackage(ZipFS(fixture_dir / "basic_fixture.zip")).metadata
+        == dp.metadata
+    )
 
     assert get_datapackage(fixture_dir / "basic_fixture.zip").metadata == dp.metadata
 
-    assert get_datapackage(str(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
+    assert (
+        get_datapackage(str(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
+    )
 
     dp = bwp.load_datapackage(OSFS(fixture_dir / "basic_fixture"))
     assert get_datapackage(dp) is dp
@@ -39,4 +44,3 @@ def test_get_datapackage():
 
     with pytest.raises(TypeError):
         get_datapackage(1)
-

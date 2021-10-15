@@ -1,8 +1,10 @@
+from typing import Any, Callable, Sequence, Union
+
+import numpy as np
 from bw_processing import Datapackage
 from matrix_utils import MappedMatrix
 from scipy import sparse
-from typing import Union, Sequence, Any, Callable
-import numpy as np
+
 from .errors import MultipleValues
 
 
@@ -45,10 +47,24 @@ class SingleValueDiagonalMatrix(MappedMatrix):
     ):
         self.dimension = dimension
 
-        super().__init__(packages=packages, matrix=matrix, use_vectors=use_vectors, use_arrays=use_arrays, use_distributions=use_distributions, seed_override=seed_override, indexer_override=indexer_override, diagonal=True, custom_filter=custom_filter)
+        super().__init__(
+            packages=packages,
+            matrix=matrix,
+            use_vectors=use_vectors,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            seed_override=seed_override,
+            indexer_override=indexer_override,
+            diagonal=True,
+            custom_filter=custom_filter,
+        )
 
         if self.raw_data.shape != (1,):
-            raise MultipleValues("Multiple ({}) numerical values found, but only one single numerical value is allowed. Data packages:\n\t{}".format(len(self.raw_data), "\n\t".join([str(x) for x in self.packages])))
+            raise MultipleValues(
+                "Multiple ({}) numerical values found, but only one single numerical value is allowed. Data packages:\n\t{}".format(
+                    len(self.raw_data), "\n\t".join([str(x) for x in self.packages])
+                )
+            )
 
     def rebuild_matrix(self):
         self.matrix = sparse.coo_matrix(

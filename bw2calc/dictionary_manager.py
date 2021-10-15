@@ -4,12 +4,14 @@ from functools import partial
 
 def resolved(f):
     """Decorator that resolves a ``partial`` function before it can be used"""
+
     def wrapper(self, *args):
         if not self._resolved:
             self._dict = self._partial()
             self._resolved = True
             delattr(self, "_partial")
         return f(self, *args)
+
     return wrapper
 
 

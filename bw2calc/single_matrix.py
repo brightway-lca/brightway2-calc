@@ -1,24 +1,16 @@
-# -*- coding: utf-8 -*-
-from io import BytesIO
-from .errors import (
-    NonsquareTechnosphere,
-    OutsideTechnosphere,
-)
-from .log_utils import create_logger
-from .matrices import SingleMatrixBuilder, MatrixBuilder
-from .utils import (
-    global_index,
-    clean_databases,
-    get_filepaths,
-    load_arrays,
-    mapping,
-)
-from collections.abc import Mapping
 import json
 import logging
-import numpy as np
 import tarfile
 import warnings
+from collections.abc import Mapping
+from io import BytesIO
+
+import numpy as np
+
+from .errors import NonsquareTechnosphere, OutsideTechnosphere
+from .log_utils import create_logger
+from .matrices import MatrixBuilder, SingleMatrixBuilder
+from .utils import clean_databases, get_filepaths, global_index, load_arrays, mapping
 
 try:
     from pypardiso import factorized, spsolve
@@ -188,26 +180,26 @@ class SingleMatrixLCA:
 
     def decompose_technosphere(self):
         """
-Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
+        Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
 
-Doesn't return anything, but creates ``self.solver``.
+        Doesn't return anything, but creates ``self.solver``.
 
-.. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
+        .. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
 
         """
         self.solver = factorized(self.matrix.tocsc())
 
     def solve_linear_system(self):
         """
-Master solution function for linear system :math:`Ax=B`.
+        Master solution function for linear system :math:`Ax=B`.
 
-    To most numerical analysts, matrix inversion is a sin.
+            To most numerical analysts, matrix inversion is a sin.
 
-    -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
+            -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
 
-We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
+        We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
 
-If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
+        If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
 
         """
         if hasattr(self, "solver"):
