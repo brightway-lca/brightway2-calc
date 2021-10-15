@@ -20,7 +20,7 @@ Before 2.0 is released, the following features will be added:
 
 ### Simplification of user endpoints
 
-The structure of this library has been simplified, as the `LCA` class can now perform static, stochasitc (Monte Carlo), and iterative (scenario-based) LCA calculations, and matrix building has been moved to the [matrix_utils](https://github.com/brightway-lca/matrix_utils) library.
+The structure of this library has been simplified, as the `LCA` class can now perform static, stochastic (Monte Carlo), iterative (scenario-based), and single-matrix LCA calculations. Matrix building has been moved to the [matrix_utils](https://github.com/brightway-lca/matrix_utils) library.
 
 ### Python 2 compatibility removed
 
@@ -31,6 +31,7 @@ Removing the Python 2 compatibility layer allows for much cleaner and more compa
 * `LCA.rebuild_*_matrix` methods are removed. See the [TODO]() notebook for alternatives.
 * `DirectSolvingMixin` and `DirectSolvingMonteCarloLCA` are removed, direct solving is now the default
 * `ComparativeMonteCarlo` is removed, use `MultiLCA(use_distributions=True)` instead
+* `SingleMatrixLCA` is remove, use `LCA` instead. It allows for empty biosphere matrices.
 
 ### Simplified handling of mapping dictionaries
 
