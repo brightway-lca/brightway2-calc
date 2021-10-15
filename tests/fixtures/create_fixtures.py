@@ -68,13 +68,13 @@ def empty_biosphere():
 
 
 def _create_basic_fixture(fs):
-    # Activities: 1, 2
+    # Activities: 101, 102
     # Products: 1, 2
     # Biosphere flows: 1
     dp = create_datapackage(fs=fs)
 
     data_array = np.array([1, 1, 0.5])
-    indices_array = np.array([(1, 1), (2, 2), (2, 1)], dtype=INDICES_DTYPE)
+    indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=INDICES_DTYPE)
     flip_array = np.array([0, 0, 1], dtype=bool)
     dp.add_persistent_vector(
         matrix="technosphere_matrix",
@@ -85,7 +85,7 @@ def _create_basic_fixture(fs):
     )
 
     data_array = np.array([1])
-    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    indices_array = np.array([(1, 101)], dtype=INDICES_DTYPE)
     dp.add_persistent_vector(
         matrix="biosphere_matrix",
         data_array=data_array,
@@ -159,13 +159,13 @@ def create_svdm_fixtures():
 
 
 def create_array_fixtures():
-    # Activities: 1, 2
+    # Activities: 101, 102
     # Products: 1, 2
     # Biosphere flows: 1
     dp = create_datapackage(fs=ZipFS(str(fixture_dir / "array_sequential.zip"), write=True), sequential=True)
 
     data_array = np.array([1, 1, 0.5])
-    indices_array = np.array([(1, 1), (2, 2), (2, 1)], dtype=INDICES_DTYPE)
+    indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=INDICES_DTYPE)
     flip_array = np.array([0, 0, 1], dtype=bool)
     dp.add_persistent_vector(
         matrix="technosphere_matrix",
@@ -176,7 +176,7 @@ def create_array_fixtures():
     )
 
     data_array = np.array([[1, 2, 3, 4]])
-    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    indices_array = np.array([(1, 101)], dtype=INDICES_DTYPE)
     dp.add_persistent_array(
         matrix="biosphere_matrix",
         data_array=data_array,
@@ -356,14 +356,14 @@ def create_mc_complete():
 
 
 if __name__ == "__main__":
-    empty_biosphere()
-    bw2io_example_database()
-    create_mc_basic()
-    create_mc_complete()
+    # empty_biosphere()
+    # bw2io_example_database()
+    # create_mc_basic()
+    # create_mc_complete()
     create_basic_fixture_zipfile()
     create_basic_fixture_directory()
     create_array_fixtures()
-    create_svdm_fixtures()
+    # create_svdm_fixtures()
 
 
 #     create_example_database()
