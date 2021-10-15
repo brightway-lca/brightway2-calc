@@ -16,15 +16,17 @@ def get_seed(seed=None):
     return random.randint(0, 2147483647)
 
 
-def consistent_global_index(packages, matrix="characterization"):
-    global_list = {
-        p.metadata.get("global_index")
-        for p in (obj.filter_by_attribute("matrix", matrix) for obj in packages)
-    }
-    if len(global_list.difference({None})) > 1:
+def consistent_global_index(packages, matrix="characterization_matrix"):
+    global_list = [
+        resource.get("global_index")
+        for package in packages
+        for resource in package.filter_by_attribute("matrix", matrix).filter_by_attribute("kind", "indices").resources
+    ]
+    if len(set(global_list)) > 1:
         raise InconsistentGlobalIndex(
-            f"Multiple global index values found ({global_list}). If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."
+            f"Multiple global index values found: {global_list}. If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."
         )
+    return global_list[0]
 
 
 def wrap_functional_unit(dct):

@@ -60,10 +60,6 @@ class LCA(Iterator):
         """
         if not isinstance(demand, Mapping):
             raise ValueError("Demand must be a dictionary")
-        # TODO: check after matrix building
-        # for key in demand:
-        #     if not key:
-        #         raise ValueError("Invalid demand dictionary")
 
         if data_objs is None:
             self.ensure_bw2data_available()
@@ -231,9 +227,8 @@ class LCA(Iterator):
         This method will filter out regionalized characterization factors.
 
         """
-        global_index, kwargs = consistent_global_index(data_objs or self.packages), {}
-        if global_index is not None:
-            kwargs["custom_filter"] = lambda x: x["col"] == global_index
+        global_index = consistent_global_index(data_objs or self.packages)
+        fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
 
         self.characterization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
@@ -243,7 +238,7 @@ class LCA(Iterator):
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
-            custom_filter=kwargs.get("custom_filter"),
+            custom_filter=fltr,
         )
         self.characterization_matrix = self.characterization_mm.matrix
 
