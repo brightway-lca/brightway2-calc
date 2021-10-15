@@ -39,6 +39,10 @@ def wrap_functional_unit(dct):
 
 
 def get_datapackage(obj):
+    try:
+        print(obj, Path(obj).is_file())
+    except:
+        print("Error:", obj)
     if isinstance(obj, bwp.DatapackageBase):
         return obj
     elif isinstance(obj, FS):
@@ -47,5 +51,10 @@ def get_datapackage(obj):
         return bwp.load_datapackage(ZipFS(obj))
     elif isinstance(obj, Path) and obj.is_dir():
         return bwp.load_datapackage(OSFS(obj))
+    elif isinstance(obj, str) and obj.lower().endswith(".zip") and Path(obj).is_file():
+        return bwp.load_datapackage(ZipFS(Path(obj)))
+    elif isinstance(obj, str) and Path(obj).is_dir():
+        return bwp.load_datapackage(OSFS(Path(obj)))
+
     else:
         raise TypeError("Unknown input type for loading datapackage: {}: {}".format(type(obj), obj))
