@@ -1,5 +1,6 @@
 from bw_processing import create_datapackage, INDICES_DTYPE, UNCERTAINTY_DTYPE
 from fs.zipfs import ZipFS
+from fs.osfs import OSFS
 from pathlib import Path
 import json
 import numpy as np
@@ -66,11 +67,11 @@ def empty_biosphere():
     dp.finalize_serialization()
 
 
-def create_basic_fixture():
+def _create_basic_fixture(fs):
     # Activities: 1, 2
     # Products: 1, 2
     # Biosphere flows: 1
-    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "basic_fixture.zip"), write=True),)
+    dp = create_datapackage(fs=fs)
 
     data_array = np.array([1, 1, 0.5])
     indices_array = np.array([(1, 1), (2, 2), (2, 1)], dtype=INDICES_DTYPE)
@@ -104,6 +105,14 @@ def create_basic_fixture():
     )
 
     dp.finalize_serialization()
+
+
+def create_basic_fixture_zipfile():
+    _create_basic_fixture(ZipFS(str(fixture_dir / "basic_fixture.zip"), write=True))
+
+
+def create_basic_fixture_directory():
+    _create_basic_fixture(OSFS(str(fixture_dir / "basic_fixture"), create=True))
 
 
 def create_svdm_fixtures():
@@ -147,6 +156,46 @@ def create_svdm_fixtures():
         indices_array=indices_array,
     )
     dp2.finalize_serialization()
+
+
+def create_array_fixtures():
+    # Activities: 1, 2
+    # Products: 1, 2
+    # Biosphere flows: 1
+    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "array_sequential.zip"), write=True), sequential=True)
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(1, 1), (2, 2), (2, 1)], dtype=INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([[1, 2, 3, 4]])
+    indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
+    dp.add_persistent_array(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1])
+    indices_array = np.array([(1, 0)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="eb-characterization",
+        indices_array=indices_array,
+        global_index=0,
+        nrows=1,
+    )
+
+    dp.finalize_serialization()
 
 
 def create_mc_basic():
@@ -307,12 +356,15 @@ def create_mc_complete():
 
 
 if __name__ == "__main__":
-    empty_biosphere()
-    bw2io_example_database()
-    create_mc_basic()
-    create_mc_complete()
-    create_basic_fixture()
-    create_svdm_fixtures()
+    # empty_biosphere()
+    # bw2io_example_database()
+    # create_mc_basic()
+    # create_mc_complete()
+    # create_basic_fixture_zipfile()
+    create_basic_fixture_directory()
+    # create_array_fixtures()
+    # create_svdm_fixtures()
+
 
 #     create_example_database()
 #     create_empty_biosphere()

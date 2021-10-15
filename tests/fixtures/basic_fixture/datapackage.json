@@ -1,0 +1,106 @@
+{
+  "profile": "data-package",
+  "name": "dce6e4cd38ae4262ad4cc37673e70d78",
+  "id": "e8f27d1c56994ee288022da70979949d",
+  "licenses": [
+    {
+      "name": "ODC-PDDL-1.0",
+      "path": "http://opendatacommons.org/licenses/pddl/",
+      "title": "Open Data Commons Public Domain Dedication and License v1.0"
+    }
+  ],
+  "resources": [
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "technosphere.indices",
+      "matrix": "technosphere_matrix",
+      "kind": "indices",
+      "path": "technosphere.indices.npy",
+      "group": "technosphere",
+      "category": "vector",
+      "nrows": 3
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "technosphere.data",
+      "matrix": "technosphere_matrix",
+      "kind": "data",
+      "path": "technosphere.data.npy",
+      "group": "technosphere",
+      "category": "vector",
+      "nrows": 3
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "technosphere.flip",
+      "matrix": "technosphere_matrix",
+      "kind": "flip",
+      "path": "technosphere.flip.npy",
+      "group": "technosphere",
+      "category": "vector",
+      "nrows": 3
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "biosphere.indices",
+      "matrix": "biosphere_matrix",
+      "kind": "indices",
+      "path": "biosphere.indices.npy",
+      "group": "biosphere",
+      "category": "vector",
+      "nrows": 1
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "biosphere.data",
+      "matrix": "biosphere_matrix",
+      "kind": "data",
+      "path": "biosphere.data.npy",
+      "group": "biosphere",
+      "category": "vector",
+      "nrows": 1
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "eb-characterization.indices",
+      "matrix": "characterization_matrix",
+      "kind": "indices",
+      "path": "eb-characterization.indices.npy",
+      "group": "eb-characterization",
+      "global_index": 0,
+      "nrows": 1,
+      "category": "vector"
+    },
+    {
+      "profile": "data-resource",
+      "format": "npy",
+      "mediatype": "application/octet-stream",
+      "name": "eb-characterization.data",
+      "matrix": "characterization_matrix",
+      "kind": "data",
+      "path": "eb-characterization.data.npy",
+      "group": "eb-characterization",
+      "global_index": 0,
+      "nrows": 1,
+      "category": "vector"
+    }
+  ],
+  "created": "2021-10-15T12:24:37.280790Z",
+  "combinatorial": false,
+  "sequential": false,
+  "seed": null,
+  "sum_intra_duplicates": true,
+  "sum_inter_duplicates": false
+}
