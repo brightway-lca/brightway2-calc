@@ -5,6 +5,7 @@ import bw_processing as bwp
 import json
 import numpy as np
 import pytest
+from collections.abc import Mapping
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
@@ -40,8 +41,8 @@ def test_basic():
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
     answer = np.zeros((2,))
-    answer[lca.dicts.activity[1]] = 1
-    answer[lca.dicts.activity[2]] = 0.5
+    answer[lca.dicts.activity[101]] = 1
+    answer[lca.dicts.activity[102]] = 0.5
     assert np.allclose(answer, lca.supply_array)
 
 
@@ -51,16 +52,41 @@ def test_basic():
 
 
 def test_invalid_datapackage():
-    pass
+    packages = [
+        "basic_fixture.zip"
+    ]
+    with pytest.raises(TypeError):
+        LCA({1: 1}, data_objs=packages)
 
 
 def test_demand_not_mapping():
-    pass
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    with pytest.raises(ValueError):
+        LCA((1, 1), data_objs=packages)
 
 
-def test_demand_mapping_not_dict():
-    pass
+def test_demand_mapping_but_not_dict():
+    class M(Mapping):
+        def __getitem__(self, key):
+            return 1
 
+        def __iter__(self):
+            return iter((1,))
+
+        def __len__(self):
+            return 1
+
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA(M(), data_objs=packages)
+    lca.lci()
+    answer = np.zeros((2,))
+    answer[lca.dicts.activity[101]] = 1
+    answer[lca.dicts.activity[102]] = 0.5
+    assert np.allclose(answer, lca.supply_array)
 
 
 ######
@@ -69,11 +95,29 @@ def test_demand_mapping_not_dict():
 
 
 def test_next_data_array():
-    pass
+    packages = [
+        fixture_dir / "array_sequential.zip"
+    ]
+    lca = LCA({1: 1}, data_objs=packages, use_arrays=True)
+    lca.lci()
+    lca.lcia()
+
+    for x in range(1, 5):
+        assert lca.biosphere_matrix.sum() == x
+        next(lca)
 
 
 def test_next_only_vectors():
-    pass
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+    current = lca.characterized_inventory.sum()
+
+    next(lca)
+    assert lca.characterized_inventory.sum() == current
 
 
 def test_next_plain_monte_carlo():
@@ -120,7 +164,29 @@ def test_next_monte_carlo_all_matrices_change():
 
 
 def test_build_demand_array():
-    pass
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    assert lca.demand_array.shape == (2,)
+    assert lca.demand_array.sum() == 1
+    assert lca.demand_array[lca.dicts.product[1]] == 1
+
+
+def test_build_demand_array_pass_dict():
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    lca.build_demand_array({2: 5})
+
+    assert lca.demand_array.shape == (2,)
+    assert lca.demand_array.sum() == 5
+    assert lca.demand_array[lca.dicts.product[2]] == 5
 
 
 def test_build_demand_array_outside_technosphere():
@@ -132,8 +198,13 @@ def test_build_demand_array_outside_technosphere():
         lca.lci()
 
 
-def test_build_demand_array_keyerror():
-    pass
+def test_build_demand_array_activity_not_product():
+    packages = [
+        fixture_dir / "basic_fixture.zip"
+    ]
+    lca = LCA({101: 1}, data_objs=packages)
+    with pytest.raises(ValueError):
+        lca.lci()
 
 
 def test_build_demand_array_pass_object():
