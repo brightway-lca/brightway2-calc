@@ -39,10 +39,6 @@ def wrap_functional_unit(dct):
 
 
 def get_datapackage(obj):
-    try:
-        print(obj, Path(obj).is_file())
-    except:
-        print("Error:", obj)
     if isinstance(obj, bwp.DatapackageBase):
         return obj
     elif isinstance(obj, FS):
