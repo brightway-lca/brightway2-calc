@@ -356,14 +356,14 @@ def create_mc_complete():
 
 
 if __name__ == "__main__":
-    # empty_biosphere()
-    # bw2io_example_database()
-    # create_mc_basic()
-    # create_mc_complete()
-    # create_basic_fixture_zipfile()
+    empty_biosphere()
+    bw2io_example_database()
+    create_mc_basic()
+    create_mc_complete()
+    create_basic_fixture_zipfile()
     create_basic_fixture_directory()
-    # create_array_fixtures()
-    # create_svdm_fixtures()
+    create_array_fixtures()
+    create_svdm_fixtures()
 
 
 #     create_example_database()
