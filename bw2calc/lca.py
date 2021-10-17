@@ -163,7 +163,7 @@ class LCA(Iterator):
     ### Data retrieval ###
     ######################
 
-    def load_lci_data(self) -> None:
+    def load_lci_data(self, nonsquare_ok=False) -> None:
         """Load inventory data and create technosphere and biosphere matrices."""
         self.technosphere_mm = mu.MappedMatrix(
             packages=self.packages,
@@ -176,7 +176,7 @@ class LCA(Iterator):
         self.dicts.product = partial(self.technosphere_mm.row_mapper.to_dict)
         self.dicts.activity = partial(self.technosphere_mm.col_mapper.to_dict)
 
-        if len(self.technosphere_mm.row_mapper) != len(self.technosphere_mm.col_mapper):
+        if len(self.technosphere_mm.row_mapper) != len(self.technosphere_mm.col_mapper) and not nonsquare_ok:
             raise NonsquareTechnosphere(
                 (
                     "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "
