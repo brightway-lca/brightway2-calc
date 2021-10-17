@@ -44,6 +44,22 @@ def test_basic():
     assert np.allclose(answer, lca.supply_array)
 
 
+def test_basic_negative_production():
+    pass
+
+
+def test_basic_substitution():
+    pass
+
+
+def test_basic_nonunitary_production():
+    pass
+
+
+def test_circular_inputs():
+    pass
+
+
 ######
 ### __init__
 ######
@@ -212,30 +228,50 @@ def test_build_demand_array_pass_object():
 
 
 def test_load_lci_data():
-    pass
-    # matrices
-    # dictionaries
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    tm = np.array([
+        [1, 0],
+        [-0.5, 1]
+    ])
+    assert np.allclose(lca.technosphere_matrix.toarray(), tm)
+    assert lca.dicts.product[1] == 0
+    assert lca.dicts.product[2] == 1
+    assert lca.dicts.activity[101] == 0
+    assert lca.dicts.activity[102] == 1
+    assert lca.dicts.biosphere[1] == 0
 
 
 def test_load_lci_data_nonsquare_technosphere():
-    pass
+    dp = bwp.create_datapackage()
 
+    data_array = np.array([1, 1, 0.5, 2, 3])
+    indices_array = np.array([(1, 101), (2, 102), (2, 101), (3, 101), (3, 102)], dtype=bwp.INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1, 1, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
 
-#         test_data = {
-#             ("t", "p1"): {"type": "product"},
-#             ("t", "a1"): {
-#                 "exchanges": [
-#                     {"amount": 1, "input": ("t", "p1"), "type": "production",},
-#                     {"amount": 1, "input": ("t", "a1"), "type": "production",},
-#                 ]
-#             },
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.write(test_data)
-#         lca = LCA({("t", "a1"): 1})
-#         with self.assertRaises(NonsquareTechnosphere):
-#             lca.lci()
+    lca = LCA({1: 1}, data_objs=[dp])
+    with pytest.raises(NonsquareTechnosphere):
+        lca.lci()
+    # lca.lci()
+    # tm = np.array([
+    #     [1, 0],
+    #     [-0.5, 1],
+    #     [-2, -3]
+    # ])
+    # assert np.allclose(lca.technosphere_matrix.toarray(), tm)
+    # assert lca.dicts.product[1] == 0
+    # assert lca.dicts.product[2] == 1
+    # assert lca.dicts.product[3] == 2
+    # assert lca.dicts.activity[101] == 0
+    # assert lca.dicts.activity[102] == 1
 
 
 def test_load_lci_data_empty_biosphere_warning():
@@ -250,7 +286,20 @@ def test_load_lci_data_empty_biosphere_warning():
 
 
 def test_remap_inventory_dicts():
-    pass
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages, remapping_dicts={'product': {1: ('foo', 'bar')}, 'biosphere': {1: 'z'}})
+    lca.lci()
+    lca.remap_inventory_dicts()
+    tm = np.array([
+        [1, 0],
+        [-0.5, 1]
+    ])
+    assert np.allclose(lca.technosphere_matrix.toarray(), tm)
+    assert lca.dicts.product[('foo', 'bar')] == 0
+    assert lca.dicts.product[2] == 1
+    assert lca.dicts.activity[101] == 0
+    assert lca.dicts.activity[102] == 1
+    assert lca.dicts.biosphere['z'] == 0
 
 
 ######
@@ -259,7 +308,65 @@ def test_remap_inventory_dicts():
 
 
 def test_load_lcia_data():
-    pass
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+    cm = np.array([[1]])
+    assert np.allclose(lca.characterization_matrix.toarray(), cm)
+
+
+def test_load_lcia_data_multiple_characterization_packages():
+    dp = bwp.create_datapackage()
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=bwp.INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([1, 2, 3])
+    indices_array = np.array([(1, 101), (2, 102), (3, 101)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1])
+    indices_array = np.array([(1, 0)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="first-characterization",
+        indices_array=indices_array,
+        global_index=0,
+        nrows=1,
+    )
+    data_array = np.array([2])
+    indices_array = np.array([(3, 0)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="second-characterization",
+        indices_array=indices_array,
+        global_index=0,
+        nrows=1,
+    )
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    cm = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 2]])
+    assert np.allclose(lca.characterization_matrix.toarray(), cm)
+    assert lca.dicts.biosphere[1] == 0
+    assert lca.dicts.biosphere[2] == 1
+    assert lca.dicts.biosphere[3] == 2
 
 
 def test_load_lcia_data_inconsistent_globals():
@@ -455,6 +562,41 @@ def test_lca_has():
 
 
 ######
+### load_normalization_data
+######
+
+
+######
+### load_weighting_data
+######
+
+
+######
+### normalize
+######
+
+
+######
+### weighting
+######
+
+
+######
+### switch_method
+######
+
+
+######
+### switch_normalization
+######
+
+
+######
+### switch_weighting
+######
+
+
+######
 ### redo_lci
 ######
 
@@ -507,114 +649,6 @@ def test_has():
     assert lca.has("biosphere")
     assert lca.has("characterization")
 
-
-#     def test_production_values(self):
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {
-#                         "amount": 2,
-#                         "input": ("t", "1"),
-#                         "type": "production",
-#                         "uncertainty type": 0,
-#                     },
-#                     {
-#                         "amount": 0.5,
-#                         "input": ("t", "2"),
-#                         "type": "technosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                     {
-#                         "amount": 1,
-#                         "input": ("biosphere", "1"),
-#                         "type": "biosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                 ],
-#                 "type": "process",
-#                 "unit": "kg",
-#             },
-#             ("t", "2"): {"exchanges": [], "type": "process", "unit": "kg"},
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         answer = np.zeros((2,))
-#         answer[lca.dicts.activity[("t", "1")]] = 0.5
-#         answer[lca.dicts.activity[("t", "2")]] = 0.25
-#         self.assertTrue(np.allclose(answer, lca.supply_array))
-
-#     def test_substitution(self):
-#         # bw2data version 1.0 compatibility
-#         if "substitution" not in TYPE_DICTIONARY:
-#             return
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {
-#                         "amount": 1,
-#                         "input": ("t", "2"),
-#                         "type": "substitution",
-#                         "uncertainty type": 0,
-#                     },
-#                     {
-#                         "amount": 1,
-#                         "input": ("biosphere", "1"),
-#                         "type": "biosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                 ],
-#                 "type": "process",
-#                 "unit": "kg",
-#             },
-#             ("t", "2"): {"exchanges": [], "type": "process", "unit": "kg"},
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         answer = np.zeros((2,))
-#         answer[lca.dicts.activity[("t", "1")]] = 1
-#         answer[lca.dicts.activity[("t", "2")]] = -1
-#         self.assertTrue(np.allclose(answer, lca.supply_array))
-
-#     def test_substitution_no_type(self):
-#         test_data = {
-#             ("t", "1"): {
-#                 "exchanges": [
-#                     {
-#                         "amount": -1,  # substitution
-#                         "input": ("t", "2"),
-#                         "type": "technosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                     {
-#                         "amount": 1,
-#                         "input": ("biosphere", "1"),
-#                         "type": "biosphere",
-#                         "uncertainty type": 0,
-#                     },
-#                 ],
-#                 "type": "process",
-#                 "unit": "kg",
-#             },
-#             ("t", "2"): {"exchanges": [], "type": "process", "unit": "kg"},
-#         }
-#         self.add_basic_biosphere()
-#         test_db = Database("t")
-#         test_db.register()
-#         test_db.write(test_data)
-#         lca = LCA({("t", "1"): 1})
-#         lca.lci()
-#         answer = np.zeros((2,))
-#         answer[lca.dicts.activity[("t", "1")]] = 1
-#         answer[lca.dicts.activity[("t", "2")]] = -1
-#         self.assertTrue(np.allclose(answer, lca.supply_array))
 
 #     def test_circular_chains(self):
 #         test_data = {
