@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV3 (2021-10-17)
+
+* Fix for constructing characterization matrices with semi-regionalized impact categories
+
 ## 2.0.DEV2 (2021-10-01)
 
 * More 2.5 work and fixes
