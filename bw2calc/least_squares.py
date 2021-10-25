@@ -1,6 +1,7 @@
 import warnings
 
 from scipy.sparse.linalg import lsmr
+import numpy as np
 
 from .errors import EfficiencyWarning, NoSolutionFound
 from .lca import LCA
@@ -16,8 +17,10 @@ class LeastSquaresLCA(LCA):
     * `Another least-squares algorithm in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsqr.html#scipy.sparse.linalg.lsqr>`_
 
     """
+    def load_lci_data(self) -> None:
+        super().load_lci_data(nonsquare_ok=True)
 
-    def solve_linear_system(self, solver=lsmr):
+    def solve_linear_system(self, solver=lsmr) -> np.ndarray:
         if self.technosphere_matrix.shape[0] == self.technosphere_matrix.shape[1]:
             warnings.warn(
                 "Don't use LeastSquaresLCA for square matrices", EfficiencyWarning
@@ -30,5 +33,5 @@ class LeastSquaresLCA(LCA):
             )
         return self.solver_results[0]
 
-    def decompose_technosphere(self):
+    def decompose_technosphere(self) -> None:
         raise NotImplementedError("Can't decompose rectangular technosphere")
