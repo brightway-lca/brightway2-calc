@@ -597,6 +597,26 @@ def test_lca_has():
 
 
 ######
+### invert_technosphere
+######
+
+
+def test_invert_technosphere():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    assert not hasattr(lca, "inverted_technosphere_matrix")
+    lca.invert_technosphere_matrix()
+    assert hasattr(lca, "inverted_technosphere_matrix")
+
+    itm = lca.inverted_technosphere_matrix
+    assert itm.shape == (2, 2)
+    expected = np.array([[1, 0], [0.5, 1]])
+    assert np.allclose(itm, expected)
+
+
+######
 ### redo_lci
 ######
 

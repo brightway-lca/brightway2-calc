@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV4
+
+* Add `invert_technosphere_matrix` with algo from @haasad
+
 ## 2.0.DEV3 (2021-10-17)
 
 * Fix for constructing characterization matrices with semi-regionalized impact categories

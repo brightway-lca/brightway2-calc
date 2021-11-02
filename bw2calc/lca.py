@@ -468,6 +468,21 @@ class LCA(Iterator):
         self.load_weighting_data()
         self.logger.info("Switching LCIA weighting", extra={"weighting": weighting})
 
+    def invert_technosphere_matrix(self):
+        """Use pardiso to efficiently calculate the inverse of the technosphere matrix."""
+        assert hasattr(self, "inventory"), "Must do lci first"
+        assert PYPARDISO, "pardiso solver needed for efficient matrix inversion"
+
+        MESSAGE = """Technosphere matrix inversion is often not the most efficient approach.
+    See https://github.com/brightway-lca/brightway2-calc/issues/35"""
+        warnings.warn(MESSAGE)
+
+        self.inverted_technosphere_matrix = spsolve(
+            self.technosphere_matrix,
+            np.eye(*self.technosphere_matrix.shape)
+        )
+        return self.inverted_technosphere_matrix
+
     def redo_lci(self, demand: Optional[dict] = None) -> None:
         """Redo LCI with same databases but different demand.
 
