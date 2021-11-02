@@ -26,7 +26,7 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
         raise InconsistentGlobalIndex(
             f"Multiple global index values found: {global_list}. If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."
         )
-    return global_list[0]
+    return global_list[0] if global_list else None
 
 
 def wrap_functional_unit(dct):
