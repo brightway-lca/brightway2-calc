@@ -312,7 +312,7 @@ class LCA(Iterator):
         else:
             return spsolve(self.technosphere_matrix, self.demand_array)
 
-    def lci(self, factorize: bool = False) -> None:
+    def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
         Calculate a life cycle inventory.
 
@@ -329,7 +329,11 @@ class LCA(Iterator):
         """
         if not hasattr(self, "technosphere_matrix"):
             self.load_lci_data()
-        self.build_demand_array()
+        if demand is not None:
+            self.build_demand_array(demand)
+            self.demand = demand
+        else:
+            self.build_demand_array()
         if factorize and not PYPARDISO:
             self.decompose_technosphere()
         self.lci_calculation()
@@ -347,15 +351,12 @@ class LCA(Iterator):
             [self.supply_array], [0], count, count
         )
 
-    def lcia(self) -> None:
+    def lcia(self, demand: Optional[dict] = None) -> None:
         """
         Calculate the life cycle impact assessment.
 
         #. Load and construct the characterization matrix
         #. Multiply the characterization matrix by the life cycle inventory
-
-        Args:
-            * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the characterization matrix.
 
         Doesn't return anything, but creates ``self.characterized_inventory``.
 
@@ -366,6 +367,9 @@ class LCA(Iterator):
 
         if not hasattr(self, "characterization_matrix"):
             self.load_lcia_data()
+        if demand is not None:
+            self.lci(demand=demand)
+            self.demand = demand
         self.lcia_calculation()
 
     def lcia_calculation(self) -> None:
@@ -527,14 +531,8 @@ class LCA(Iterator):
         .. warning:: If you want to redo the LCIA as well, use ``redo_lcia(demand)`` directly.
 
         """
-        assert hasattr(self, "inventory"), "Must do lci first"
-        if demand is not None:
-            self.build_demand_array(demand)
-            self.demand = demand
-        self.lci_calculation()
-        # self.logger.info(
-        #     "Redoing LCI", extra={"demand": wrap_functional_unit(demand or self.demand)}
-        # )
+        warnings.warn('Please use .lci(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        self.lci(demand=demand)
 
     def redo_lcia(self, demand: Optional[dict] = None) -> None:
         """Redo LCIA, optionally with new demand.
@@ -545,15 +543,8 @@ class LCA(Iterator):
         Doesn't return anything, but overwrites ``self.characterized_inventory``. If ``demand`` is given, also overwrites ``self.demand_array``, ``self.supply_array``, and ``self.inventory``.
 
         """
-        assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        if demand is not None:
-            self.redo_lci(demand)
-            self.demand = demand
-        self.lcia_calculation()
-        # self.logger.info(
-        #     "Redoing LCIA",
-        #     extra={"demand": wrap_functional_unit(demand or self.demand)},
-        # )
+        warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        self.lcia(demand=demand)
 
     # def to_dataframe(self, cutoff=200):
     #     """Return all nonzero elements of characterized inventory as Pandas dataframe"""

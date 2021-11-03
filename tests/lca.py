@@ -1040,11 +1040,37 @@ def test_invert_technosphere():
 
 
 def test_redo_lci():
-    pass
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref_sup = lca.supply_array.sum()
+    lca.lci({2: 1})
+    assert lca.supply_array.sum() != ref_sup
 
 
-def test_redo_lci_new_demand():
-    pass
+def test_redo_lci_same_fu():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref_sup = lca.supply_array.sum()
+    lca.lci()
+    assert lca.supply_array.sum() == ref_sup
+
+
+def test_redo_lci_deprecated():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref_sup = lca.supply_array.sum()
+    with pytest.deprecated_call():
+        lca.redo_lci({2: 1})
+    assert lca.supply_array.sum() != ref_sup
 
 
 def test_redo_lci_fails_if_activity_outside_technosphere():
@@ -1068,11 +1094,37 @@ def test_redo_lci_with_no_new_demand_no_error():
 
 
 def test_redo_lcia():
-    pass
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref = lca.score
+    lca.lcia({2: 1})
+    assert lca.score != ref
 
 
-def test_redo_lcia_new_demand():
-    pass
+def test_redo_lcia_same_fu():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref = lca.score
+    lca.lcia()
+    assert lca.score == ref
+
+
+def test_redo_lcia_deprecated():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    ref = lca.score
+    with pytest.deprecated_call():
+        lca.redo_lcia({2: 1})
+    assert lca.score != ref
 
 
 ######
