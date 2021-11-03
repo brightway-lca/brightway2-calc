@@ -1,9 +1,15 @@
 # Changelog
 
-## 2.0.DEV4
+## 2.0.DEV4 (2021-11-03)
 
 * Add `invert_technosphere_matrix` with algo from @haasad
 * Fix `switch_method`, `switch_normalization`, `switch_weighting`
+
+Compatibility changes:
+
+* `LCA.score` will return weighted or normalized score, if weighting or normalization has been performed
+* `LCA.weighting` will now trigger a deprecation warning. Switch to `.weight` instead.
+* `LCA.redo_lci` deprecated in favor of `LCA.lci(demand)`; `LCA.redo_lcia` deprecated in favor of `LCA.lcia(demand)`
 
 ## 2.0.DEV3 (2021-10-17)
 
