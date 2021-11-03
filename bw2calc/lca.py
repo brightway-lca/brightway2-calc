@@ -248,7 +248,7 @@ class LCA(Iterator):
         self.characterization_matrix = self.characterization_mm.matrix
 
     def load_normalization_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
         self.normalization_mm = mu.MappedMatrix(
@@ -263,7 +263,7 @@ class LCA(Iterator):
         self.normalization_matrix = self.normalization_mm.matrix
 
     def load_weighting_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]]
+        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
         self.weighting_mm = SingleValueDiagonalMatrix(
@@ -410,7 +410,7 @@ class LCA(Iterator):
             obj = self.normalized_inventory
         else:
             obj = self.characterized_inventory
-        self.weighted_inventory = self.weighting_value[0] * obj
+        self.weighted_inventory = self.weighting_matrix * obj
 
     @property
     def score(self) -> float:
@@ -461,6 +461,9 @@ class LCA(Iterator):
     def switch_method(
         self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
     ) -> None:
+        """Load a new method and replace ``.characterization_mm`` and ``.characterization_matrix``.
+
+        Does not do any new calculations or change ``.characterized_inventory``."""
         self._switch(
             obj=method,
             label="method",
@@ -471,6 +474,9 @@ class LCA(Iterator):
     def switch_normalization(
         self, normalization=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
     ) -> None:
+        """Load a new normalization and replace ``.normalization_mm`` and ``.normalization_matrix``.
+
+        Does not do any new calculations or change ``.normalized_inventory``."""
         self._switch(
             obj=normalization,
             label="normalization",
@@ -481,6 +487,9 @@ class LCA(Iterator):
     def switch_weighting(
         self, weighting=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
     ) -> None:
+        """Load a new weighting and replace ``.weighting_mm`` and ``.weighting_matrix``.
+
+        Does not do any new calculations or change ``.weighted_inventory``."""
         self._switch(
             obj=weighting,
             label="weighting",
