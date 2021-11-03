@@ -393,6 +393,7 @@ class LCA(Iterator):
         assert hasattr(self, "characterized_inventory"), "Must do lcia first"
         if not hasattr(self, "weighting_value"):
             self.load_weighting_data()
+        self.weighting_calculation()
 
     def weighting_calculation(self) -> None:
         """The actual weighting calculation.
