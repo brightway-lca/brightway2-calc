@@ -420,10 +420,12 @@ class LCA(Iterator):
         Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        # if hasattr(self, "weighting"):
-        #     assert hasattr(self, "weighted_inventory"), "Must do weighting first"
-        #     return float(self.weighted_inventory.sum())
-        return float(self.characterized_inventory.sum())
+        if hasattr(self, "weighted_inventory"):
+            return float(self.weighted_inventory.sum())
+        elif hasattr(self, "normalized_inventory"):
+            return float(self.normalized_inventory.sum())
+        else:
+            return float(self.characterized_inventory.sum())
 
     #########################
     ### Redo calculations ###
