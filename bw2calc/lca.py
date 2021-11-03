@@ -392,6 +392,11 @@ class LCA(Iterator):
         )
 
     def weighting(self) -> None:
+        """Backwards compatibility. Switching to verb form consistent with ``.normalize``."""
+        warnings.warn('Please switch to `.weight`', DeprecationWarning)
+        return self.weight()
+
+    def weight(self) -> None:
         """Multiply characterized inventory by weighting value.
 
         Can be done with or without normalization."""

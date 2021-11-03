@@ -674,10 +674,59 @@ def test_lca_with_weighting():
     lca.lci()
     lca.lcia()
     assert lca.score == 11
-    lca.weighting()
+    lca.weight()
     assert lca.score == 11 * 4
     assert lca.weighting_matrix.shape == (2, 2)
     assert lca.weighting_matrix.sum() == 8
+
+
+def test_lca_with_weighting_deprecation():
+    dp = bwp.create_datapackage()
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=bwp.INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([1, 2])
+    indices_array = np.array([(201, 101), (202, 102)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1, 10])
+    indices_array = np.array([(201, 0), (202, 0)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="first-characterization",
+        indices_array=indices_array,
+        global_index=0,
+    )
+
+    data_array = np.array([4])
+    indices_array = np.array([(0, 0)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=data_array,
+        name="wm",
+        indices_array=indices_array,
+    )
+
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    with pytest.deprecated_call():
+        lca.weighting()
 
 
 def test_lca_with_weighting_and_normalization():
@@ -938,7 +987,7 @@ def test_switch_weighting():
     lca.lci()
     lca.lcia()
     assert lca.score == 11
-    lca.weighting()
+    lca.weight()
     assert lca.score == 11 * 4
     assert lca.weighting_matrix.shape == (2, 2)
     assert lca.weighting_matrix.sum() == 8
@@ -961,7 +1010,7 @@ def test_switch_weighting():
     assert not any(
         res["matrix"] == "weighting_matrix" for res in lca.packages[0].resources
     )
-    lca.weighting()
+    lca.weight()
     assert lca.score == 11 * 42
 
 
