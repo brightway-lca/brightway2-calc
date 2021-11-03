@@ -322,7 +322,8 @@ class LCA(Iterator):
         Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory``.
 
         """
-        self.load_lci_data()
+        if not hasattr(self, "technosphere_matrix"):
+            self.load_lci_data()
         self.build_demand_array()
         if factorize and not PYPARDISO:
             self.decompose_technosphere()
@@ -358,7 +359,8 @@ class LCA(Iterator):
         if not self.dicts.biosphere:
             raise EmptyBiosphere
 
-        self.load_lcia_data()
+        if not hasattr(self, "characterization_matrix"):
+            self.load_lcia_data()
         self.lcia_calculation()
 
     def lcia_calculation(self) -> None:
