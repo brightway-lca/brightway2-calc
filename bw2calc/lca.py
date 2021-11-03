@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterator, Mapping
 from functools import partial
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, Callable
 
 import bw_processing as bwp
 import matrix_utils as mu
@@ -176,7 +176,10 @@ class LCA(Iterator):
         self.dicts.product = partial(self.technosphere_mm.row_mapper.to_dict)
         self.dicts.activity = partial(self.technosphere_mm.col_mapper.to_dict)
 
-        if len(self.technosphere_mm.row_mapper) != len(self.technosphere_mm.col_mapper) and not nonsquare_ok:
+        if (
+            len(self.technosphere_mm.row_mapper) != len(self.technosphere_mm.col_mapper)
+            and not nonsquare_ok
+        ):
             raise NonsquareTechnosphere(
                 (
                     "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "
@@ -228,7 +231,9 @@ class LCA(Iterator):
 
         """
         global_index = consistent_global_index(data_objs or self.packages)
-        fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
+        fltr = (
+            (lambda x: x["col"] == global_index) if global_index is not None else None
+        )
 
         self.characterization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
@@ -424,52 +429,62 @@ class LCA(Iterator):
     ### Redo calculations ###
     #########################
 
+    def _switch(
+        self,
+        obj: Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]],
+        label: str,
+        matrix: str,
+        func: Callable,
+    ) -> None:
+        """Switch a method, weighting, or normalization"""
+        if isinstance(label, tuple):
+            self.ensure_bw2data_available()
+            _, data_objs, _ = prepare_lca_inputs(**{label: obj})
+            setattr(self, label, obj)
+        else:
+            data_objs = list(obj)
+        self.packages = [
+            pkg.exclude({"matrix": matrix}) for pkg in self.packages
+        ] + data_objs
+        func(data_objs=data_objs)
+
+        logger.info(
+            f"""Switched LCIA {label}. data_objs: {data_objs}""",
+            extra={
+                "data_objs": str(data_objs),
+                "utc": datetime.datetime.utcnow(),
+            },
+        )
+
     def switch_method(
         self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
     ) -> None:
-        """Switch to LCIA method `method`"""
-        if isinstance(method, tuple):
-            self.ensure_bw2data_available()
-            _, data_objs, _ = prepare_lca_inputs(method=method)
-            self.method = method
-        else:
-            data_objs = method
-        self.load_lcia_data(data_objs=data_objs)
-
-        message = """Switched LCIA method. data_objs: {data_objs}""".format(
-            data_objs=data_objs
-        )
-        logger.info(
-            message,
-            extra={
-                "data_objs": str(data_objs),
-                "utc": datetime.datetime.utcnow(),
-            },
+        self._switch(
+            obj=method,
+            label="method",
+            matrix="characterization_matrix",
+            func=self.load_lcia_data,
         )
 
-    def switch_normalization(self, normalization):
-        """Switch to LCIA normalization `normalization`"""
-        self.normalization = normalization
-        _, _, _, self.normalization_filepath = self.get_array_filepaths()
-        self.load_normalization_data()
-
-        message = """Switched LCIA method. data_objs: {data_objs}""".format(
-            data_objs=data_objs
-        )
-        logger.info(
-            message,
-            extra={
-                "data_objs": str(data_objs),
-                "utc": datetime.datetime.utcnow(),
-            },
+    def switch_normalization(
+        self, normalization=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
+        self._switch(
+            obj=normalization,
+            label="normalization",
+            matrix="normalization_matrix",
+            func=self.load_normalization_data,
         )
 
-    def switch_weighting(self, weighting):
-        """Switch to LCIA weighting `weighting`"""
-        self.weighting = weighting
-        _, _, self.weighting_filepath, _ = self.get_array_filepaths()
-        self.load_weighting_data()
-        self.logger.info("Switching LCIA weighting", extra={"weighting": weighting})
+    def switch_weighting(
+        self, weighting=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
+    ) -> None:
+        self._switch(
+            obj=weighting,
+            label="weighting",
+            matrix="weighting_matrix",
+            func=self.load_weighting_data,
+        )
 
     def invert_technosphere_matrix(self):
         """Use pardiso to efficiently calculate the inverse of the technosphere matrix."""
@@ -481,8 +496,7 @@ class LCA(Iterator):
         warnings.warn(MESSAGE)
 
         self.inverted_technosphere_matrix = spsolve(
-            self.technosphere_matrix,
-            np.eye(*self.technosphere_matrix.shape)
+            self.technosphere_matrix, np.eye(*self.technosphere_matrix.shape)
         )
         return self.inverted_technosphere_matrix
 

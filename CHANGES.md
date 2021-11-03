@@ -3,6 +3,7 @@
 ## 2.0.DEV4
 
 * Add `invert_technosphere_matrix` with algo from @haasad
+* Fix `switch_method`, `switch_normalization`, `switch_weighting`
 
 ## 2.0.DEV3 (2021-10-17)
 

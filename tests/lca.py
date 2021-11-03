@@ -1,4 +1,9 @@
-from bw2calc.errors import OutsideTechnosphere, NonsquareTechnosphere, EmptyBiosphere, InconsistentGlobalIndex
+from bw2calc.errors import (
+    OutsideTechnosphere,
+    NonsquareTechnosphere,
+    EmptyBiosphere,
+    InconsistentGlobalIndex,
+)
 from bw2calc.lca import LCA
 from pathlib import Path
 import bw_processing as bwp
@@ -231,10 +236,7 @@ def test_load_lci_data():
     packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
     lca.lci()
-    tm = np.array([
-        [1, 0],
-        [-0.5, 1]
-    ])
+    tm = np.array([[1, 0], [-0.5, 1]])
     assert np.allclose(lca.technosphere_matrix.toarray(), tm)
     assert lca.dicts.product[1] == 0
     assert lca.dicts.product[2] == 1
@@ -247,7 +249,9 @@ def test_load_lci_data_nonsquare_technosphere():
     dp = bwp.create_datapackage()
 
     data_array = np.array([1, 1, 0.5, 2, 3])
-    indices_array = np.array([(1, 101), (2, 102), (2, 101), (3, 101), (3, 102)], dtype=bwp.INDICES_DTYPE)
+    indices_array = np.array(
+        [(1, 101), (2, 102), (2, 101), (3, 101), (3, 102)], dtype=bwp.INDICES_DTYPE
+    )
     flip_array = np.array([0, 0, 1, 1, 1], dtype=bool)
     dp.add_persistent_vector(
         matrix="technosphere_matrix",
@@ -287,19 +291,20 @@ def test_load_lci_data_empty_biosphere_warning():
 
 def test_remap_inventory_dicts():
     packages = [fixture_dir / "basic_fixture.zip"]
-    lca = LCA({1: 1}, data_objs=packages, remapping_dicts={'product': {1: ('foo', 'bar')}, 'biosphere': {1: 'z'}})
+    lca = LCA(
+        {1: 1},
+        data_objs=packages,
+        remapping_dicts={"product": {1: ("foo", "bar")}, "biosphere": {1: "z"}},
+    )
     lca.lci()
     lca.remap_inventory_dicts()
-    tm = np.array([
-        [1, 0],
-        [-0.5, 1]
-    ])
+    tm = np.array([[1, 0], [-0.5, 1]])
     assert np.allclose(lca.technosphere_matrix.toarray(), tm)
-    assert lca.dicts.product[('foo', 'bar')] == 0
+    assert lca.dicts.product[("foo", "bar")] == 0
     assert lca.dicts.product[2] == 1
     assert lca.dicts.activity[101] == 0
     assert lca.dicts.activity[102] == 1
-    assert lca.dicts.biosphere['z'] == 0
+    assert lca.dicts.biosphere["z"] == 0
 
 
 ######
@@ -584,6 +589,67 @@ def test_lca_has():
 ######
 ### switch_method
 ######
+
+
+def test_switch_method():
+    dp = bwp.create_datapackage()
+
+    data_array = np.array([1, 1, 0.5])
+    indices_array = np.array([(1, 101), (2, 102), (2, 101)], dtype=bwp.INDICES_DTYPE)
+    flip_array = np.array([0, 0, 1], dtype=bool)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    data_array = np.array([1, 2, 3])
+    indices_array = np.array([(1, 101), (2, 102), (3, 101)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1])
+    indices_array = np.array([(1, 0)], dtype=bwp.INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="first-characterization",
+        indices_array=indices_array,
+        global_index=0,
+    )
+
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    cm = np.array([[1, 0, 0], [0, 0, 0], [0, 0, 0]])
+    assert np.allclose(lca.characterization_matrix.toarray(), cm)
+    assert len(lca.packages) == 1
+
+    ndp = bwp.create_datapackage()
+
+    data_array = np.array([10])
+    indices_array = np.array([(3, 0)], dtype=bwp.INDICES_DTYPE)
+    ndp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="first-characterization",
+        indices_array=indices_array,
+        global_index=0,
+    )
+
+    lca.switch_method([ndp])
+    cm = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 10]])
+    assert np.allclose(lca.characterization_matrix.toarray(), cm)
+    assert len(lca.packages) == 2
+    assert not any(
+        res["matrix"] == "characterization_matrix" for res in lca.packages[0].resources
+    )
 
 
 ######
