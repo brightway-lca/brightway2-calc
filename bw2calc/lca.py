@@ -448,7 +448,7 @@ class LCA(Iterator):
         func: Callable,
     ) -> None:
         """Switch a method, weighting, or normalization"""
-        if isinstance(label, tuple):
+        if isinstance(obj, tuple):
             self.ensure_bw2data_available()
             _, data_objs, _ = prepare_lca_inputs(**{label: obj})
             setattr(self, label, obj)
