@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV5 (2021-11-26)
+
+* Fix a bug in `switch_method` if given a `bw2data` method tuuple instead of a list of datapackages.
+
 ## 2.0.DEV4 (2021-11-03)
 
 * Add `invert_technosphere_matrix` with algo from @haasad
