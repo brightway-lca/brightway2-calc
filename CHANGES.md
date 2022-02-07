@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.8.1 (2022-02-07)
+
+* Fix changes to Scipy API in 1.8.0
+
 ### 1.8.0 (2020-02-27)
 
 * Replace `.todense` with `.toarray` to satisfy changes in Scipy API
