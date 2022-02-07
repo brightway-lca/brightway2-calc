@@ -1,6 +1,19 @@
-from .lca import LCA
-from bw2data import calculation_setups
 import numpy as np
+from bw2data import calculation_setups
+
+from .lca import LCA
+
+
+class InventoryMatrices:
+    def __init__(self, biosphere_matrix, supply_arrays):
+        self.biosphere_matrix = biosphere_matrix
+        self.supply_arrays = supply_arrays
+
+    def __getitem__(self, fu_index):
+        if fu_index is Ellipsis:
+            raise ValueError("Must specify integer indices")
+
+        return self.biosphere_matrix * self.supply_arrays[fu_index]
 
 
 class MultiLCA:
@@ -32,8 +45,9 @@ class MultiLCA:
                 "functional units": [wrap_functional_unit(o) for o in self.func_units],
             }
         )
-        self.lca.lci(factorize=True)
+        self.lca.lci()
         self.method_matrices = []
+        self.supply_arrays = []
         self.results = np.zeros((len(self.func_units), len(self.methods)))
         for method in self.methods:
             self.lca.switch_method(method)
@@ -41,10 +55,16 @@ class MultiLCA:
 
         for row, func_unit in enumerate(self.func_units):
             self.lca.redo_lci(func_unit)
+            self.supply_arrays.append(self.lca.supply_array)
+
             for col, cf_matrix in enumerate(self.method_matrices):
                 self.lca.characterization_matrix = cf_matrix
                 self.lca.lcia_calculation()
                 self.results[row, col] = self.lca.score
+
+        self.inventory = InventoryMatrices(
+            self.lca.biosphere_matrix, self.supply_arrays
+        )
 
     @property
     def all(self):
