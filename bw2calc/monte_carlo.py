@@ -7,7 +7,7 @@ from .lca import LCA
 from .utils import clean_databases, get_seed
 from bw2data import projects
 from contextlib import contextmanager
-from scipy.sparse.linalg import iterative
+from scipy.sparse.linalg import cgs
 from stats_arrays.random import MCRandomNumberGenerator
 import multiprocessing
 import sys
@@ -33,7 +33,7 @@ else:
 @implements_iterator
 class IterativeMonteCarlo(LCA):
     """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
-    def __init__(self, demand, method=None, iter_solver=iterative.cgs,
+    def __init__(self, demand, method=None, iter_solver=cgs,
                  seed=None, *args, **kwargs):
         self.seed = seed or get_seed()
         super(IterativeMonteCarlo, self).__init__(demand, method=method,
