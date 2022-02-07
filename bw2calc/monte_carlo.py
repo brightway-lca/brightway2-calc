@@ -1,6 +1,6 @@
 import multiprocessing
 
-from scipy.sparse.linalg import iterative
+from scipy.sparse.linalg import cgs
 from stats_arrays.random import MCRandomNumberGenerator
 
 from . import prepare_lca_inputs, spsolve
@@ -21,7 +21,7 @@ class MonteCarloLCA(LCA):
 class IterativeMonteCarlo(MonteCarloLCA):
     """Base class to use iterative techniques instead of `LU factorization <http://en.wikipedia.org/wiki/LU_decomposition>`_ in Monte Carlo."""
 
-    def __init__(self, *args, iter_solver=iterative.cgs, **kwargs):
+    def __init__(self, *args, iter_solver=cgs, **kwargs):
         super().__init__(*args, **kwargs)
         self.iter_solver = iter_solver
         self.guess = None
