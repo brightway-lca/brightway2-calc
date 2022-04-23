@@ -28,6 +28,13 @@ class LCA(Iterator):
     Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
 
     """
+    matrix_labels = [
+        "technosphere_mm",
+        "biosphere_mm",
+        "characterization_mm",
+        "normalization_mm",
+        "weighting_mm",
+    ]
 
     #############
     ### Setup ###
@@ -81,14 +88,6 @@ class LCA(Iterator):
         self.use_distributions = use_distributions
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
-
-        self.matrix_labels = [
-            "technosphere_mm",
-            "biosphere_mm",
-            "characterization_mm",
-            "normalization_mm",
-            "weighting_mm",
-        ]
 
         message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(
             demand=self.demand, data_objs=self.packages
