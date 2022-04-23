@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.DEV6 (2022-04-23)
+
+* Add an optional warning on LCA instantiation if excluding resources (arrays or distributions) which could be useful
+* Add function stubs to be used by subclasses on iteration
+
 ## 2.0.DEV5 (2021-11-26)
 
 * Fix a bug in `switch_method` if given a `bw2data` method tuuple instead of a list of datapackages.
