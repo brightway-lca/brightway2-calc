@@ -82,6 +82,14 @@ class LCA(Iterator):
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
 
+        self.matrix_labels = [
+            "technosphere_mm",
+            "biosphere_mm",
+            "characterization_mm",
+            "normalization_mm",
+            "weighting_mm",
+        ]
+
         message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(
             demand=self.demand, data_objs=self.packages
         )
@@ -100,14 +108,7 @@ class LCA(Iterator):
         )
 
     def __next__(self) -> None:
-        matrices = [
-            "technosphere_mm",
-            "biosphere_mm",
-            "characterization_mm",
-            "normalization_mm",
-            "weighting_mm",
-        ]
-        for matrix in matrices:
+        for matrix in self.matrix_labels:
             if hasattr(self, matrix):
                 obj = getattr(self, matrix)
                 next(obj)
