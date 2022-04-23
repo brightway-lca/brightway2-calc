@@ -125,6 +125,10 @@ class LCA(Iterator):
                         "utc": datetime.datetime.utcnow(),
                     },
                 )
+
+        if hasattr(self, "after_matrix_iteration"):
+            self.after_matrix_iteration()
+
         if hasattr(self, "inventory"):
             self.lci_calculation()
         if hasattr(self, "characterized_inventory"):
