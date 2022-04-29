@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import tarfile
+from pathlib import Path
 import itertools
-import random
-import tempfile
-import os
 import json
+import numpy as np
+import os
+import random
+import tarfile
+import tempfile
 
 
 def generate_fixture():
@@ -66,7 +67,7 @@ def generate_fixture():
         )
 
     with tempfile.TemporaryDirectory() as t:
-        with tarfile.open("sm-fixture.tar.bz2", "w:bz2") as f:
+        with tarfile.open(Path(t) / "sm-fixture.tar.bz2", "w:bz2") as f:
             path = os.path.join(t, "array.npy")
             np.save(path, array, allow_pickle=False)
             f.add(path, "array.npy")
