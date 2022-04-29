@@ -334,6 +334,7 @@ class LCA(Iterator):
         if not hasattr(self, "technosphere_matrix"):
             self.load_lci_data()
         if demand is not None:
+            self.__check_demand(demand)
             self.build_demand_array(demand)
             self.demand = demand
         else:
@@ -372,6 +373,7 @@ class LCA(Iterator):
         if not hasattr(self, "characterization_matrix"):
             self.load_lcia_data()
         if demand is not None:
+            self.__check_demand(demand)
             self.lci(demand=demand)
             self.demand = demand
         self.lcia_calculation()
@@ -544,7 +546,6 @@ class LCA(Iterator):
 
         """
         warnings.warn('Please use .lci(demand=demand) instead of `redo_lci`.', DeprecationWarning)
-        self.__check_demand(demand)
         self.lci(demand=demand)
 
     def redo_lcia(self, demand: Optional[dict] = None) -> None:
@@ -557,7 +558,6 @@ class LCA(Iterator):
 
         """
         warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
-        self.__check_demand(demand)
         self.lcia(demand=demand)
 
     # def to_dataframe(self, cutoff=200):
