@@ -21,7 +21,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.3" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -52,7 +52,7 @@ jobs:
   - bash: |
       python --version
       pip --version
-      pip install --pre numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.3" pytest-cov
+      pip install --pre numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
       echo "which pytest"
       which pytest
       echo "pytest version"
@@ -86,7 +86,7 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.3" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
@@ -116,7 +116,7 @@ jobs:
 
   - script: |
       call activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.3" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - script: |
