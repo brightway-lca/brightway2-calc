@@ -35,7 +35,6 @@ jobs:
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
 
-jobs:
 - job:
   displayName: ubuntu-20.04-pip
   pool:
