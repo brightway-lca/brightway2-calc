@@ -1081,6 +1081,16 @@ def test_redo_lci_fails_if_activity_outside_technosphere():
         lca.redo_lci({10: 1})
 
 
+def test_redo_lci_fails_if_passed_bw2_key_tuple():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    with pytest.raises(KeyError) as excinfo:
+        lca.redo_lci({('foo', 'bar'): 1})
+        assert 'make sure to pass the integer id' in str(excinfo)
+
+
 def test_redo_lci_with_no_new_demand_no_error():
     packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
@@ -1102,6 +1112,27 @@ def test_redo_lcia():
     ref = lca.score
     lca.lcia({2: 1})
     assert lca.score != ref
+
+
+def test_redo_lcia_keyerror_bw2_key():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    with pytest.raises(KeyError) as excinfo:
+        lca.redo_lcia(('foo', 'bar'))
+        assert 'make sure to pass the integer id' in str(excinfo)
+
+
+def test_redo_lcia_outside_technosphere():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+    lca.lcia()
+
+    with pytest.raises(OutsideTechnosphere):
+        lca.redo_lcia({10: 1})
 
 
 def test_redo_lcia_same_fu():

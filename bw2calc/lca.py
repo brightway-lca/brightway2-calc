@@ -524,6 +524,14 @@ class LCA(Iterator):
         )
         return self.inverted_technosphere_matrix
 
+    def __check_demand(self, demand: Optional[dict] = None):
+        if demand is None:
+            return
+        else:
+            for key in demand:
+                if key not in self.dicts.product and not isinstance(key, int):
+                    raise KeyError(f"Key '{key}' not in product dictionary; make sure to pass the integer id, not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object.")
+
     def redo_lci(self, demand: Optional[dict] = None) -> None:
         """Redo LCI with same databases but different demand.
 
@@ -536,6 +544,7 @@ class LCA(Iterator):
 
         """
         warnings.warn('Please use .lci(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        self.__check_demand(demand)
         self.lci(demand=demand)
 
     def redo_lcia(self, demand: Optional[dict] = None) -> None:
@@ -548,6 +557,7 @@ class LCA(Iterator):
 
         """
         warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        self.__check_demand(demand)
         self.lcia(demand=demand)
 
     # def to_dataframe(self, cutoff=200):
