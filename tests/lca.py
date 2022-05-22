@@ -118,6 +118,18 @@ def test_next_data_array():
         next(lca)
 
 
+def test_data_array_keep_first():
+    packages = [fixture_dir / "array_sequential.zip"]
+    lca = LCA({1: 1}, data_objs=packages, use_arrays=True)
+    lca.lci()
+    lca.lcia()
+    lca.keep_first_iteration()
+
+    for x in range(1, 5):
+        next(lca)
+        assert lca.biosphere_matrix.sum() == x
+
+
 def test_next_only_vectors():
     packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)

@@ -106,9 +106,19 @@ class LCA(Iterator):
             },
         )
 
+    def keep_first_iteration(self):
+        """Set a flag to use the current values as first element when iterating.
+
+        When creating the class instance, we already use the first index. This method allows us to use the values for the first index.
+
+        Note that the methods ``.lci_calculation()`` and ``.lcia_calculation()`` will be called on the current values, even if these calculations have already been done."""
+        self.keep_first_iteration_flag = True
+
     def __next__(self) -> None:
+        skip_first_iteration = hasattr(self, "keep_first_iteration_flag") and self.keep_first_iteration_flag
+
         for matrix in self.matrix_labels:
-            if hasattr(self, matrix):
+            if not skip_first_iteration and hasattr(self, matrix):
                 obj = getattr(self, matrix)
                 next(obj)
                 message = """Iterating {matrix}. Indexers: {indexer_state}""".format(
@@ -125,8 +135,11 @@ class LCA(Iterator):
                     },
                 )
 
-        if hasattr(self, "after_matrix_iteration"):
+        if not skip_first_iteration and hasattr(self, "after_matrix_iteration"):
             self.after_matrix_iteration()
+
+        if skip_first_iteration:
+            delattr(self, "keep_first_iteration_flag")
 
         if hasattr(self, "inventory"):
             self.lci_calculation()
