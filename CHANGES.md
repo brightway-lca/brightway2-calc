@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV7 (2022-05-22)
+
+* Add `LCA.keep_first_iteration` to make iteration simpler
+
 ## 2.0.DEV6 (2022-04-23)
 
 * Add an optional warning on LCA instantiation if excluding resources (arrays or distributions) which could be useful
