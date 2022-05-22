@@ -40,12 +40,12 @@ except ImportError:
     PackagesDataLoader = None
 try:
     from bw2data import __version__ as _bw2data_version
-    from bw2data import prepare_lca_inputs
+    from bw2data import prepare_lca_inputs, get_activity
 
     if not _bw2data_version >= (4, 0):
         raise ImportError
 except ImportError:
-    prepare_lca_inputs = None
+    prepare_lca_inputs = get_activity = None
 
 
 from .dense_lca import DenseLCA
