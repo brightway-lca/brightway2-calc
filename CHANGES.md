@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV8 (2022-06-27)
+
+* Use `bw2calc` logger in MultiLCA class
+
 ## 2.0.DEV7 (2022-05-22)
 
 * Add `LCA.keep_first_iteration` to make iteration simpler

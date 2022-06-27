@@ -1,8 +1,11 @@
+import logging
 import numpy as np
 from bw2data import calculation_setups
 
 from .lca import LCA
 
+
+logger = logging.getLogger("bw2calc")
 
 class InventoryMatrices:
     def __init__(self, biosphere_matrix, supply_arrays):
@@ -38,7 +41,7 @@ class MultiLCA:
         self.func_units = cs["inv"]
         self.methods = cs["ia"]
         self.lca = LCA(demand=self.all, method=self.methods[0], log_config=log_config)
-        self.lca.logger.info(
+        logger.info(
             {
                 "message": "Started MultiLCA calculation",
                 "methods": list(self.methods),
