@@ -1,9 +1,5 @@
-brightway2
-bw_processing
-numpy
-pandas
+bw2data
+pypardiso
 pytest
 pytest-cov
 python-coveralls
-scipy
-stats_arrays

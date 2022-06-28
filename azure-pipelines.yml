@@ -21,11 +21,15 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing bw2data matrix_utils pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
       source activate bw2
+      # We have a conda based testing environment at this point, but to test with the conda package
+      # we need to build it first, and use conda install --use-local for example.
+      # This can be fixed later. TODO:
+      pip install -e .
       pytest --cov=bw2calc --cov-report=xml --cov-report=html
     displayName: pytest
 
@@ -49,19 +53,36 @@ jobs:
         python.version: '3.8'
 
   steps:
-  - bash: |
-      python --version
-      pip --version
-      pip install --pre numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
-      echo "which pytest"
-      which pytest
-      echo "pytest version"
-      pytest --version
-    displayName: Install Pip packages
+    - bash: |
+        pip install virtualenv
+        virtualenv bw2
+      displayName: create virtualenv
 
-  - bash: |
-      pytest --cov=bw2calc --color=yes -v --cov-report html
-    displayName: pytest
+    - bash: |
+        source bw2/bin/activate      
+        pip install -U pip
+        pip --version
+      displayName: Update pip in virtualenv
+
+    - bash: |
+        source bw2/bin/activate      
+        python --version
+        pip --version
+        pip install --pre numpy bw_processing bw2data matrix_utils pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
+        echo "which pytest: "
+        which pytest
+        echo "pytest version: "
+        pytest --version
+        echo "isntalled packages: "
+        pip list
+      displayName: Install testing dependencies
+
+    - bash: |
+        source bw2/bin/activate      
+        pip install -e .
+        pytest --cov=bw2calc --color=yes -v --cov-report html
+      displayName: Run pytest
+
 
 - job:
   displayName: macOS-1015-38-conda
@@ -86,11 +107,12 @@ jobs:
 
   - bash: |
       source activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy bw_processing bw2data matrix_utils pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - bash: |
       source activate bw2
+      pip install -e .
       pytest --cov=bw2calc --cov-report=xml --cov-report=html
     displayName: pytest
 
@@ -116,10 +138,11 @@ jobs:
 
   - script: |
       call activate bw2
-      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing matrix_utils pandas scipy psutil pypardiso pytest peewee brightway2 pytest pytest-azurepipelines">=1.0.2" pytest-cov
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy bw_processing bw2data matrix_utils pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
     displayName: Install Anaconda packages
 
   - script: |
       call activate bw2
+      pip install -e .
       pytest --cov=bw2calc --cov-report=xml --cov-report=html
     displayName: pytest
