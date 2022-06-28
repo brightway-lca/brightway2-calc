@@ -1,8 +1,9 @@
 # Changelog
 
-## 2.0.DEV8 (2022-06-27)
+## 2.0.DEV8 (2022-06-28)
 
-* Use `bw2calc` logger in MultiLCA class
+* [#58 use logger at module level, not from LCA](https://github.com/brightway-lca/brightway2-calc/pull/58)
+* [#59 Fix a number of testing issues](https://github.com/brightway-lca/brightway2-calc/pull/59)
 
 ## 2.0.DEV7 (2022-05-22)
 
