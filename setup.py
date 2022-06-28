@@ -16,7 +16,6 @@ setup(
     url="https://bitbucket.org/cmutel/brightway2-calc",
     install_requires=[
         "bw_processing",
-        "bw2data",
         "matrix_utils",
         "numpy",
         "pandas",
