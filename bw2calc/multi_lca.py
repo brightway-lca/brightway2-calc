@@ -1,11 +1,15 @@
 import logging
 import numpy as np
-from bw2data import calculation_setups
+try:
+    from bw2data import calculation_setups
+except ImportError:
+    calculation_setups = None
 
 from .lca import LCA
 
 
 logger = logging.getLogger("bw2calc")
+
 
 class InventoryMatrices:
     def __init__(self, biosphere_matrix, supply_arrays):
@@ -32,7 +36,7 @@ class MultiLCA:
 
     def __init__(self, cs_name, log_config=None):
         if calculation_setups is None:
-            raise ImportError
+            raise ImportError("`bw2data` is required for this functionality")
         assert cs_name in calculation_setups
         try:
             cs = calculation_setups[cs_name]
