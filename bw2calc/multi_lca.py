@@ -62,7 +62,7 @@ class MultiLCA:
             self.method_matrices.append(self.lca.characterization_matrix)
 
         for row, func_unit in enumerate(self.func_units):
-            self.lca.redo_lci(func_unit)
+            self.lca.redo_lci({fu[0].id : fu[1] for  fu in list(func_unit.items())})
             self.supply_arrays.append(self.lca.supply_array)
 
             for col, cf_matrix in enumerate(self.method_matrices):

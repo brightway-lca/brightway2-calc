@@ -3,6 +3,7 @@
 ## 2.0.DEV9 (2022-07-07)
 
 * [#61 wrap_functional_unit missing from multi_lca.py](https://github.com/brightway-lca/brightway2-calc/pull/58)
+* MultiLCA is useable again
 
 ## 2.0.DEV8 (2022-06-28)
 
