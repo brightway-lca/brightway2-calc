@@ -6,6 +6,7 @@ except ImportError:
     calculation_setups = None
 
 from .lca import LCA
+from .utils import wrap_functional_unit
 
 
 logger = logging.getLogger("bw2calc")
