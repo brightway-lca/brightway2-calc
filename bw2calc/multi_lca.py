@@ -1,7 +1,8 @@
 import logging
+from bw2data.backends.proxies import Activity
 import numpy as np
 try:
-    from bw2data import calculation_setups
+    from bw2data import calculation_setups, get_activity
 except ImportError:
     calculation_setups = None
 
@@ -62,7 +63,15 @@ class MultiLCA:
             self.method_matrices.append(self.lca.characterization_matrix)
 
         for row, func_unit in enumerate(self.func_units):
-            self.lca.redo_lci({fu[0].id : fu[1] for  fu in list(func_unit.items())})
+            fu_spec, fu_demand = list(func_unit.items())[0]
+            if isinstance(fu_spec, int):
+                fu = {fu_spec : fu_demand}
+            elif isinstance(fu_spec, Activity):
+                fu = {fu[0].id : fu[1] for  fu in list(func_unit.items())}
+            elif isinstance(fu_spec, tuple):
+                a = get_activity(fu_spec)
+                fu = {a.id : fu[1] for  fu in list(func_unit.items())}
+            self.lca.redo_lci(fu)
             self.supply_arrays.append(self.lca.supply_array)
 
             for col, cf_matrix in enumerate(self.method_matrices):
