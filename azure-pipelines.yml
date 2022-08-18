@@ -9,8 +9,6 @@ jobs:
         python.version: '3.10'
       Python39:
         python.version: '3.9'
-      Python38:
-        python.version: '3.8'
 
   steps:
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
@@ -94,8 +92,6 @@ jobs:
         python.version: '3.10'
       Python39:
         python.version: '3.9'
-      Python38:
-        python.version: '3.8'
 
 
   steps:
@@ -126,8 +122,6 @@ jobs:
         python.version: '3.10'
       Python39:
         python.version: '3.9'
-      Python38:
-        python.version: '3.8'
 
   steps:
   - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
