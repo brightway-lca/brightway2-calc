@@ -9,7 +9,7 @@ from typing import Iterable, Optional, Union, Callable
 import bw_processing as bwp
 import matrix_utils as mu
 import numpy as np
-import pandas
+import pandas as pd
 from fs.base import FS
 from scipy import sparse
 
@@ -18,6 +18,11 @@ from .dictionary_manager import DictionaryManager
 from .errors import EmptyBiosphere, NonsquareTechnosphere, OutsideTechnosphere
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
+
+try:
+    from bw2data import get_node
+except ImportError:
+    get_node = None
 
 logger = logging.getLogger("bw2calc")
 
@@ -573,39 +578,98 @@ class LCA(Iterator):
         warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
         self.lcia(demand=demand)
 
-    # def to_dataframe(self, cutoff=200):
-    #     """Return all nonzero elements of characterized inventory as Pandas dataframe"""
-    #     assert mapping, "This method doesn't work with independent LCAs"
-    #     assert (
-    #         pandas
-    #     ), "This method requires the `pandas` (http://pandas.pydata.org/) library"
-    #     assert hasattr(
-    #         self, "characterized_inventory"
-    #     ), "Must do LCIA calculation first"
+    def to_dataframe(self, matrix_label="characterized_inventory", row_dict=None, col_dict=None, cutoff=200, cutoff_mode="absolute"):
+        """Return all nonzero elements of characterized inventory as Pandas dataframe"""
+        matrix = getattr(self, matrix_label).tocoo()
 
-    #     from bw2data import get_activity
+        dict_mapping = {
+            'characterized_inventory': (self.dicts.biosphere, self.dicts.activity),
+            'inventory': (self.dicts.biosphere, self.dicts.activity),
+            'technosphere_matrix': (self.dicts.product, self.dicts.activity),
+            'biosphere_matrix': (self.dicts.biosphere, self.dicts.activity),
+            'characterization_matrix': (self.dicts.biosphere, self.dicts.biosphere),
+        }
+        if not row_dict:
+            try:
+                row_dict, _ = dict_mapping[matrix_label]
+            except KeyError:
+                row_dict = None
+        if not col_dict:
+            try:
+                _, col_dict = dict_mapping[matrix_label]
+            except KeyError:
+                col_dict = None
 
-    #     coo = self.characterized_inventory.tocoo()
-    #     stacked = np.vstack([np.abs(coo.data), coo.row, coo.col, coo.data])
-    #     stacked.sort()
-    #     rev_activity, _, rev_bio = self.reverse_dict()
-    #     length = stacked.shape[1]
+        sorter = np.argsort(np.abs(matrix.data))[::-1]
+        matrix.data = matrix.data[sorter]
+        matrix.row = matrix.row[sorter]
+        matrix.col = matrix.col[sorter]
 
-    #     data = []
-    #     for x in range(min(cutoff, length)):
-    #         if stacked[3, length - x - 1] == 0.0:
-    #             continue
-    #         activity = get_activity(rev_activity[stacked[2, length - x - 1]])
-    #         flow = get_activity(rev_bio[stacked[1, length - x - 1]])
-    #         data.append(
-    #             (
-    #                 activity["name"],
-    #                 flow["name"],
-    #                 activity.get("location"),
-    #                 stacked[3, length - x - 1],
-    #             )
-    #         )
-    #     return pandas.DataFrame(data, columns=["Activity", "Flow", "Region", "Amount"])
+        if cutoff_mode == 'relative':
+            if not 0 < cutoff < 1:
+                raise ValueError("relative `cutoff` value must be between 0 and 1")
+            total = matrix.data.sum()
+            mask = (np.abs(matrix.data) > (total * cutoff))
+            matrix.data = matrix.data[mask]
+            matrix.row = matrix.row[mask]
+            matrix.col = matrix.col[mask]
+        elif cutoff_mode == 'absolute':
+            matrix.data = matrix.data[:int(cutoff)]
+            matrix.row = matrix.row[:int(cutoff)]
+            matrix.col = matrix.col[:int(cutoff)]
+        else:
+            raise ValueError("Can't understand cutoff mode")
+
+        df_data = {
+            'row_index': matrix.row,
+            'col_index': matrix.col,
+            'amount': matrix.data,
+        }
+        if row_dict:
+            df_data['row_id'] = np.array([row_dict.reversed[i] for i in matrix.row])
+        if col_dict:
+            df_data['col_id'] = np.array([col_dict.reversed[i] for i in matrix.col])
+        df = pd.DataFrame(df_data)
+
+        def metadata_dataframe(objs, prefix):
+            def dict_for_obj(obj, prefix):
+                dct = {
+                    f"{prefix}id": obj["id"],
+                    f"{prefix}database": obj["database"],
+                    f"{prefix}code": obj["code"],
+                    f"{prefix}name": obj.get("name"),
+                    f"{prefix}location": obj.get("location"),
+                    f"{prefix}unit": obj.get("unit"),
+                    f"{prefix}type":  obj.get("type", "process"),
+                }
+                if prefix == "col_":
+                    dct["col__reference_product"] = obj.get("reference product")
+                else:
+                    dct["row_categories"] = (
+                        "::".join(obj["categories"]) if obj.get("categories") else None
+                    )
+                    dct["source_product"] = obj.get("reference product")
+                return dct
+
+            return pd.DataFrame(
+                [dict_for_obj(obj, prefix) for obj in objs]
+            )
+
+        if get_node:
+            if row_dict:
+                row_metadata_df = metadata_dataframe(
+                    objs=[get_node(id=i) for i in np.unique(df_data['row_id'])],
+                    prefix="row_",
+                )
+                df = df.merge(row_metadata_df, on="row_id")
+            if col_dict:
+                col_metadata_df = metadata_dataframe(
+                    objs=[get_node(id=i) for i in np.unique(df_data['col_id'])],
+                    prefix="col_",
+                )
+                df = df.merge(col_metadata_df, on="col_id")
+
+        return df
 
     ####################
     ### Contribution ###
