@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV10 (2022-08-19)
+
+* Add ``LCA.to_dataframe``, based on work by Ben Portner
+
 ## 2.0.DEV9 (2022-07-07)
 
 * [#61 wrap_functional_unit missing from multi_lca.py](https://github.com/brightway-lca/brightway2-calc/pull/58)
