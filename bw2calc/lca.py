@@ -615,7 +615,6 @@ class LCA(Iterator):
 
         * col_code
         * col_database
-        * col_id
         * col_location
         * col_name
         * col_reference_product
@@ -624,7 +623,6 @@ class LCA(Iterator):
         * row_categories
         * row_code
         * row_database
-        * row_id
         * row_location
         * row_name
         * row_type
