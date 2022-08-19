@@ -701,7 +701,7 @@ class LCA(Iterator):
                     dct["row_categories"] = (
                         "::".join(obj["categories"]) if obj.get("categories") else None
                     )
-                    dct["source_product"] = obj.get("reference product")
+                    dct["row_product"] = obj.get("reference product")
                 return dct
 
             return pd.DataFrame(
