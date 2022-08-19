@@ -257,8 +257,65 @@ def test_to_dataframe_custom_mappings(basic_example):
 
 
 @pytest.mark.skipif(not bd, reason="bw2data not installed")
-def test_foo():
-    pass
+@bw2test
+def test_to_dataframe_annotated(basic_example):
+    bi.add_example_database()
 
+    co2 = bd.get_node(code="CO2")
+    steel = bd.get_node(code="Steel")
+    elec = bd.get_node(code="Electricity")
+    driving = bd.get_node(code="Driving an electric car")
 
-# bi.add_example_database()
+    lca = bc.LCA(
+        {driving: 1},
+        method=("IPCC", "simple")
+    )
+    lca.lci()
+    lca.lcia()
+
+    df = lca.to_dataframe()
+
+    expected = pd.DataFrame([{
+        'row_id': co2.id,
+        'row_index': lca.dicts.biosphere[co2.id],
+        'row_code': co2['code'],
+        'row_database': co2['database'],
+        'row_location': None,
+        'row_categories': None,
+        'row_type': co2['type'],
+        'row_name': co2['name'],
+        'row_unit': co2['unit'],
+        'row_product': None,
+        'amount': 0.16800001296144934,
+        'col_id': elec.id,
+        'col_index': lca.dicts.activity[elec.id],
+        'col_code': elec['code'],
+        'col_database': elec['database'],
+        'col_location': elec['location'],
+        'col_name': elec['name'],
+        'col_reference_product': elec['reference product'],
+        'col_type': elec['type'],
+        'col_unit': elec['unit'],
+    }, {
+        'row_id': co2.id,
+        'row_index': lca.dicts.biosphere[co2.id],
+        'row_code': co2['code'],
+        'row_database': co2['database'],
+        'row_location': None,
+        'row_categories': None,
+        'row_type': co2['type'],
+        'row_name': co2['name'],
+        'row_unit': co2['unit'],
+        'row_product': None,
+        'amount': 0.014481599635022317,
+        'col_id': steel.id,
+        'col_index': lca.dicts.activity[steel.id],
+        'col_code': steel['code'],
+        'col_database': steel['database'],
+        'col_location': steel['location'],
+        'col_name': steel['name'],
+        'col_reference_product': steel['reference product'],
+        'col_type': steel['type'],
+        'col_unit': steel['unit'],
+    }])
+    frames(expected, df)
