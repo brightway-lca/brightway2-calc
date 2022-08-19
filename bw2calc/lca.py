@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 from functools import partial
 from pathlib import Path
 from typing import Iterable, Optional, Union, Callable
+from numbers import Number
 
 import bw_processing as bwp
 import matrix_utils as mu
@@ -578,8 +579,61 @@ class LCA(Iterator):
         warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
         self.lcia(demand=demand)
 
-    def to_dataframe(self, matrix_label="characterized_inventory", row_dict=None, col_dict=None, cutoff=200, cutoff_mode="absolute"):
-        """Return all nonzero elements of characterized inventory as Pandas dataframe"""
+    def to_dataframe(self, matrix_label: str = "characterized_inventory", row_dict: Optional[dict] = None, col_dict: Optional[dict] = None, annotate: bool = True, cutoff: Number = 200, cutoff_mode: str = "number") -> pd.DataFrame:
+        """Return all nonzero elements of the given matrix as a Pandas dataframe.
+
+        The LCA class instance must have the matrix ``matrix_label`` already; common labels are:
+
+        * characterized_inventory
+        * inventory
+        * technosphere_matrix
+        * biosphere_matrix
+        * characterization_matrix
+
+        For these common matrices, we already have ``row_dict`` and ``col_dict`` which link row and column indices to database ids. For other matrices, or if you have a custom mapping dictionary, override ``row_dict`` and/or ``col_dict``. They have the form ``matrix index: identifier``.
+
+        If ``bw2data`` is installed, this function will try to look up metadata on the row and column objects. To turn this off, set ``annotate`` to ``False``.
+
+        Instead of returning all possible values, you can apply a cutoff. This cutoff can be specified in two ways, controlled by ``cutoff_mode``, which should be either ``fraction`` or ``number``.
+
+        If ``cutoff_mode`` is ``number`` (the default), then ``cutoff`` is the number of rows in the DataFrame. Data values are first sorted by their absolute value, and then the largest ``cutoff`` are taken.
+
+        If ``cutoff_mode`` is ``fraction``, then only values whose absolute value is greater than ``cutoff * total_score`` are taken. ``cutoff`` must be between 0 and 1.
+
+        The returned DataFrame will have the following columns:
+
+        * amount
+        * col_index
+        * row_index
+
+        If row or columns dictionaries are available, the following columns are added:
+
+        * col_id
+        * row_id
+
+        If ``bw2data`` is available, then the following columns are added:
+
+        * col_code
+        * col_database
+        * col_id
+        * col_location
+        * col_name
+        * col_reference_product
+        * col_type
+        * col_unit
+        * row_categories
+        * row_code
+        * row_database
+        * row_id
+        * row_location
+        * row_name
+        * row_type
+        * row_unit
+        * source_product
+
+        Returns a pandas ``DataFrame``.
+
+        """
         matrix = getattr(self, matrix_label).tocoo()
 
         dict_mapping = {
@@ -605,20 +659,21 @@ class LCA(Iterator):
         matrix.row = matrix.row[sorter]
         matrix.col = matrix.col[sorter]
 
-        if cutoff_mode == 'relative':
-            if not 0 < cutoff < 1:
-                raise ValueError("relative `cutoff` value must be between 0 and 1")
-            total = matrix.data.sum()
-            mask = (np.abs(matrix.data) > (total * cutoff))
-            matrix.data = matrix.data[mask]
-            matrix.row = matrix.row[mask]
-            matrix.col = matrix.col[mask]
-        elif cutoff_mode == 'absolute':
-            matrix.data = matrix.data[:int(cutoff)]
-            matrix.row = matrix.row[:int(cutoff)]
-            matrix.col = matrix.col[:int(cutoff)]
-        else:
-            raise ValueError("Can't understand cutoff mode")
+        if cutoff is not None:
+            if cutoff_mode == 'fraction':
+                if not (0 < cutoff < 1):
+                    raise ValueError("fraction `cutoff` value must be between 0 and 1")
+                total = matrix.data.sum()
+                mask = (np.abs(matrix.data) > (total * cutoff))
+                matrix.data = matrix.data[mask]
+                matrix.row = matrix.row[mask]
+                matrix.col = matrix.col[mask]
+            elif cutoff_mode == 'number':
+                matrix.data = matrix.data[:int(cutoff)]
+                matrix.row = matrix.row[:int(cutoff)]
+                matrix.col = matrix.col[:int(cutoff)]
+            else:
+                raise ValueError("Can't understand cutoff mode")
 
         df_data = {
             'row_index': matrix.row,
@@ -643,7 +698,7 @@ class LCA(Iterator):
                     f"{prefix}type":  obj.get("type", "process"),
                 }
                 if prefix == "col_":
-                    dct["col__reference_product"] = obj.get("reference product")
+                    dct["col_reference_product"] = obj.get("reference product")
                 else:
                     dct["row_categories"] = (
                         "::".join(obj["categories"]) if obj.get("categories") else None
@@ -655,7 +710,7 @@ class LCA(Iterator):
                 [dict_for_obj(obj, prefix) for obj in objs]
             )
 
-        if get_node:
+        if get_node and annotate:
             if row_dict:
                 row_metadata_df = metadata_dataframe(
                     objs=[get_node(id=i) for i in np.unique(df_data['row_id'])],
