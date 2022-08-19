@@ -3,7 +3,11 @@ try:
     import bw2io as bi
     from bw2data.tests import bw2test
 except ImportError:
+    def bw2test(func):
+        return func
+
     bd = None
+
 import bw2calc as bc
 import pytest
 from pathlib import Path
