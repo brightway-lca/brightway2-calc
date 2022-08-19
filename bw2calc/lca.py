@@ -590,7 +590,7 @@ class LCA(Iterator):
         * biosphere_matrix
         * characterization_matrix
 
-        For these common matrices, we already have ``row_dict`` and ``col_dict`` which link row and column indices to database ids. For other matrices, or if you have a custom mapping dictionary, override ``row_dict`` and/or ``col_dict``. They have the form ``matrix index: identifier``.
+        For these common matrices, we already have ``row_dict`` and ``col_dict`` which link row and column indices to database ids. For other matrices, or if you have a custom mapping dictionary, override ``row_dict`` and/or ``col_dict``. They have the form ``{matrix index: identifier}``.
 
         If ``bw2data`` is installed, this function will try to look up metadata on the row and column objects. To turn this off, set ``annotate`` to ``False``.
 
@@ -637,11 +637,11 @@ class LCA(Iterator):
         matrix = getattr(self, matrix_label).tocoo()
 
         dict_mapping = {
-            'characterized_inventory': (self.dicts.biosphere, self.dicts.activity),
-            'inventory': (self.dicts.biosphere, self.dicts.activity),
-            'technosphere_matrix': (self.dicts.product, self.dicts.activity),
-            'biosphere_matrix': (self.dicts.biosphere, self.dicts.activity),
-            'characterization_matrix': (self.dicts.biosphere, self.dicts.biosphere),
+            'characterized_inventory': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
+            'inventory': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
+            'technosphere_matrix': (self.dicts.product.reversed, self.dicts.activity.reversed),
+            'biosphere_matrix': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
+            'characterization_matrix': (self.dicts.biosphere.reversed, self.dicts.biosphere.reversed),
         }
         if not row_dict:
             try:
@@ -681,9 +681,9 @@ class LCA(Iterator):
             'amount': matrix.data,
         }
         if row_dict:
-            df_data['row_id'] = np.array([row_dict.reversed[i] for i in matrix.row])
+            df_data['row_id'] = np.array([row_dict[i] for i in matrix.row])
         if col_dict:
-            df_data['col_id'] = np.array([col_dict.reversed[i] for i in matrix.col])
+            df_data['col_id'] = np.array([col_dict[i] for i in matrix.col])
         df = pd.DataFrame(df_data)
 
         def metadata_dataframe(objs, prefix):
