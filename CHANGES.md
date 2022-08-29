@@ -1,5 +1,9 @@
 # Changelog
 
+## DEV
+
+* Changed `GraphTraversal` to `AssumedDiagonalGraphTraversal`. `GraphTraversal` still exists as a proxy but raises a `DeprecationWarning`
+
 ## 2.0.DEV10 (2022-08-19)
 
 * Add ``LCA.to_dataframe``, based on work by Ben Portner

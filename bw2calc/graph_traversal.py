@@ -6,7 +6,7 @@ import numpy as np
 from . import spsolve
 
 
-class GraphTraversal:
+class AssumedDiagonalGraphTraversal:
     """
     Traverse a supply chain, following paths of greatest impact.
 
@@ -224,3 +224,9 @@ class GraphTraversal:
                 heappush(heap, (abs(1 / cumulative_score), activity))
 
         return nodes, edges, counter
+
+
+class GraphTraversal:
+    def __init__(self, *args, **kwargs):
+        warnings.warn("Please use `AssumedDiagonalGraphTraversal` instead of `GraphTraversal`", DeprecationWarning)
+        super().__init__(*args, **kwargs)
