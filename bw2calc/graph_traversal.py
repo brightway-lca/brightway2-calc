@@ -1,9 +1,23 @@
 import warnings
 from heapq import heappop, heappush
+from functools import lru_cache
 
 import numpy as np
 
 from . import spsolve
+
+
+class CachingSolver:
+    def __init__(self, lca):
+        self.characterized_biosphere = lca.characterization_matrix * lca.biosphere_matrix
+        self.nrows = len(lca.demand_array)
+        self.technosphere_matrix = lca.technosphere_matrix
+
+    @lru_cache(maxsize=None)
+    def __call__(self, product_index, amount=1):
+        demand = np.zeros(self.nrows)
+        demand[product_index] = amount
+        return (self.characterized_biosphere * spsolve(self.technosphere_matrix, demand)).sum()
 
 
 class AssumedDiagonalGraphTraversal:
