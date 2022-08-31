@@ -3,13 +3,13 @@ from heapq import heappop, heappush
 from functools import lru_cache
 
 import numpy as np
+from scipy import sparse
 
-from . import spsolve
+from . import spsolve, LCA
 
 
 class CachingSolver:
     def __init__(self, lca):
-        self.characterized_biosphere = lca.characterization_matrix * lca.biosphere_matrix
         self.nrows = len(lca.demand_array)
         self.technosphere_matrix = lca.technosphere_matrix
 
@@ -17,7 +17,7 @@ class CachingSolver:
     def __call__(self, product_index, amount=1):
         demand = np.zeros(self.nrows)
         demand[product_index] = amount
-        return (self.characterized_biosphere * spsolve(self.technosphere_matrix, demand)).sum()
+        return spsolve(self.technosphere_matrix, demand)
 
 
 class AssumedDiagonalGraphTraversal:
@@ -242,5 +242,266 @@ class AssumedDiagonalGraphTraversal:
 
 class GraphTraversal:
     def __init__(self, *args, **kwargs):
-        warnings.warn("Please use `AssumedDiagonalGraphTraversal` instead of `GraphTraversal`", DeprecationWarning)
+        warnings.warn(
+            "Please use `AssumedDiagonalGraphTraversal` instead of `GraphTraversal`",
+            DeprecationWarning,
+        )
         super().__init__(*args, **kwargs)
+
+
+class MultifunctionalGraphTraversal:
+    """
+    Traverse a supply chain, following paths of greatest impact.
+
+    This implementation uses a queue of datasets to assess. As the supply chain is traversed, datasets inputs are added to a list sorted by LCA score. Each activity in the sorted list is assessed, and added to the supply chain graph, as long as its impact is above a certain threshold, and the maximum number of calculations has not been exceeded.
+
+    Because the next dataset assessed is chosen by its impact, not its position in the graph, this is neither a breadth-first nor a depth-first search, but rather "importance-first".
+
+    This class is written in a functional style - no variables are stored in *self*, only methods.
+
+    Should be used by calling the ``calculate`` method.
+
+    .. warning:: Graph traversal with multioutput processes only works when other inputs are substituted (see `Multioutput processes in LCA <http://chris.mutel.org/multioutput.html>`__ for a description of multiputput process math in LCA).
+
+    """
+
+    @classmethod
+    def calculate(cls, lca: LCA, cutoff: float = 0.005, max_calc: int = 1e5, translate_indices: bool = True):
+        """
+        Traverse the supply chain graph.
+
+        Args:
+            * *lca* (dict): An instance of ``bw2calc.lca.LCA``.
+            * *cutoff* (float, default=0.005): Cutoff criteria to stop LCA calculations. Relative score of total, i.e. 0.005 will cutoff if a dataset has a score less than 0.5 percent of the total.
+            * *max_calc* (int, default=10000): Maximum number of LCA calculations to perform.
+
+        Returns:
+            Dictionary of nodes, edges, and number of LCA calculations.
+
+        """
+        if not hasattr(lca, "supply_array"):
+            lca.lci()
+        if not hasattr(lca, "characterized_inventory"):
+            lca.lcia()
+
+        score = lca.score
+
+        if score == 0:
+            raise ValueError("Zero total LCA score makes traversal impossible")
+
+        solver = CachingSolver(lca)
+
+        heap, activities, products, edges, counter = cls.initialize_heap(lca, solver, translate_indices, 0)
+        activities, products, edges, counter = cls.traverse(
+            heap=heap,
+            solver=solver,
+            activities=activities,
+            products=products,
+            edges=edges,
+            max_calc=max_calc,
+            cutoff=cutoff,
+            total_score=score,
+            lca=lca,
+            translate_indices=translate_indices,
+            counter=counter,
+        )
+
+        return {
+            "products": products,
+            "activities": activities,
+            "edges": edges,
+            "counter": counter,
+        }
+
+    @classmethod
+    def initialize_heap(cls, lca: LCA, solver: CachingSolver, translate_indices: bool, counter: int):
+        """
+        Create a `priority queue <http://docs.python.org/2/library/heapq.html>`_ or ``heap`` to store inventory datasets, sorted by LCA score.
+
+        Populates the heap with each activity in ``demand``. Initial nodes are the *functional unit*, i.e. the complete demand, and each activity in the *functional unit*. Initial edges are inputs from each activity into the *functional unit*.
+
+        The *functional unit* is an abstract dataset (as it doesn't exist in the matrix), and is assigned the index ``-1``.
+
+        """
+        heap, edges = [], []
+        products = {}
+        activities = {
+            -1: {
+                "amount": 1,
+                "direct_score": 0,
+            }
+        }
+        for product_index, amount in enumerate(lca.demand_array):
+            if amount == 0:
+                continue
+            counter += 1
+            cumulative_score = (
+                lca.characterization_matrix
+                * lca.biosphere_matrix
+                * solver(product_index)
+            ).sum() * amount
+            heappush(heap, (abs(1 / cumulative_score), product_index, amount))
+            products[lca.dicts.product.reversed[product_index] if translate_indices else product_index] = {
+                "amount": amount,
+                "supply_chain_score": cumulative_score,
+            }
+            edges.append(
+                {
+                    "target": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
+                    "source": -1,
+                    "type": "product",
+                    "amount": amount,
+                    "exc_amount": amount,
+                    "supply_chain_score": cumulative_score,
+                }
+            )
+        return heap, activities, products, edges, counter
+
+    @classmethod
+    def traverse(
+        cls,
+        heap: list,
+        solver: CachingSolver,
+        activities: dict,
+        products: dict,
+        edges: list,
+        max_calc: int,
+        cutoff: float,
+        total_score: float,
+        lca: LCA,
+        translate_indices: bool,
+        counter: int,
+    ):
+        """
+        Build a directed graph by traversing the supply chain.
+
+        Node ids are actually technosphere row/col indices, which makes lookup easier.
+
+        Returns:
+            (nodes, edges, number of calculations)
+
+        """
+        cutoff_score = abs(cutoff * total_score)
+
+        characterized_biosphere = lca.characterization_matrix * lca.biosphere_matrix
+
+        while heap:
+            if counter >= max_calc:
+                warnings.warn("Stopping traversal due to calculation count.")
+                break
+            _, product_index, product_amount = heappop(heap)
+
+            # Need to find all actual activities which produce this product.
+            supply = solver(product_index) * product_amount
+            supply[
+                ~lca.technosphere_matrix[product_index, :]
+                .toarray()
+                .astype(bool)
+                .ravel()
+            ] = 0
+
+            for producing_activity_index in supply.nonzero():
+                producing_activity_index = int(producing_activity_index)
+                edges.append(
+                    {
+                        "target": lca.dicts.activity.reversed[producing_activity_index] if translate_indices else producing_activity_index,
+                        "source": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
+                        "type": "activity",
+                        "amount": product_amount,
+                        "exc_amount": lca.technosphere_matrix[
+                            product_index, producing_activity_index
+                        ],
+                        # Direct score attributable to this edge
+                        "direct_score": characterized_biosphere[
+                            :, producing_activity_index
+                        ].sum()
+                        * supply[producing_activity_index],
+                    }
+                )
+                # Want multiple edges, but not multiple activity nodes
+                if producing_activity_index in activities:
+                    continue
+
+                counter = cls.visit_activity(
+                    heap=heap,
+                    activity_index=producing_activity_index,
+                    counter=counter,
+                    activities=activities,
+                    products=products,
+                    edges=edges,
+                    lca=lca,
+                    characterized_biosphere=characterized_biosphere,
+                    solver=solver,
+                    cutoff_score=cutoff_score,
+                    origin_product_index=product_index,
+                    translate_indices=translate_indices,
+                )
+
+        return activities, products, edges, counter
+
+    @classmethod
+    def visit_activity(
+        cls,
+        heap: list,
+        activity_index: int,
+        counter: int,
+        activities: dict,
+        products: dict,
+        edges: list,
+        lca: LCA,
+        characterized_biosphere: sparse.csr_matrix,
+        solver: CachingSolver,
+        cutoff_score: float,
+        origin_product_index: int,
+        translate_indices: bool,
+    ):
+        activities[lca.dicts.activity.reversed[activity_index] if translate_indices else activity_index] = {
+            "amount": lca.supply_array[activity_index],
+            # Total direct score over all edges
+            "direct_score": characterized_biosphere[:, activity_index].sum()
+            * lca.supply_array[activity_index],
+        }
+
+        tm_coo = lca.technosphere_matrix[:, activity_index].tocoo()
+
+        # We will get the activity amounts based on their total over the functional unit. We only visit each activity once.
+        scale = -1 * lca.supply_array[activity_index]
+
+        for product_index, product_amount in zip(tm_coo.row, tm_coo.data):
+            if product_index == origin_product_index:
+                continue
+
+            # Amount in technosphere matrix has sign flipped, and is in relation to the activity production amount.
+            # Normalize to a positive number with production amount of 1
+            product_amount *= scale
+
+            counter += 1
+            supply = solver(product_index) * product_amount
+            cumulative_score = (characterized_biosphere * supply).sum()
+
+            if abs(cumulative_score) < cutoff_score:
+                continue
+
+            try:
+                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index]["amount"] += product_amount
+                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index]["supply_chain_score"] += cumulative_score
+            except KeyError:
+                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index] = {
+                    "amount": product_amount,
+                    "supply_chain_score": cumulative_score,
+                }
+            edges.append(
+                {
+                    "target": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
+                    "source": lca.dicts.activity.reversed[activity_index] if translate_indices else activity_index,
+                    "type": "product",
+                    "amount": product_amount,
+                    "exc_amount": lca.technosphere_matrix[
+                        product_index, activity_index
+                    ],
+                    "supply_chain_score": cumulative_score,
+                }
+            )
+            heappush(heap, (abs(1 / cumulative_score), product_index, product_amount))
+
+        return counter
