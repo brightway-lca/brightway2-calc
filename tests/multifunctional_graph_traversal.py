@@ -1,6 +1,25 @@
 import bw2calc as bc
 from bw_processing import create_datapackage, INDICES_DTYPE
 import numpy as np
+from numbers import Number
+
+
+def compare_dict(one, two):
+    assert set(one) == set(two)
+    for key, value in one.items():
+        if isinstance(value, Number):
+            assert np.allclose(value, two[key])
+        else:
+            assert value == two[key]
+
+
+def ordered(edges):
+    return sorted(edges, key=lambda x: (x['source'], x['target'], x['type']))
+
+
+def compare_list_of_dicts(one, two):
+    for a, b in zip(ordered(one), ordered(two)):
+        compare_dict(a, b)
 
 
 def test_multifunctional_x_shape_one_path():
@@ -50,17 +69,19 @@ def test_multifunctional_x_shape_one_path():
 
     results = bc.MultifunctionalGraphTraversal.calculate(lca=lca)
     assert results['products'] == {2: {'amount': 1.0, 'supply_chain_score': 10.0}, 3: {'amount': 1.0, 'supply_chain_score': 10.0}}
-    assert results['activities'] == {
+    EXPECTED = {
         -1: {'amount': 1, 'direct_score': 0},
         12: {'amount': 1.0, 'direct_score': 0.0},
         10: {'amount': 1.0, 'direct_score': 10.0}
     }
-    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == sorted([
+    compare_dict(results['activities'], EXPECTED)
+    EXPECTED = [
         {'target': 2, 'source': -1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': 10.0},
         {'target': 12, 'source': 2, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 0.0},
         {'target': 3, 'source': 12, 'type': 'product', 'amount': 1.0, 'exc_amount': -1.0, 'supply_chain_score': 10.0},
         {'target': 10, 'source': 3, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 10.0}
-    ], key=lambda x: (x['source'], x['target'], x['type']))
+    ]
+    compare_list_of_dicts(results['edges'], EXPECTED)
     assert results['counter'] == 2
 
 
@@ -105,18 +126,20 @@ def test_multifunctional_coproduction():
     assert lca.score == -90
 
     results = bc.MultifunctionalGraphTraversal.calculate(lca=lca)
-    assert results['products'] == {1: {'amount': 1.0, 'supply_chain_score': -90.0}, 2: {'amount': -1.0, 'supply_chain_score': -100.0}}
-    assert results['activities'] == {
+    compare_dict(results['products'], {1: {'amount': 1.0, 'supply_chain_score': -90.0}, 2: {'amount': -1.0, 'supply_chain_score': -100.0}})
+    EXPECTED = {
         -1: {'amount': 1, 'direct_score': 0},
         10: {'amount': 1.0, 'direct_score': 10.0},
         11: {'amount': -1.0, 'direct_score': -100.0}
     }
-    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == sorted([
+    compare_dict(results['activities'], EXPECTED)
+    EXPECTED = [
         {'target': 1, 'source': -1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': -90.0},
         {'target': 10, 'source': 1, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 10.0},
         {'target': 2, 'source': 10, 'type': 'product', 'amount': -1.0, 'exc_amount': 1.0, 'supply_chain_score': -100.0},
         {'target': 11, 'source': 2, 'type': 'activity', 'amount': -1.0, 'exc_amount': 1.0, 'direct_score': -100.0}
-    ], key=lambda x: (x['source'], x['target'], x['type']))
+    ]
+    compare_list_of_dicts(results['edges'], EXPECTED)
     assert results['counter'] == 2
 
 
@@ -179,7 +202,7 @@ def test_multifunctional_x_path_two_paths():
     assert np.allclose(results['activities'][12]['direct_score'], 5 / 6 * 100)
     assert np.allclose(results['activities'][12]['amount'], 5 / 6)
 
-    EXPECTED = sorted([
+    EXPECTED = [
         {'source': -1, 'target': 1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': 84.99999999999999},
         {'source': 1, 'target': 10, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 0.0},
         {'source': 2, 'target': 11, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 1.6666666666666665},
@@ -187,8 +210,8 @@ def test_multifunctional_x_path_two_paths():
         {'source': 10, 'target': 2, 'type': 'product', 'amount': 1.0, 'exc_amount': -1.0, 'supply_chain_score': 84.99999999999999},
         {'amount': -0.08333333333333333, 'exc_amount': 0.5, 'source': 11, 'supply_chain_score': 12.499999999999995, 'target': 3, 'type': 'product'},
         {'source': 12, 'target': 3, 'type': 'product', 'amount': 0.08333333333333331, 'exc_amount': -0.1, 'supply_chain_score': -12.499999999999996}
-    ], key=lambda x: (x['source'], x['target'], x['type']))
-    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == EXPECTED
+    ]
+    compare_list_of_dicts(results['edges'], EXPECTED)
 
 
 def test_multifunctional_scaling():
@@ -234,24 +257,26 @@ def test_multifunctional_scaling():
     assert np.allclose(lca.score, 1 + 5 - 100 / 3)
 
     results = bc.MultifunctionalGraphTraversal.calculate(lca=lca)
-    assert results['products'] == {
+    EXPECTED = {
         1: {'amount': 1.0, 'supply_chain_score': -27.33333333333333},
         2: {'amount': -2.0, 'supply_chain_score': -33.33333333333333},
         3: {'amount': 1.0, 'supply_chain_score': 1.0}
     }
-    assert results['activities'] == {
+    compare_dict(results['products'], EXPECTED)
+    EXPECTED = {
         -1: {'amount': 1, 'direct_score': 0},
         10: {'amount': 0.5, 'direct_score': 5.0},
         11: {'amount': -0.3333333333333333, 'direct_score': -33.33333333333333},
         12: {'amount': 0.1, 'direct_score': 1.0}
     }
-    EXPECTED = sorted([
+    compare_dict(results['activities'], EXPECTED)
+    EXPECTED = [
         {'source': -1, 'target': 1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': -27.33333333333333},
         {'source': 1, 'target': 10, 'type': 'activity', 'amount': 1.0, 'exc_amount': 2.0, 'direct_score': 5.0},
         {'source': 2, 'target': 11, 'type': 'activity', 'amount': -2.0, 'exc_amount': 6.0, 'direct_score': -33.33333333333333},
         {'source': 3, 'target': 12, 'type': 'activity', 'amount': 1.0, 'exc_amount': 10.0, 'direct_score': 1.0},
         {'source': 10, 'target': 2, 'type': 'product', 'amount': -2.0, 'exc_amount': 4.0, 'supply_chain_score': -33.33333333333333},
         {'source': 10, 'target': 3, 'type': 'product', 'amount': 1.0, 'exc_amount': -2.0, 'supply_chain_score': 1.0}
-    ], key=lambda x: (x['source'], x['target'], x['type']))
-    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == EXPECTED
+    ]
+    compare_list_of_dicts(results['edges'], EXPECTED)
     assert results['counter'] == 3
