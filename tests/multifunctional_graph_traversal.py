@@ -9,6 +9,8 @@ def compare_dict(one, two):
     for key, value in one.items():
         if isinstance(value, Number):
             assert np.allclose(value, two[key])
+        elif isinstance(value, dict):
+            compare_dict(one[key], two[key])
         else:
             assert value == two[key]
 
