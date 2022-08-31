@@ -309,11 +309,18 @@ class MultifunctionalGraphTraversal:
         edges = cls.consolidate_edges(edges)
 
         return {
-            "products": products,
-            "activities": activities,
-            "edges": edges,
+            "products": cls.clean_small_values(products),
+            "activities": cls.clean_small_values(activities),
+            "edges": cls.clean_small_values(edges, kind=list),
             "counter": counter,
         }
+
+    @classmethod
+    def clean_small_values(cls, data, kind=dict, cutoff=5e-16):
+        if kind == list:
+            return [obj for obj in data if abs(obj['amount']) >= cutoff]
+        else:
+            return {k: v for k, v in data.items() if abs(v['amount']) > cutoff}
 
     @classmethod
     def consolidate_edges(cls, edges):
