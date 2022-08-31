@@ -252,17 +252,47 @@ class GraphTraversal:
 
 class MultifunctionalGraphTraversal:
     """
-    Traverse a supply chain, following paths of greatest impact.
+    Traverse a supply chain, following paths of greatest impact. Can handle the differentiation between products and activities, and makes no assumptions about multifunctionality, substitution, or the special status of numbers on the diagonal.
 
-    This implementation uses a queue of datasets to assess. As the supply chain is traversed, datasets inputs are added to a list sorted by LCA score. Each activity in the sorted list is assessed, and added to the supply chain graph, as long as its impact is above a certain threshold, and the maximum number of calculations has not been exceeded.
+    As soon as non-diagonal values are allowed, we lose any concept of a reference product. This means that we can trace the edges for an activity (both inputs and outputs, though in the matrix there is no functional difference), but we can't for a product, as we can't use the graph structure to determine *which activity* produced the product. There could be more than one, or even zero, depending on how your mental model of substitution works. Our algorithm is therefore:
 
-    Because the next dataset assessed is chosen by its impact, not its position in the graph, this is neither a breadth-first nor a depth-first search, but rather "importance-first".
+    1. Start with products (initially the products in the functional unit)
+    2. For each product, determine which activities produced it by solving the linear system
+    3a. For each of these activities, add on to our list of products to consider by looking at the edges for that activity, and excluding the edge which led to our original product
+    3b. If we have already examined this activity, don't visit it again
+    4. Keep iterating over the list of products until we run out of activities or hit our calculation limit
 
-    This class is written in a functional style - no variables are stored in *self*, only methods.
+    The ``.calculate()`` function therefore returns the following:
 
-    Should be used by calling the ``calculate`` method.
+    .. code-block:: python
 
-    .. warning:: Graph traversal with multioutput processes only works when other inputs are substituted (see `Multioutput processes in LCA <http://chris.mutel.org/multioutput.html>`__ for a description of multiputput process math in LCA).
+        {
+            'counter': int, # Number of LCA calculations done,
+            'products': {
+                id: {  # id is either the database integer id (if `translate_indices` is True) or the matrix row index
+                    'amount': float # Total amount of this product produced to satisfy the functional unit
+                    'supply_chain_score': float # The total impact of producing this product
+                }
+            },
+            'activities': {
+                id: {  # id is either the database integer id (if `translate_indices` is True) or the matrix column index
+                    'amount': float # Total amount of this activity produced to satisfy the entire functional unit
+                    'direct_score': float # The impact of the direct emissions associated to this activity and its amount
+            },
+            'edges': [{
+                'target': int,  # product id if type is activity else activity id
+                'source': int,  # activity id if type is product else product id
+                'type': str,  # 'product' or 'activity'
+                'amount': float,  # Total amount of the flow
+                'exc_amount': float,  # Value given in the technosphere matrix
+                'supply_chain_score': float,  # Total impact from the production of this product. Only for type 'product'
+                'direct_score': float,  # Impact from direct emissions of this activity. Only for type 'activity'
+            }]
+        }
+
+    As in AssumedDiagonalGraphTraversal, we use a priority queue to examine products in order of their total impact.
+
+    This class is written in a functional style, with only class methods.
 
     """
 
