@@ -1,7 +1,6 @@
 import bw2calc as bc
 from bw_processing import create_datapackage, INDICES_DTYPE
 import numpy as np
-import pytest
 
 
 def test_multifunctional_x_shape_one_path():
@@ -162,12 +161,9 @@ def test_multifunctional_x_path_two_paths():
     lca.lci()
     lca.lcia()
 
-    print(lca.supply_array)
     assert np.allclose(lca.score, 85)
 
     results = bc.MultifunctionalGraphTraversal.calculate(lca=lca, max_calc=10)
-    print(lca.score)
-    print(results)
 
     assert np.allclose(results['products'][1]['supply_chain_score'], 85)
     assert np.allclose(results['products'][2]['amount'], 1)
@@ -196,4 +192,66 @@ def test_multifunctional_x_path_two_paths():
 
 
 def test_multifunctional_scaling():
-    pass
+    dp = create_datapackage()
+
+    data_array = np.array([10, 100])
+    indices_array = np.array([(20, 0), (21, 0)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="c",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1, 1, 1])
+    indices_array = np.array([(20, 10), (21, 11), (20, 12)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="b",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([2, 4, 6, -2, 10])
+    indices_array = np.array([
+        (1, 10),
+        (2, 10),
+        (2, 11),
+        (3, 10),
+        (3, 12),
+    ], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="t",
+        indices_array=indices_array,
+    )
+
+    lca = bc.LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+
+    assert np.allclose(lca.score, 1 + 5 - 100 / 3)
+
+    results = bc.MultifunctionalGraphTraversal.calculate(lca=lca)
+    assert results['products'] == {
+        1: {'amount': 1.0, 'supply_chain_score': -27.33333333333333},
+        2: {'amount': -2.0, 'supply_chain_score': -33.33333333333333},
+        3: {'amount': 1.0, 'supply_chain_score': 1.0}
+    }
+    assert results['activities'] == {
+        -1: {'amount': 1, 'direct_score': 0},
+        10: {'amount': 0.5, 'direct_score': 5.0},
+        11: {'amount': -0.3333333333333333, 'direct_score': -33.33333333333333},
+        12: {'amount': 0.1, 'direct_score': 1.0}
+    }
+    EXPECTED = sorted([
+        {'source': -1, 'target': 1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': -27.33333333333333},
+        {'source': 1, 'target': 10, 'type': 'activity', 'amount': 1.0, 'exc_amount': 2.0, 'direct_score': 5.0},
+        {'source': 2, 'target': 11, 'type': 'activity', 'amount': -2.0, 'exc_amount': 6.0, 'direct_score': -33.33333333333333},
+        {'source': 3, 'target': 12, 'type': 'activity', 'amount': 1.0, 'exc_amount': 10.0, 'direct_score': 1.0},
+        {'source': 10, 'target': 2, 'type': 'product', 'amount': -2.0, 'exc_amount': 4.0, 'supply_chain_score': -33.33333333333333},
+        {'source': 10, 'target': 3, 'type': 'product', 'amount': 1.0, 'exc_amount': -2.0, 'supply_chain_score': 1.0}
+    ], key=lambda x: (x['source'], x['target'], x['type']))
+    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == EXPECTED
+    assert results['counter'] == 3

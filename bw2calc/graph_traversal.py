@@ -327,7 +327,6 @@ class MultifunctionalGraphTraversal:
         def consolidate_edges(key, group):
             label = 'supply_chain_score' if key[2] == 'product' else 'direct_score'
             group = list(group)
-            print(key, key == (3, 11, 'activity'))
             return {
                 'source': key[0],
                 'target': key[1],
