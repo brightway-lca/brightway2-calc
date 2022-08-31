@@ -56,12 +56,12 @@ def test_multifunctional_x_shape_one_path():
         12: {'amount': 1.0, 'direct_score': 0.0},
         10: {'amount': 1.0, 'direct_score': 10.0}
     }
-    assert results['edges'] == [
+    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == sorted([
         {'target': 2, 'source': -1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': 10.0},
         {'target': 12, 'source': 2, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 0.0},
         {'target': 3, 'source': 12, 'type': 'product', 'amount': 1.0, 'exc_amount': -1.0, 'supply_chain_score': 10.0},
         {'target': 10, 'source': 3, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 10.0}
-    ]
+    ], key=lambda x: (x['source'], x['target'], x['type']))
     assert results['counter'] == 2
 
 
@@ -112,10 +112,88 @@ def test_multifunctional_coproduction():
         10: {'amount': 1.0, 'direct_score': 10.0},
         11: {'amount': -1.0, 'direct_score': -100.0}
     }
-    assert results['edges'] == [
+    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == sorted([
         {'target': 1, 'source': -1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': -90.0},
         {'target': 10, 'source': 1, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 10.0},
         {'target': 2, 'source': 10, 'type': 'product', 'amount': -1.0, 'exc_amount': 1.0, 'supply_chain_score': -100.0},
         {'target': 11, 'source': 2, 'type': 'activity', 'amount': -1.0, 'exc_amount': 1.0, 'direct_score': -100.0}
-    ]
+    ], key=lambda x: (x['source'], x['target'], x['type']))
     assert results['counter'] == 2
+
+
+def test_multifunctional_x_path_two_paths():
+    dp = create_datapackage()
+
+    data_array = np.array([10, 100])
+    indices_array = np.array([(21, 0), (22, 0)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="c",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1, 1])
+    indices_array = np.array([(21, 11), (22, 12)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="b",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1, -1, 1, 1, 0.5, -0.1])
+    indices_array = np.array([
+        (1, 10),
+        (2, 10),
+        (2, 11),
+        (2, 12),
+        (3, 11),
+        (3, 12),
+    ], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="t",
+        indices_array=indices_array,
+    )
+
+    lca = bc.LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+
+    print(lca.supply_array)
+    assert np.allclose(lca.score, 85)
+
+    results = bc.MultifunctionalGraphTraversal.calculate(lca=lca, max_calc=10)
+    print(lca.score)
+    print(results)
+
+    assert np.allclose(results['products'][1]['supply_chain_score'], 85)
+    assert np.allclose(results['products'][2]['amount'], 1)
+    assert np.allclose(results['products'][2]['supply_chain_score'], 85)
+
+    # Hit product 3 twice
+    assert results['counter'] == 4
+
+    assert sorted(results['activities']) == [-1, 10, 11, 12]
+    assert np.allclose(results['activities'][10]['direct_score'], 0)
+    assert np.allclose(results['activities'][11]['direct_score'], 1 / 6 * 10)
+    assert np.allclose(results['activities'][11]['amount'], 1 / 6)
+    assert np.allclose(results['activities'][12]['direct_score'], 5 / 6 * 100)
+    assert np.allclose(results['activities'][12]['amount'], 5 / 6)
+
+    EXPECTED = sorted([
+        {'source': -1, 'target': 1, 'type': 'product', 'amount': 1.0, 'exc_amount': 1.0, 'supply_chain_score': 84.99999999999999},
+        {'source': 1, 'target': 10, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 0.0},
+        {'source': 2, 'target': 11, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 1.6666666666666665},
+        {'source': 2, 'target': 12, 'type': 'activity', 'amount': 1.0, 'exc_amount': 1.0, 'direct_score': 83.33333333333331},
+        {'source': 10, 'target': 2, 'type': 'product', 'amount': 1.0, 'exc_amount': -1.0, 'supply_chain_score': 84.99999999999999},
+        {'amount': -0.08333333333333333, 'exc_amount': 0.5, 'source': 11, 'supply_chain_score': 12.499999999999995, 'target': 3, 'type': 'product'},
+        {'source': 12, 'target': 3, 'type': 'product', 'amount': 0.08333333333333331, 'exc_amount': -0.1, 'supply_chain_score': -12.499999999999996}
+    ], key=lambda x: (x['source'], x['target'], x['type']))
+    assert sorted(results['edges'], key=lambda x: (x['source'], x['target'], x['type'])) == EXPECTED
+
+
+def test_multifunctional_scaling():
+    pass
