@@ -1,7 +1,8 @@
 # Changelog
 
-## DEV
+## 2.0.DEV11 (2022-08-31)
 
+* Merged [PR #63 Multifunctional graph traversal](https://github.com/brightway-lca/brightway2-calc/pull/63)
 * Changed `GraphTraversal` to `AssumedDiagonalGraphTraversal`. `GraphTraversal` still exists as a proxy but raises a `DeprecationWarning`
 
 ## 2.0.DEV10 (2022-08-19)
