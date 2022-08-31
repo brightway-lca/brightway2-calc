@@ -282,3 +282,59 @@ def test_multifunctional_scaling():
     ]
     compare_list_of_dicts(results['edges'], EXPECTED)
     assert results['counter'] == 3
+
+
+# This was an attempt to test forcing multiple paths to see if there could be possible double counting
+# if we would have to go up and down the same edge. But I can't get a system designed where
+# I can force this successfully.
+def test_multifunctional_multiple_paths():
+    dp = create_datapackage()
+
+    data_array = np.array([10, 100])
+    indices_array = np.array([(20, 0), (21, 0)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=data_array,
+        name="c",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([1, 1])
+    indices_array = np.array([(20, 11), (21, 12)], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="b",
+        indices_array=indices_array,
+    )
+
+    data_array = np.array([-1, -10, -3, 1, 1, -2, 1, -1, -1, -4, 1, 3, -2])
+    indices_array = np.array([
+        (1, 14),
+        (2, 14),
+        (3, 14),
+        (1, 10),
+        (1, 13),
+        (3, 10),
+        (3, 11),
+        (5, 11),
+        (5, 12),
+        (2, 13),
+        (2, 12),
+        (4, 11),
+        (4, 12),
+    ], dtype=INDICES_DTYPE)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="t",
+        indices_array=indices_array,
+    )
+
+    lca = bc.LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+
+    print(lca.supply_array)
+    print(lca.technosphere_matrix.toarray())
+    print(lca.characterized_inventory.toarray())
