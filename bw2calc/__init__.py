@@ -10,6 +10,7 @@ __all__ = [
     # "load_calculation_package",
     # "MonteCarloLCA",
     "MultiLCA",
+    "MultifunctionalGraphTraversal",
     # "MultiMonteCarlo",
     # "ParallelMonteCarlo",
     # "ParameterVectorLCA",
@@ -49,8 +50,8 @@ except ImportError:
 
 
 from .dense_lca import DenseLCA
-from .graph_traversal import GraphTraversal
 from .lca import LCA
+from .graph_traversal import GraphTraversal, MultifunctionalGraphTraversal
 from .least_squares import LeastSquaresLCA
 from .multi_lca import MultiLCA
 
