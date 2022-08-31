@@ -1,5 +1,6 @@
 import warnings
 from heapq import heappop, heappush
+import itertools
 from functools import lru_cache
 
 import numpy as np
@@ -305,6 +306,7 @@ class MultifunctionalGraphTraversal:
             translate_indices=translate_indices,
             counter=counter,
         )
+        edges = cls.consolidate_edges(edges)
 
         return {
             "products": products,
@@ -312,6 +314,25 @@ class MultifunctionalGraphTraversal:
             "edges": edges,
             "counter": counter,
         }
+
+    @classmethod
+    def consolidate_edges(cls, edges):
+        def consolidate_edges(key, group):
+            label = 'supply_chain_score' if key[2] == 'product' else 'direct_score'
+            group = list(group)
+            print(key, key == (3, 11, 'activity'))
+            return {
+                'source': key[0],
+                'target': key[1],
+                'type': key[2],
+                'amount': sum([obj['amount'] for obj in group]),
+                'exc_amount': group[0]["exc_amount"],
+                label: sum([obj[label] for obj in group])
+            }
+
+        edges.sort(key=lambda x: (x['source'], x['target'], x['type']))
+        return [consolidate_edges(key, group) for key, group in itertools.groupby(edges, lambda x: (x['source'], x['target'], x['type']))]
+
 
     @classmethod
     def initialize_heap(cls, lca: LCA, solver: CachingSolver, translate_indices: bool, counter: int):
