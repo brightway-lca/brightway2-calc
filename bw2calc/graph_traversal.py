@@ -400,11 +400,14 @@ class MultifunctionalGraphTraversal:
                 .ravel()
             ] = 0
 
-            for producing_activity_index in supply.nonzero():
+            for producing_activity_index in supply.nonzero()[0]:
                 producing_activity_index = int(producing_activity_index)
+
+                maybe_mapped_activity_index = lca.dicts.activity.reversed[producing_activity_index] if translate_indices else producing_activity_index
+
                 edges.append(
                     {
-                        "target": lca.dicts.activity.reversed[producing_activity_index] if translate_indices else producing_activity_index,
+                        "target": maybe_mapped_activity_index,
                         "source": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
                         "type": "activity",
                         "amount": product_amount,
@@ -419,23 +422,21 @@ class MultifunctionalGraphTraversal:
                     }
                 )
                 # Want multiple edges, but not multiple activity nodes
-                if producing_activity_index in activities:
-                    continue
-
-                counter = cls.visit_activity(
-                    heap=heap,
-                    activity_index=producing_activity_index,
-                    counter=counter,
-                    activities=activities,
-                    products=products,
-                    edges=edges,
-                    lca=lca,
-                    characterized_biosphere=characterized_biosphere,
-                    solver=solver,
-                    cutoff_score=cutoff_score,
-                    origin_product_index=product_index,
-                    translate_indices=translate_indices,
-                )
+                if maybe_mapped_activity_index not in activities:
+                    counter = cls.visit_activity(
+                        heap=heap,
+                        activity_index=producing_activity_index,
+                        counter=counter,
+                        activities=activities,
+                        products=products,
+                        edges=edges,
+                        lca=lca,
+                        characterized_biosphere=characterized_biosphere,
+                        solver=solver,
+                        cutoff_score=cutoff_score,
+                        origin_product_index=product_index,
+                        translate_indices=translate_indices,
+                    )
 
         return activities, products, edges, counter
 
