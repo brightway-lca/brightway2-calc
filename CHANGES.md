@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.DEV12 (2022-09-19)
+
+* Add some backwards compatiblity methods
+
 ## 2.0.DEV11 (2022-08-31)
 
 * Merged [PR #63 Multifunctional graph traversal](https://github.com/brightway-lca/brightway2-calc/pull/63)
