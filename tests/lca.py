@@ -4,7 +4,7 @@ from bw2calc.errors import (
     EmptyBiosphere,
     InconsistentGlobalIndex,
 )
-from bw2calc.lca import LCA
+from bw2calc.lca import LCA, PYPARDISO
 from pathlib import Path
 import bw_processing as bwp
 import json
@@ -1031,6 +1031,7 @@ def test_switch_weighting():
 ######
 
 
+@pytest.mark.skipif(not PYPARDISO, reason="Pardiso library not available")
 def test_invert_technosphere():
     packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
