@@ -100,9 +100,9 @@ The dictionaries in a conventional LCA are:
 * LCA.dicts.activity
 * LCA.dicts.biosphere
 
-`LCA.reverse_dict` is removed; all reversed dictionaries are available at `LCA.dicts.{name}.reversed`.
+~~`LCA.reverse_dict` is removed; all reversed dictionaries are available at `LCA.dicts.{name}.reversed`~~.
 
-In 2.5, these mapping dictionaries are not automatically "remapped" to the `(database name, activity code)` keys. You will need to call `.remap_inventory_dicts()` to after doing an inventory calculation to get mapping dictionaries in this format.
+In 2.5, these mapping dictionaries are not automatically "remapped" to the `(database name, activity code)` keys. You will need to call `.remap_inventory_dicts()` after doing an inventory calculation to get mapping dictionaries in this format.
 
 ### Weighting is a diagonal matrix instead of a single number
 

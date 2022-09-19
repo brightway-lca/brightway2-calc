@@ -754,3 +754,26 @@ class LCA(Iterator):
             for resource in package.resources
             if resource["matrix"] == f"{label}_matrix"
         )
+
+    #####################
+    ### Compatibility ###
+    #####################
+
+    @property
+    def activity_dict(self):
+        warnings.warn("This method is deprecated, please use `.dicts.activity` instead", DeprecationWarning)
+        return self.dicts.activity
+
+    @property
+    def product_dict(self):
+        warnings.warn("This method is deprecated, please use `.dicts.product` instead", DeprecationWarning)
+        return self.dicts.product
+
+    @property
+    def biosphere_dict(self):
+        warnings.warn("This method is deprecated, please use `.dicts.biosphere` instead", DeprecationWarning)
+        return self.dicts.biosphere
+
+    def reverse_dict(self):
+        warnings.warn("This method is deprecated, please use `.dicts.X.reversed` directly", DeprecationWarning)
+        return self.dicts.activity.reversed, self.dicts.product.reversed, self.dicts.biosphere.reversed
