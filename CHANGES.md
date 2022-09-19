@@ -61,7 +61,7 @@ Before 2.0 is released, the following features will be added:
 
 * Presamples will be adapted to use `bw_processing`
 * Logging will be taken seriously :)
-* LCA results to dataframes
+* ~~LCA results to dataframes~~
 
 ## Breaking changes
 
