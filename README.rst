@@ -1,4 +1,4 @@
-Brightway2 calculations
+Brightway2 Calculations
 =======================
 
 .. image:: https://ci.appveyor.com/api/projects/status/uqixaochulbu6vjv?svg=true
