@@ -1,6 +1,14 @@
 Brightway2 Calculations
 =======================
 
+.. image:: https://img.shields.io/pypi/v/bw2calc.svg
+   :target: https://pypi.org/project/bw2calc/
+   :alt: pypi version
+
+.. image:: https://img.shields.io/conda/vn/conda-forge/bw2calc.svg
+   :target: https://anaconda.org/conda-forge/bw2calc
+   :alt: conda-forge version
+
 .. image:: https://ci.appveyor.com/api/projects/status/uqixaochulbu6vjv?svg=true
    :target: https://ci.appveyor.com/project/cmutel/brightway2-calc
    :alt: bw2calc appveyor build status
