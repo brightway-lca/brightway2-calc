@@ -1,0 +1,22 @@
+name: Create Workflow Dispatch
+
+on:
+  push:
+    branches:
+      - main  
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Workflow
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: brightway-lca,
+              repo: brightway-documentation,
+              workflow_id: 'github_action_update_submodules.yml',
+              ref: 'main',
+            })
