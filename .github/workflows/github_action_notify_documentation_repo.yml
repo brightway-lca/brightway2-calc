@@ -23,7 +23,7 @@ jobs:
     steps:
     - name: Github REST API Call
       env:
-        CI_TOKEN: ${{ secrets.DOCUMENTATION_TOKEN }}
+        CI_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PARENT_REPO: brightway-lca/brightway-documentation
         PARENT_BRANCH: main
         WORKFLOW_ID: 43629004
