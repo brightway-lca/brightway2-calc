@@ -13,7 +13,7 @@ jobs:
       - name: Trigger Workflow
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GHA_WORKFLOW_TRIGGER }}
+          github-token: ${{ secrets.TEST_ALL_PREMISSIONS }}
           script: |
             github.rest.actions.createWorkflowDispatch({
               owner: 'brightway-lca',
