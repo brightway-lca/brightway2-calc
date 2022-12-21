@@ -15,8 +15,8 @@ jobs:
         with:
           script: |
             github.rest.actions.createWorkflowDispatch({
-              owner: brightway-lca,
-              repo: brightway-documentation,
+              owner: 'brightway-lca',
+              repo: 'brightway-documentation',
               workflow_id: 'github_action_update_submodules.yml',
               ref: 'main',
             })
