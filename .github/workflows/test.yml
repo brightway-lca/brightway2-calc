@@ -24,7 +24,7 @@ jobs:
         CI_TOKEN: ${{ secrets.DOCUMENTATION_TOKEN }}
         PARENT_REPO: brightway-lca/brightway-documentation
         PARENT_BRANCH: main
-        WORKFLOW_ID: 43631759
+        WORKFLOW_ID: 43629004
       run: |
         curl \
           -fL --retry 3 -X POST \
