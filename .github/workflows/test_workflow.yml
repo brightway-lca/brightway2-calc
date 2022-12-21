@@ -12,8 +12,8 @@ jobs:
     steps:
       - name: Trigger Workflow
         uses: actions/github-script@v6
-        github-token: ${{ secrets.GHA_WORKFLOW_TRIGGER }}
         with:
+          github-token: ${{ secrets.GHA_WORKFLOW_TRIGGER }}
           script: |
             github.rest.actions.createWorkflowDispatch({
               owner: 'brightway-lca',
