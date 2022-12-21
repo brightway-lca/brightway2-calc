@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-    permissions: write-all
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Workflow
         uses: actions/github-script@v6
+        github-token: ${{ secrets.GHA_WORKFLOW_TRIGGER }}
         with:
           script: |
             github.rest.actions.createWorkflowDispatch({
