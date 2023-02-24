@@ -11,6 +11,7 @@ from scipy.sparse.linalg import cgs
 from stats_arrays.random import MCRandomNumberGenerator
 import multiprocessing
 import sys
+import warnings
 
 try:
     from pypardiso import spsolve
@@ -182,6 +183,13 @@ class ParallelMonteCarlo(object):
     """Split a Monte Carlo calculation into parallel jobs"""
     def __init__(self, demand, method, iterations=1000, chunk_size=None,
                  cpus=None, log_config=None):
+        MSG = (
+            "The ParallelMonteCarlo class is deprecated; as of Python 3.8 it doesn't "
+            "work reliably on Windows or MacOS, and doesn't offer speed advantages "
+            "when using the Pardiso solver"
+        )
+        warnings.warn(MSG, DeprecationWarning)
+
         clean_databases()
         self.demand = demand
         self.method = method

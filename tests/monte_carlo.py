@@ -9,12 +9,13 @@ from bw2data.tests import bw2test
 from numbers import Number
 import numpy as np
 import os
+import platform
 import pytest
 import wrapt
 
 
-no_pool = pytest.mark.skipif(config._windows,
-    reason="fork() on Windows doesn't pass temp directory")
+no_pool = pytest.mark.skipif(platform.system() in ("Windows", "Darwin"),
+    reason="fork() on Windows & MacOS doesn't pass temp directory")
 
 yes_docker = pytest.mark.skipif(bool(os.environ.get("BRIGHTWAY2_DOCKER")),
     reason="Project directory in CI Docker container is '/home/jovyan/data'")
