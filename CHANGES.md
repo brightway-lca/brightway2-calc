@@ -1,5 +1,11 @@
 # Changelog
 
+### 1.8.2 (2023-02-24)
+
+* Warn when using ParallelMonteCarlo on Windows and MacOS
+* Stop trying to use -1 in unsigned integer arrays
+* [#68](https://github.com/brightway-lca/brightway2-calc/pull/68): Fix compatiblity with Numpy deprecations
+
 ### 1.8.1 (2022-02-07)
 
 * Fix changes to Scipy API in 1.8.0
