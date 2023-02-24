@@ -1,0 +1,142 @@
+jobs:
+- job:
+  displayName: ubuntu-20.04-conda
+  pool:
+    vmImage: 'ubuntu-20.04'
+  strategy:
+    matrix:
+      Python310:
+        python.version: '3.10'
+      Python39:
+        python.version: '3.9'
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - bash: |
+      source activate bw2
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION brightway2 bw2data=3.6.6 pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
+    displayName: Install Anaconda packages
+
+  - bash: |
+      source activate bw2
+      # We have a conda based testing environment at this point, but to test with the conda package
+      # we need to build it first, and use conda install --use-local for example.
+      # This can be fixed later. TODO:
+      pip install -e .
+      pytest --cov=bw2calc --cov-report=xml --cov-report=html
+    displayName: pytest
+
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+
+- job:
+  displayName: ubuntu-20.04-pip
+  pool:
+    vmImage: 'ubuntu-20.04'
+  strategy:
+    matrix:
+      Python310:
+        python.version: '3.10'
+      Python39:
+        python.version: '3.9'
+      Python38:
+        python.version: '3.8'
+
+  steps:
+    - bash: |
+        pip install virtualenv
+        virtualenv bw2
+      displayName: create virtualenv
+
+    - bash: |
+        source bw2/bin/activate
+        pip install -U pip
+        pip --version
+      displayName: Update pip in virtualenv
+
+    - bash: |
+        source bw2/bin/activate
+        python --version
+        pip --version
+        pip install numpy brightway2 bw2data==3.6.6 pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
+        echo "which pytest: "
+        which pytest
+        echo "pytest version: "
+        pytest --version
+        echo "isntalled packages: "
+        pip list
+      displayName: Install testing dependencies
+
+    - bash: |
+        source bw2/bin/activate
+        pip install -e .
+        pytest --cov=bw2calc --color=yes -v --cov-report html
+      displayName: Run pytest
+
+
+- job:
+  displayName: macOS-1015-38-conda
+  pool:
+    vmImage: 'macOS-1015'
+  strategy:
+    matrix:
+      Python310:
+        python.version: '3.10'
+      Python39:
+        python.version: '3.9'
+
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - bash: |
+      source activate bw2
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy brightway2 bw2data=3.6.6 pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
+    displayName: Install Anaconda packages
+
+  - bash: |
+      source activate bw2
+      pip install -e .
+      pytest --cov=bw2calc --cov-report=xml --cov-report=html
+    displayName: pytest
+
+- job:
+  displayName: windows-2019-conda
+  pool:
+    vmImage: 'windows-2019'
+  strategy:
+    matrix:
+      Python310:
+        python.version: '3.10'
+      Python39:
+        python.version: '3.9'
+
+  steps:
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    displayName: Add conda to PATH
+
+  - script: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - script: |
+      call activate bw2
+      conda install --yes --quiet -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy brightway2 bw2data=3.6.6 pandas scipy psutil pypardiso pytest peewee pytest pytest-azurepipelines">=1.0.2" pytest-cov
+    displayName: Install Anaconda packages
+
+  - script: |
+      call activate bw2
+      pip install -e .
+      pytest --cov=bw2calc --cov-report=xml --cov-report=html
+    displayName: pytest
