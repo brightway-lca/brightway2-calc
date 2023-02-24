@@ -37,13 +37,12 @@ def index_with_arrays(array_from, array_to, mapping):
     if keys.min() < 0:
         raise ValueError("Keys must be positive integers")
 
-    index_array = np.zeros(keys.max() + 1) - 1
+    index_array = np.zeros(keys.max() + 1) + MAX_INT_32
     index_array[keys] = values
 
     mask = array_from <= keys.max()
-    array_to[:] = -1
+    array_to[:] = MAX_INT_32
     array_to[mask] = index_array[array_from[mask]]
-    array_to[array_to == -1] = MAX_INT_32
 
 
 def index_with_searchsorted(array_from, array_to):
