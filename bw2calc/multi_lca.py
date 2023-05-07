@@ -1,10 +1,13 @@
 import logging
-from bw2data.backends.proxies import Activity
 import numpy as np
 try:
     from bw2data import calculation_setups, get_activity
+    from bw2data.backends.proxies import Activity
 except ImportError:
     calculation_setups = None
+
+    class Activity:
+        pass
 
 from .lca import LCA
 from .utils import wrap_functional_unit
