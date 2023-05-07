@@ -1,5 +1,11 @@
 # calc Changelog
 
+## 2.0.DEV13 (2023-05-07)
+
+* CI workflow updates
+* Merge [#65](https://github.com/brightway-lca/brightway2-calc/pull/65): Add PyPI and conda-forge badge
+* Fix hidden dependency on `bw2data`
+
 ## 2.0.DEV12 (2022-09-19)
 
 * Add some backwards compatiblity methods
