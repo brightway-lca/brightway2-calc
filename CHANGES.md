@@ -1,4 +1,8 @@
-# calc Changelog
+# `bw2calc` Changelog
+
+## 2.0.DEV13 (2023-08-24)
+
+* Packaging updates
 
 ## 2.0.DEV13 (2023-05-07)
 
