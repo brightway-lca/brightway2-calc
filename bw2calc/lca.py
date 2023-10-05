@@ -325,7 +325,7 @@ class LCA(Iterator):
 
             -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
 
-        We use `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
+        We use `pypardiso <https://github.com/haasad/PyPardisoProject>`_ or `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
 
         If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
 
@@ -532,9 +532,15 @@ class LCA(Iterator):
         )
 
     def invert_technosphere_matrix(self):
-        """Use pardiso to efficiently calculate the inverse of the technosphere matrix."""
+        """Use one-shot approach to efficiently calculate the inverse of the
+        technosphere matrix by simultaneously solving ``Ax=b`` for all ``b``.
+
+        See `Intel forum <https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/How-to-find-inverse-of-a-sparse-matrix-using-pardiso/m-p/1165970#M28249>`__
+        for a discussion on why we use this approach."""
         assert hasattr(self, "inventory"), "Must do lci first"
-        assert PYPARDISO, "pardiso solver needed for efficient matrix inversion"
+
+        if not PYPARDISO:
+            warnings.warn("Performance is much better with pypardiso (not available on MacOS ARM machines)")
 
         MESSAGE = """Technosphere matrix inversion is often not the most efficient approach.
     See https://github.com/brightway-lca/brightway2-calc/issues/35"""
