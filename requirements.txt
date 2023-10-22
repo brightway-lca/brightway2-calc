@@ -1,7 +1,0 @@
-bw_processing
-bw2data
-matrix_utils
-numpy
-pandas
-scipy
-stats_arrays
