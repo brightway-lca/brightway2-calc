@@ -1,6 +1,18 @@
 # `bw2calc` Changelog
 
-## 2.0.DEV13 (2023-08-24)
+## 2.0.DEV16 (2023-10-22)
+
+* Fix [#78](https://github.com/brightway-lca/brightway2-calc/issues/78): Allow for selective use of distributions or arrays depending on matrix label
+* Fix [#77](https://github.com/brightway-lca/brightway2-calc/issues/77): Prevent multiple `remap_inventory_dicts` calls
+* Fix [#71](https://github.com/brightway-lca/brightway2-calc/issues/71): Poor error message when no LCIA data is supplied
+* Documentation improvements
+* Switch packaging to `pyproject.toml`
+
+## 2.0.DEV15 (2023-10-22)
+
+Never happened, can't prove anything :)
+
+## 2.0.DEV14 (2023-08-24)
 
 * Packaging updates
 
