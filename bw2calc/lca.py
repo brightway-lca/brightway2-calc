@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterator, Mapping
 from functools import partial
 from pathlib import Path
-from typing import Iterable, Optional, Union, Callable
+from typing import Iterable, Optional, Union, Callable, Tuple
 from numbers import Number
 
 import bw_processing as bwp
@@ -29,11 +29,6 @@ logger = logging.getLogger("bw2calc")
 
 
 class LCA(Iterator):
-    """An LCI or LCIA calculation.
-
-    Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
-
-    """
     matrix_labels = [
         "technosphere_mm",
         "biosphere_mm",
@@ -58,17 +53,40 @@ class LCA(Iterator):
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
-        use_arrays: bool = False,
-        use_distributions: bool = False,
+        use_arrays: Optional[bool] = False,
+        use_distributions: Optional[bool] = False,
+        selective_use: Optional[dict] = False,
     ):
-        """Create a new LCA calculation.
+        """Create a new LCA calculation object.
 
-        Args:
-            * *demand* (dict): The demand or functional unit. Needs to be a dictionary to indicate amounts, e.g. ``{7: 2.5}``.
-            * *method* (tuple, optional): LCIA Method tuple, e.g. ``("My", "great", "LCIA", "method")``. Can be omitted if only interested in calculating the life cycle inventory.
+        Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
 
-        Returns:
-            A new LCA object
+        This class supports both stochastic and static LCA, and can use a variety of ways to describe uncertainty. The input flags `use_arrays` and `use_distributions` control some of this stochastic behaviour. See the [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more information on the technical implementation.
+
+        Parameters
+        ----------
+        demand : dict[object: float]
+            The demand for which the LCA will be calculated. The keys can be Brightway `Node` instances, `(database, code)` tuples, or integer ids.
+        method : tuple
+            Tuple defining the LCIA method, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+        weighting : tuple
+            Tuple defining the LCIA weighting, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+        weighting : string
+            String defining the LCIA normalization, such as `'foo'`. Only needed if not passing `data_objs`.
+        data_objs : list[bw_processing.Datapackage]
+            List of `bw_processing.Datapackage` objects. Can be loaded via `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed matrices.
+        remapping_dicts : dict[str : dict]
+            Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)` tuples. `remapping_dicts` can provide such remapping for any of `activity`, `product`, `biosphere`.
+        log_config : dict
+            Optional arguments to pass to logging. Not yet implemented.
+        seed_override : int
+            RNG seed to use in place of `Datapackage` seed, if any.
+        use_arrays : bool
+            Use arrays instead of vectors from the given `data_objs`
+        use_distributions : bool
+            Use probability distributions from the given `data_objs`
+        selective_use : dict[str : dict]
+            Dictionary that gives more control on whether `use_arrays` or `use_distributions` should be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`. Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and `characterization_matrix`.
 
         """
         if not isinstance(demand, Mapping):
@@ -92,6 +110,7 @@ class LCA(Iterator):
         self.demand = demand
         self.use_arrays = use_arrays
         self.use_distributions = use_distributions
+        self.selective_use = selective_use or {}
         self.remapping_dicts = remapping_dicts or {}
         self.seed_override = seed_override
 
@@ -182,17 +201,25 @@ class LCA(Iterator):
                         f"Can't find key {key} in product dictionary"
                     )
 
+    def check_selective_use(self, matrix_label: str) -> Tuple[bool, bool]:
+        return (
+            self.selective_use.get(matrix_label, {}).get("use_arrays", self.use_arrays),
+            self.selective_use.get(matrix_label, {}).get("use_distributions", self.use_distributions),
+        )
+
     ######################
     ### Data retrieval ###
     ######################
 
     def load_lci_data(self, nonsquare_ok=False) -> None:
         """Load inventory data and create technosphere and biosphere matrices."""
+        use_arrays, use_distributions = self.check_selective_use("technosphere_matrix")
+
         self.technosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="technosphere_matrix",
-            use_arrays=self.use_arrays,
-            use_distributions=self.use_distributions,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
             seed_override=self.seed_override,
         )
         self.technosphere_matrix = self.technosphere_mm.matrix
@@ -214,11 +241,13 @@ class LCA(Iterator):
                 )
             )
 
+        use_arrays, use_distributions = self.check_selective_use("biosphere_matrix")
+
         self.biosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="biosphere_matrix",
-            use_arrays=self.use_arrays,
-            use_distributions=self.use_distributions,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
             seed_override=self.seed_override,
             col_mapper=self.technosphere_mm.col_mapper,
             empty_ok=True,
@@ -258,11 +287,13 @@ class LCA(Iterator):
             (lambda x: x["col"] == global_index) if global_index is not None else None
         )
 
+        use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
+
         self.characterization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
             matrix="characterization_matrix",
-            use_arrays=self.use_arrays,
-            use_distributions=self.use_distributions,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
@@ -274,11 +305,13 @@ class LCA(Iterator):
         self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
+        use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
+
         self.normalization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
             matrix="normalization_matrix",
-            use_arrays=self.use_arrays,
-            use_distributions=self.use_distributions,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
             seed_override=self.seed_override,
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
@@ -289,12 +322,14 @@ class LCA(Iterator):
         self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
+        use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
+
         self.weighting_mm = SingleValueDiagonalMatrix(
             packages=data_objs or self.packages,
             matrix="weighting_matrix",
             dimension=len(self.biosphere_mm.row_mapper),
-            use_arrays=self.use_arrays,
-            use_distributions=self.use_distributions,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
             seed_override=self.seed_override,
         )
         self.weighting_matrix = self.weighting_mm.matrix

@@ -153,6 +153,18 @@ def test_next_plain_monte_carlo():
     assert first != mc.score
 
 
+def test_selective_use():
+    packages = [
+        fixture_dir / "mc_basic.zip",
+    ]
+    mc = LCA({3: 1}, data_objs=packages, use_distributions=True, selective_use={"biosphere_matrix": {"use_distributions": False}})
+    mc.lci()
+    mc.lcia()
+    assert mc.technosphere_mm.use_distributions
+    assert mc.characterization_mm.use_distributions
+    assert not mc.biosphere_mm.use_distributions
+
+
 def test_next_monte_carlo_as_iterator():
     packages = [
         fixture_dir / "mc_basic.zip",
