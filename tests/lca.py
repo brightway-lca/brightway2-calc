@@ -331,6 +331,25 @@ def test_remap_inventory_dicts():
     assert lca.dicts.biosphere["z"] == 0
 
 
+def test_remap_inventory_dicts_again():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA(
+        {1: 1},
+        data_objs=packages,
+        remapping_dicts={"product": {1: ("foo", "bar")}, "biosphere": {1: "z"}},
+    )
+    lca.lci()
+    lca.remap_inventory_dicts()
+    with pytest.warns(UserWarning):
+        lca.remap_inventory_dicts()
+    tm = np.array([[1, 0], [-0.5, 1]])
+    assert np.allclose(lca.technosphere_matrix.toarray(), tm)
+    assert lca.dicts.product[("foo", "bar")] == 0
+    assert lca.dicts.product[2] == 1
+    assert lca.dicts.activity[101] == 0
+    assert lca.dicts.activity[102] == 1
+    assert lca.dicts.biosphere["z"] == 0
+
 ######
 ### load_lcia_data
 ######

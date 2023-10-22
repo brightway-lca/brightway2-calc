@@ -265,6 +265,10 @@ class LCA(Iterator):
         """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand`` from database integer IDs to keys (``(database name, code)``).
 
         Uses remapping dictionaries in ``self.remapping_dicts``."""
+        if getattr(self, "_remapped", False):
+            warnings.warn("Remapping has already been done; returning without changing data")
+            return
+
         if "product" in self.remapping_dicts:
             self.demand = {
                 self.remapping_dicts["product"][k]: v for k, v in self.demand.items()
@@ -273,6 +277,8 @@ class LCA(Iterator):
         for label in ("activity", "product", "biosphere"):
             if label in self.remapping_dicts:
                 getattr(self.dicts, label).remap(self.remapping_dicts[label])
+
+        self._remapped = True
 
     def load_lcia_data(
         self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
