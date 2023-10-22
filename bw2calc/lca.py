@@ -295,17 +295,22 @@ class LCA(Iterator):
 
         use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
 
-        self.characterization_mm = mu.MappedMatrix(
-            packages=data_objs or self.packages,
-            matrix="characterization_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
-            row_mapper=self.biosphere_mm.row_mapper,
-            diagonal=True,
-            custom_filter=fltr,
-        )
+        try:
+            self.characterization_mm = mu.MappedMatrix(
+                packages=data_objs or self.packages,
+                matrix="characterization_matrix",
+                use_arrays=use_arrays,
+                use_distributions=use_distributions,
+                seed_override=self.seed_override,
+                row_mapper=self.biosphere_mm.row_mapper,
+                diagonal=True,
+                custom_filter=fltr,
+            )
+        except mu.errors.AllArraysEmpty:
+            raise ValueError("Given `method` or `data_objs` have no characterization data")
         self.characterization_matrix = self.characterization_mm.matrix
+        if len(self.characterization_matrix.data) == 0:
+            warnings.warn("All values in characterization matrix are zero")
 
     def load_normalization_data(
         self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None

@@ -67,7 +67,7 @@ def empty_biosphere():
     dp.finalize_serialization()
 
 
-def _create_basic_fixture(fs):
+def _create_basic_fixture(fs, characterization=True, characterization_values=True):
     # Activities: 101, 102
     # Products: 1, 2
     # Biosphere flows: 1
@@ -95,20 +95,39 @@ def _create_basic_fixture(fs):
 
     data_array = np.array([1])
     indices_array = np.array([(1, 0)], dtype=INDICES_DTYPE)
-    dp.add_persistent_vector(
-        matrix="characterization_matrix",
-        data_array=data_array,
-        name="eb-characterization",
-        indices_array=indices_array,
-        global_index=0,
-        nrows=1,
-    )
+    if characterization:
+        if characterization_values:
+            dp.add_persistent_vector(
+                matrix="characterization_matrix",
+                data_array=data_array,
+                name="eb-characterization",
+                indices_array=indices_array,
+                global_index=0,
+                nrows=1,
+            )
+        else:
+            dp.add_persistent_vector(
+                matrix="characterization_matrix",
+                data_array=np.array([]),
+                name="eb-characterization",
+                indices_array=np.array([], dtype=INDICES_DTYPE),
+                global_index=0,
+                nrows=0,
+            )
 
     dp.finalize_serialization()
 
 
 def create_basic_fixture_zipfile():
     _create_basic_fixture(ZipFS(str(fixture_dir / "basic_fixture.zip"), write=True))
+
+
+def create_missing_characterization():
+    _create_basic_fixture(ZipFS(str(fixture_dir / "missing_characterization.zip"), write=True), characterization=False)
+
+
+def create_empty_characterization():
+    _create_basic_fixture(ZipFS(str(fixture_dir / "empty_characterization.zip"), write=True), characterization_values=False)
 
 
 def create_basic_fixture_directory():
@@ -319,11 +338,13 @@ def create_mc_complete():
 
 
 if __name__ == "__main__":
-    empty_biosphere()
-    bw2io_example_database()
-    create_mc_basic()
-    create_mc_complete()
-    create_basic_fixture_zipfile()
-    create_basic_fixture_directory()
-    create_array_fixtures()
-    create_svdm_fixtures()
+    # empty_biosphere()
+    # bw2io_example_database()
+    # create_mc_basic()
+    # create_mc_complete()
+    create_missing_characterization()
+    create_empty_characterization()
+    # create_basic_fixture_zipfile()
+    # create_basic_fixture_directory()
+    # create_array_fixtures()
+    # create_svdm_fixtures()

@@ -308,6 +308,19 @@ def test_load_lci_data_empty_biosphere_warning():
         lca.lci()
 
 
+def test_load_lcia_data_missing_characterization():
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "missing_characterization.zip"])
+    lca.lci()
+    with pytest.raises(ValueError):
+        lca.lcia()
+
+
+def test_load_lcia_data_empty_characterization():
+    lca = LCA({1: 1}, data_objs=[fixture_dir / "empty_characterization.zip"])
+    lca.lci()
+    with pytest.warns(UserWarning):
+        lca.lcia()
+
 ######
 ### remap_inventory_dicts
 ######
