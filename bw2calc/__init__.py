@@ -17,7 +17,7 @@ __all__ = [
     # "save_calculation_package",
 ]
 
-from .version import version as __version__
+__version__ = "2.0.DEV15"
 
 try:
     import json_logging

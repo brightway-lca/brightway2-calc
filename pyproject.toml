@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bw2calc"
+authors = [
+  { name=" Chris Mutel", email="cmutel@gmail.com" }
+]
+maintainers = [
+  { name=" Chris Mutel", email="cmutel@gmail.com" }
+]
+description = "The calculation engine for the Brightway2 life cycle assessment framework."
+readme = "README.md"
+dynamic = ["version"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+requires-python = ">=3.9"
+dependencies = [
+        "bw_processing",
+        "matrix_utils",
+        "numpy",
+        "pandas",
+        "scipy",
+        "stats_arrays",
+]
+
+[project.urls]
+source = "https://github.com/brightway-lca/brightway2-calc"
+homepage = "https://github.com/brightway-lca/brightway2-calc"
+tracker = "https://github.com/brightway-lca/brightway2-calc/issues"
+
+[project.optional-dependencies]
+testing = [
+    "bw2calc>=2.0.DEV15",
+    "bw2data>=4.0.DEV32",
+    "pypardiso",
+    "pytest",
+    "pytest-cov",
+    "python-coveralls"
+]
+dev = [
+    "build",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "pytest-cov",
+    "setuptools",
+]
+
+[tool.setuptools]
+license-files = ["LICENSE"]
+include-package-data = true
+packages = ["bw2calc"]
+
+[tool.setuptools.dynamic]
+version = {attr = "bw2calc.__version__"}
+
+[tool.pytest.ini_options]
+addopts = "--cov bw2calc --cov-report term-missing --verbose"
+norecursedirs = [
+    "dist",
+    "build",
+    ".tox"
+]
+testpaths = ["tests/*.py"]
+
+[tool.flake8]
+# Some sane defaults for the code style checker flake8
+max_line_length = 88
+extend_ignore = ["E203", "W503"]
+# ^  Black-compatible
+#    E203 and W503 have edge cases handled by black
+exclude = [
+    ".tox",
+    "build",
+    "dist",
+    ".eggs",
+    "docs/conf.py",
+]
