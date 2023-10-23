@@ -62,3 +62,9 @@ class MultipleValues(BW2CalcError):
     """Multiple values are present, but only one value is expected"""
 
     pass
+
+
+class InconsistentLCIADatapackages(BW2CalcError):
+    """Provided weighting or normalization doesn't fit the impact category"""
+
+    pass

@@ -1,12 +1,12 @@
-import warnings
-from heapq import heappop, heappush
 import itertools
+import warnings
 from functools import lru_cache
+from heapq import heappop, heappush
 
 import numpy as np
 from scipy import sparse
 
-from . import spsolve, LCA
+from . import LCA, spsolve
 
 
 class CachingSolver:
@@ -297,7 +297,13 @@ class MultifunctionalGraphTraversal:
     """
 
     @classmethod
-    def calculate(cls, lca: LCA, cutoff: float = 0.005, max_calc: int = 1e5, translate_indices: bool = True):
+    def calculate(
+        cls,
+        lca: LCA,
+        cutoff: float = 0.005,
+        max_calc: int = 1e5,
+        translate_indices: bool = True,
+    ):
         """
         Traverse the supply chain graph.
 
@@ -322,7 +328,9 @@ class MultifunctionalGraphTraversal:
 
         solver = CachingSolver(lca)
 
-        heap, activities, products, edges, counter = cls.initialize_heap(lca, solver, translate_indices, 0)
+        heap, activities, products, edges, counter = cls.initialize_heap(
+            lca, solver, translate_indices, 0
+        )
         activities, products, edges, counter = cls.traverse(
             heap=heap,
             solver=solver,
@@ -348,30 +356,36 @@ class MultifunctionalGraphTraversal:
     @classmethod
     def clean_small_values(cls, data, kind=dict, cutoff=5e-16):
         if kind == list:
-            return [obj for obj in data if abs(obj['amount']) >= cutoff]
+            return [obj for obj in data if abs(obj["amount"]) >= cutoff]
         else:
-            return {k: v for k, v in data.items() if abs(v['amount']) > cutoff}
+            return {k: v for k, v in data.items() if abs(v["amount"]) > cutoff}
 
     @classmethod
     def consolidate_edges(cls, edges):
         def consolidate_edges(key, group):
-            label = 'supply_chain_score' if key[2] == 'product' else 'direct_score'
+            label = "supply_chain_score" if key[2] == "product" else "direct_score"
             group = list(group)
             return {
-                'source': key[0],
-                'target': key[1],
-                'type': key[2],
-                'amount': sum([obj['amount'] for obj in group]),
-                'exc_amount': group[0]["exc_amount"],
-                label: sum([obj[label] for obj in group])
+                "source": key[0],
+                "target": key[1],
+                "type": key[2],
+                "amount": sum([obj["amount"] for obj in group]),
+                "exc_amount": group[0]["exc_amount"],
+                label: sum([obj[label] for obj in group]),
             }
 
-        edges.sort(key=lambda x: (x['source'], x['target'], x['type']))
-        return [consolidate_edges(key, group) for key, group in itertools.groupby(edges, lambda x: (x['source'], x['target'], x['type']))]
-
+        edges.sort(key=lambda x: (x["source"], x["target"], x["type"]))
+        return [
+            consolidate_edges(key, group)
+            for key, group in itertools.groupby(
+                edges, lambda x: (x["source"], x["target"], x["type"])
+            )
+        ]
 
     @classmethod
-    def initialize_heap(cls, lca: LCA, solver: CachingSolver, translate_indices: bool, counter: int):
+    def initialize_heap(
+        cls, lca: LCA, solver: CachingSolver, translate_indices: bool, counter: int
+    ):
         """
         Create a `priority queue <http://docs.python.org/2/library/heapq.html>`_ or ``heap`` to store inventory datasets, sorted by LCA score.
 
@@ -398,13 +412,19 @@ class MultifunctionalGraphTraversal:
                 * solver(product_index)
             ).sum() * amount
             heappush(heap, (abs(1 / cumulative_score), product_index, amount))
-            products[lca.dicts.product.reversed[product_index] if translate_indices else product_index] = {
+            products[
+                lca.dicts.product.reversed[product_index]
+                if translate_indices
+                else product_index
+            ] = {
                 "amount": amount,
                 "supply_chain_score": cumulative_score,
             }
             edges.append(
                 {
-                    "target": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
+                    "target": lca.dicts.product.reversed[product_index]
+                    if translate_indices
+                    else product_index,
                     "source": -1,
                     "type": "product",
                     "amount": amount,
@@ -460,12 +480,18 @@ class MultifunctionalGraphTraversal:
             for producing_activity_index in supply.nonzero()[0]:
                 producing_activity_index = int(producing_activity_index)
 
-                maybe_mapped_activity_index = lca.dicts.activity.reversed[producing_activity_index] if translate_indices else producing_activity_index
+                maybe_mapped_activity_index = (
+                    lca.dicts.activity.reversed[producing_activity_index]
+                    if translate_indices
+                    else producing_activity_index
+                )
 
                 edges.append(
                     {
                         "target": maybe_mapped_activity_index,
-                        "source": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
+                        "source": lca.dicts.product.reversed[product_index]
+                        if translate_indices
+                        else product_index,
                         "type": "activity",
                         "amount": product_amount,
                         "exc_amount": lca.technosphere_matrix[
@@ -513,7 +539,11 @@ class MultifunctionalGraphTraversal:
         origin_product_index: int,
         translate_indices: bool,
     ):
-        activities[lca.dicts.activity.reversed[activity_index] if translate_indices else activity_index] = {
+        activities[
+            lca.dicts.activity.reversed[activity_index]
+            if translate_indices
+            else activity_index
+        ] = {
             "amount": lca.supply_array[activity_index],
             # Total direct score over all edges
             "direct_score": characterized_biosphere[:, activity_index].sum()
@@ -541,17 +571,33 @@ class MultifunctionalGraphTraversal:
                 continue
 
             try:
-                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index]["amount"] += product_amount
-                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index]["supply_chain_score"] += cumulative_score
+                products[
+                    lca.dicts.product.reversed[product_index]
+                    if translate_indices
+                    else product_index
+                ]["amount"] += product_amount
+                products[
+                    lca.dicts.product.reversed[product_index]
+                    if translate_indices
+                    else product_index
+                ]["supply_chain_score"] += cumulative_score
             except KeyError:
-                products[lca.dicts.product.reversed[product_index] if translate_indices else product_index] = {
+                products[
+                    lca.dicts.product.reversed[product_index]
+                    if translate_indices
+                    else product_index
+                ] = {
                     "amount": product_amount,
                     "supply_chain_score": cumulative_score,
                 }
             edges.append(
                 {
-                    "target": lca.dicts.product.reversed[product_index] if translate_indices else product_index,
-                    "source": lca.dicts.activity.reversed[activity_index] if translate_indices else activity_index,
+                    "target": lca.dicts.product.reversed[product_index]
+                    if translate_indices
+                    else product_index,
+                    "source": lca.dicts.activity.reversed[activity_index]
+                    if translate_indices
+                    else activity_index,
                     "type": "product",
                     "amount": product_amount,
                     "exc_amount": lca.technosphere_matrix[

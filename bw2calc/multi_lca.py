@@ -1,92 +1,154 @@
+import datetime
 import logging
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Iterable, Optional, Union
+
+import bw_processing as bwp
+import matrix_utils as mu
 import numpy as np
-try:
-    from bw2data import calculation_setups, get_activity
-    from bw2data.backends.proxies import Activity
-except ImportError:
-    calculation_setups = None
+from fs.base import FS
 
-    class Activity:
-        pass
-
+from . import PYPARDISO, __version__
+from .dictionary_manager import DictionaryManager
+from .errors import InconsistentLCIADatapackages
 from .lca import LCA
-from .utils import wrap_functional_unit
-
+from .utils import get_datapackage, wrap_functional_unit
 
 logger = logging.getLogger("bw2calc")
 
 
-class InventoryMatrices:
-    def __init__(self, biosphere_matrix, supply_arrays):
-        self.biosphere_matrix = biosphere_matrix
-        self.supply_arrays = supply_arrays
+class MultiLCA(LCA):
+    """
+    Perform LCA on multiple demands and multiple impact categories.
 
-    def __getitem__(self, fu_index):
-        if fu_index is Ellipsis:
-            raise ValueError("Must specify integer indices")
+    Builds only *one* technosphere and biosphere matrix which can cover all demands.
 
-        return self.biosphere_matrix * self.supply_arrays[fu_index]
+    Differs from the base `LCA` class in that:
 
+    * `supply_arrays` in place of `supply array`; Numpy array with dimensions (biosphere flows, demand dictionaries)
+    * `inventories` in place of `inventory`; List of matrices with length number of demand dictionaries
+    * `characterized_inventories` in place of `characterized_inventory`; like `inventories`
+    * `scores` instead of `score`; Numpy array with dimensions (demand dictionaries, impact categories)
 
-class MultiLCA:
-    """Wrapper class for performing LCA calculations with many functional units and LCIA methods.
+    The input arguments are also different, and are mostly plural.
 
-    Needs to be passed a ``calculation_setup`` name.
+    Instantiation requires separate `data_objs` for the method, normalization, and weighting, as these are all impact category-specific. Use a `bw2data` compatibility function to get data prepared in the correct way.
 
-    This class does not subclass the `LCA` class, and performs all calculations upon instantiation.
+    This class supports both stochastic and static LCA, and can use a variety of ways to describe uncertainty. The input flags `use_arrays` and `use_distributions` control some of this stochastic behaviour. See the [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more information on the technical implementation.
 
-    Initialization creates `self.results`, which is a NumPy array of LCA scores, with rows of functional units and columns of LCIA methods. Ordering is the same as in the `calculation_setup`.
-
+    Parameters
+    ----------
+    demands : Iterable[dict[int: float]]
+        The demands for which the LCA will be calculated. The keys **must be** integers ids.
+    inventory_data_objs : list[bw_processing.Datapackage]
+        List of `bw_processing.Datapackage` objects **for the inventory**. Can be loaded via `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed matrices.
+    methods : List[bw_processing.Datapackage]
+        Tuple defining the LCIA method, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+    weighting : List[bw_processing.Datapackage]
+        Tuple defining the LCIA weighting, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+    weighting : List[bw_processing.Datapackage]
+        String defining the LCIA normalization, such as `'foo'`. Only needed if not passing `data_objs`.
+    remapping_dicts : dict[str : dict]
+        Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)` tuples. `remapping_dicts` can provide such remapping for any of `activity`, `product`, `biosphere`.
+    log_config : dict
+        Optional arguments to pass to logging. Not yet implemented.
+    seed_override : int
+        RNG seed to use in place of `Datapackage` seed, if any.
+    use_arrays : bool
+        Use arrays instead of vectors from the given `data_objs`
+    use_distributions : bool
+        Use probability distributions from the given `data_objs`
+    selective_use : dict[str : dict]
+        Dictionary that gives more control on whether `use_arrays` or `use_distributions` should be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`. Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and `characterization_matrix`.
     """
 
-    def __init__(self, cs_name, log_config=None):
-        if calculation_setups is None:
-            raise ImportError("`bw2data` is required for this functionality")
-        assert cs_name in calculation_setups
-        try:
-            cs = calculation_setups[cs_name]
-        except KeyError:
-            raise ValueError("{} is not a known `calculation_setup`.".format(cs_name))
-        self.func_units = cs["inv"]
-        self.methods = cs["ia"]
-        self.lca = LCA(demand=self.all, method=self.methods[0], log_config=log_config)
+    def __init__(
+        self,
+        demands: Iterable[Mapping],
+        inventory_data_objs: Iterable[Union[Path, FS, bwp.DatapackageBase]],
+        method_data_objs: Optional[
+            Iterable[Union[Path, FS, bwp.DatapackageBase]]
+        ] = None,
+        normalization_data_objs: Optional[
+            Iterable[Union[Path, FS, bwp.DatapackageBase]]
+        ] = None,
+        weighting_data_objs: Optional[
+            Iterable[Union[Path, FS, bwp.DatapackageBase]]
+        ] = None,
+        remapping_dicts: Optional[Iterable[dict]] = None,
+        log_config: Optional[dict] = None,
+        seed_override: Optional[int] = None,
+        use_arrays: Optional[bool] = False,
+        use_distributions: Optional[bool] = False,
+        selective_use: Optional[dict] = False,
+    ):
+        # Resolve potential iterator
+        self.demands = list(demands)
+        for i, fu in enumerate(self.demands):
+            if not isinstance(fu, Mapping):
+                raise ValueError(f"Demand section {i}: {fu} not a dictionary")
+
+        self.packages = [get_datapackage(obj) for obj in inventory_data_objs]
+
+        if method_data_objs is not None:
+            self.method_packages = [get_datapackage(obj) for obj in method_data_objs]
+        else:
+            self.method_packages = []
+        if weighting_data_objs is not None:
+            self.weighting_packages = [
+                get_datapackage(obj) for obj in weighting_data_objs
+            ]
+        else:
+            self.method_packages = []
+        if normalization_data_objs is not None:
+            self.normalization_packages = [
+                get_datapackage(obj) for obj in normalization_data_objs
+            ]
+        else:
+            self.normalization_packages = []
+
+        if (
+            self.method_packages
+            and self.weighting_packages
+            and len(self.method_packages) != len(self.weighting_packages)
+        ):
+            raise InconsistentLCIADatapackages(
+                "Found {} methods and {} weightings (must be the same)".format(
+                    len(self.method_packages), len(self.weighting_packages)
+                )
+            )
+        elif (
+            self.method_packages
+            and self.normalization_packages
+            and len(self.method_packages) != len(self.normalization_packages)
+        ):
+            raise InconsistentLCIADatapackages(
+                "Found {} methods and {} normalizations (must be the same)".format(
+                    len(self.method_packages), len(self.normalization_packages)
+                )
+            )
+
+        self.dicts = DictionaryManager()
+        self.use_arrays = use_arrays
+        self.use_distributions = use_distributions
+        self.selective_use = selective_use or {}
+        self.remapping_dicts = remapping_dicts or {}
+        self.seed_override = seed_override
+
+        message = """Initialized MultiLCA object. Demands: {demands}, data_objs: {data_objs}""".format(
+            demand=self.demands, data_objs=self.packages
+        )
         logger.info(
-            {
-                "message": "Started MultiLCA calculation",
-                "methods": list(self.methods),
-                "functional units": [wrap_functional_unit(o) for o in self.func_units],
-            }
+            message,
+            extra={
+                "demand": wrap_functional_unit(self.demand),
+                "data_objs": str(self.packages),
+                "bw2calc": __version__,
+                "pypardiso": PYPARDISO,
+                "numpy": np.__version__,
+                "matrix_utils": mu.__version__,
+                "bw_processing": bwp.__version__,
+                "utc": datetime.datetime.utcnow(),
+            },
         )
-        self.lca.lci()
-        self.method_matrices = []
-        self.supply_arrays = []
-        self.results = np.zeros((len(self.func_units), len(self.methods)))
-        for method in self.methods:
-            self.lca.switch_method(method)
-            self.method_matrices.append(self.lca.characterization_matrix)
-
-        for row, func_unit in enumerate(self.func_units):
-            fu_spec, fu_demand = list(func_unit.items())[0]
-            if isinstance(fu_spec, int):
-                fu = {fu_spec : fu_demand}
-            elif isinstance(fu_spec, Activity):
-                fu = {fu[0].id : fu[1] for  fu in list(func_unit.items())}
-            elif isinstance(fu_spec, tuple):
-                a = get_activity(fu_spec)
-                fu = {a.id : fu[1] for  fu in list(func_unit.items())}
-            self.lca.redo_lci(fu)
-            self.supply_arrays.append(self.lca.supply_array)
-
-            for col, cf_matrix in enumerate(self.method_matrices):
-                self.lca.characterization_matrix = cf_matrix
-                self.lca.lcia_calculation()
-                self.results[row, col] = self.lca.score
-
-        self.inventory = InventoryMatrices(
-            self.lca.biosphere_matrix, self.supply_arrays
-        )
-
-    @property
-    def all(self):
-        """Get all possible databases by merging all functional units"""
-        return {key: 1 for func_unit in self.func_units for key in func_unit}

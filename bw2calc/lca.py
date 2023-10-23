@@ -3,9 +3,9 @@ import logging
 import warnings
 from collections.abc import Iterator, Mapping
 from functools import partial
-from pathlib import Path
-from typing import Iterable, Optional, Union, Callable, Tuple
 from numbers import Number
+from pathlib import Path
+from typing import Callable, Iterable, Optional, Tuple, Union
 
 import bw_processing as bwp
 import matrix_utils as mu
@@ -136,11 +136,15 @@ class LCA(Iterator):
 
         When creating the class instance, we already use the first index. This method allows us to use the values for the first index.
 
-        Note that the methods ``.lci_calculation()`` and ``.lcia_calculation()`` will be called on the current values, even if these calculations have already been done."""
+        Note that the methods ``.lci_calculation()`` and ``.lcia_calculation()`` will be called on the current values, even if these calculations have already been done.
+        """
         self.keep_first_iteration_flag = True
 
     def __next__(self) -> None:
-        skip_first_iteration = hasattr(self, "keep_first_iteration_flag") and self.keep_first_iteration_flag
+        skip_first_iteration = (
+            hasattr(self, "keep_first_iteration_flag")
+            and self.keep_first_iteration_flag
+        )
 
         for matrix in self.matrix_labels:
             if not skip_first_iteration and hasattr(self, matrix):
@@ -204,7 +208,9 @@ class LCA(Iterator):
     def check_selective_use(self, matrix_label: str) -> Tuple[bool, bool]:
         return (
             self.selective_use.get(matrix_label, {}).get("use_arrays", self.use_arrays),
-            self.selective_use.get(matrix_label, {}).get("use_distributions", self.use_distributions),
+            self.selective_use.get(matrix_label, {}).get(
+                "use_distributions", self.use_distributions
+            ),
         )
 
     ######################
@@ -266,7 +272,9 @@ class LCA(Iterator):
 
         Uses remapping dictionaries in ``self.remapping_dicts``."""
         if getattr(self, "_remapped", False):
-            warnings.warn("Remapping has already been done; returning without changing data")
+            warnings.warn(
+                "Remapping has already been done; returning without changing data"
+            )
             return
 
         if "product" in self.remapping_dicts:
@@ -293,7 +301,9 @@ class LCA(Iterator):
             (lambda x: x["col"] == global_index) if global_index is not None else None
         )
 
-        use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
+        use_arrays, use_distributions = self.check_selective_use(
+            "characterization_matrix"
+        )
 
         try:
             self.characterization_mm = mu.MappedMatrix(
@@ -307,7 +317,9 @@ class LCA(Iterator):
                 custom_filter=fltr,
             )
         except mu.errors.AllArraysEmpty:
-            raise ValueError("Given `method` or `data_objs` have no characterization data")
+            raise ValueError(
+                "Given `method` or `data_objs` have no characterization data"
+            )
         self.characterization_matrix = self.characterization_mm.matrix
         if len(self.characterization_matrix.data) == 0:
             warnings.warn("All values in characterization matrix are zero")
@@ -468,7 +480,7 @@ class LCA(Iterator):
 
     def weighting(self) -> None:
         """Backwards compatibility. Switching to verb form consistent with ``.normalize``."""
-        warnings.warn('Please switch to `.weight`', DeprecationWarning)
+        warnings.warn("Please switch to `.weight`", DeprecationWarning)
         return self.weight()
 
     def weight(self) -> None:
@@ -586,7 +598,9 @@ class LCA(Iterator):
         assert hasattr(self, "inventory"), "Must do lci first"
 
         if not PYPARDISO:
-            warnings.warn("Performance is much better with pypardiso (not available on MacOS ARM machines)")
+            warnings.warn(
+                "Performance is much better with pypardiso (not available on MacOS ARM machines)"
+            )
 
         MESSAGE = """Technosphere matrix inversion is often not the most efficient approach.
     See https://github.com/brightway-lca/brightway2-calc/issues/35"""
@@ -603,7 +617,9 @@ class LCA(Iterator):
         else:
             for key in demand:
                 if key not in self.dicts.product and not isinstance(key, int):
-                    raise KeyError(f"Key '{key}' not in product dictionary; make sure to pass the integer id, not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object.")
+                    raise KeyError(
+                        f"Key '{key}' not in product dictionary; make sure to pass the integer id, not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object."
+                    )
 
     def redo_lci(self, demand: Optional[dict] = None) -> None:
         """Redo LCI with same databases but different demand.
@@ -616,7 +632,9 @@ class LCA(Iterator):
         .. warning:: If you want to redo the LCIA as well, use ``redo_lcia(demand)`` directly.
 
         """
-        warnings.warn('Please use .lci(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        warnings.warn(
+            "Please use .lci(demand=demand) instead of `redo_lci`.", DeprecationWarning
+        )
         self.lci(demand=demand)
 
     def redo_lcia(self, demand: Optional[dict] = None) -> None:
@@ -628,10 +646,20 @@ class LCA(Iterator):
         Doesn't return anything, but overwrites ``self.characterized_inventory``. If ``demand`` is given, also overwrites ``self.demand_array``, ``self.supply_array``, and ``self.inventory``.
 
         """
-        warnings.warn('Please use .lcia(demand=demand) instead of `redo_lci`.', DeprecationWarning)
+        warnings.warn(
+            "Please use .lcia(demand=demand) instead of `redo_lci`.", DeprecationWarning
+        )
         self.lcia(demand=demand)
 
-    def to_dataframe(self, matrix_label: str = "characterized_inventory", row_dict: Optional[dict] = None, col_dict: Optional[dict] = None, annotate: bool = True, cutoff: Number = 200, cutoff_mode: str = "number") -> pd.DataFrame:
+    def to_dataframe(
+        self,
+        matrix_label: str = "characterized_inventory",
+        row_dict: Optional[dict] = None,
+        col_dict: Optional[dict] = None,
+        annotate: bool = True,
+        cutoff: Number = 200,
+        cutoff_mode: str = "number",
+    ) -> pd.DataFrame:
         """Return all nonzero elements of the given matrix as a Pandas dataframe.
 
         The LCA class instance must have the matrix ``matrix_label`` already; common labels are:
@@ -687,11 +715,23 @@ class LCA(Iterator):
         matrix = getattr(self, matrix_label).tocoo()
 
         dict_mapping = {
-            'characterized_inventory': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
-            'inventory': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
-            'technosphere_matrix': (self.dicts.product.reversed, self.dicts.activity.reversed),
-            'biosphere_matrix': (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
-            'characterization_matrix': (self.dicts.biosphere.reversed, self.dicts.biosphere.reversed),
+            "characterized_inventory": (
+                self.dicts.biosphere.reversed,
+                self.dicts.activity.reversed,
+            ),
+            "inventory": (self.dicts.biosphere.reversed, self.dicts.activity.reversed),
+            "technosphere_matrix": (
+                self.dicts.product.reversed,
+                self.dicts.activity.reversed,
+            ),
+            "biosphere_matrix": (
+                self.dicts.biosphere.reversed,
+                self.dicts.activity.reversed,
+            ),
+            "characterization_matrix": (
+                self.dicts.biosphere.reversed,
+                self.dicts.biosphere.reversed,
+            ),
         }
         if not row_dict:
             try:
@@ -710,30 +750,30 @@ class LCA(Iterator):
         matrix.col = matrix.col[sorter]
 
         if cutoff is not None:
-            if cutoff_mode == 'fraction':
+            if cutoff_mode == "fraction":
                 if not (0 < cutoff < 1):
                     raise ValueError("fraction `cutoff` value must be between 0 and 1")
                 total = matrix.data.sum()
-                mask = (np.abs(matrix.data) > (total * cutoff))
+                mask = np.abs(matrix.data) > (total * cutoff)
                 matrix.data = matrix.data[mask]
                 matrix.row = matrix.row[mask]
                 matrix.col = matrix.col[mask]
-            elif cutoff_mode == 'number':
-                matrix.data = matrix.data[:int(cutoff)]
-                matrix.row = matrix.row[:int(cutoff)]
-                matrix.col = matrix.col[:int(cutoff)]
+            elif cutoff_mode == "number":
+                matrix.data = matrix.data[: int(cutoff)]
+                matrix.row = matrix.row[: int(cutoff)]
+                matrix.col = matrix.col[: int(cutoff)]
             else:
                 raise ValueError("Can't understand cutoff mode")
 
         df_data = {
-            'row_index': matrix.row,
-            'col_index': matrix.col,
-            'amount': matrix.data,
+            "row_index": matrix.row,
+            "col_index": matrix.col,
+            "amount": matrix.data,
         }
         if row_dict:
-            df_data['row_id'] = np.array([row_dict[i] for i in matrix.row])
+            df_data["row_id"] = np.array([row_dict[i] for i in matrix.row])
         if col_dict:
-            df_data['col_id'] = np.array([col_dict[i] for i in matrix.col])
+            df_data["col_id"] = np.array([col_dict[i] for i in matrix.col])
         df = pd.DataFrame(df_data)
 
         def metadata_dataframe(objs, prefix):
@@ -745,7 +785,7 @@ class LCA(Iterator):
                     f"{prefix}name": obj.get("name"),
                     f"{prefix}location": obj.get("location"),
                     f"{prefix}unit": obj.get("unit"),
-                    f"{prefix}type":  obj.get("type", "process"),
+                    f"{prefix}type": obj.get("type", "process"),
                 }
                 if prefix == "col_":
                     dct["col_reference_product"] = obj.get("reference product")
@@ -756,20 +796,18 @@ class LCA(Iterator):
                     dct["row_product"] = obj.get("reference product")
                 return dct
 
-            return pd.DataFrame(
-                [dict_for_obj(obj, prefix) for obj in objs]
-            )
+            return pd.DataFrame([dict_for_obj(obj, prefix) for obj in objs])
 
         if get_node and annotate:
             if row_dict:
                 row_metadata_df = metadata_dataframe(
-                    objs=[get_node(id=i) for i in np.unique(df_data['row_id'])],
+                    objs=[get_node(id=i) for i in np.unique(df_data["row_id"])],
                     prefix="row_",
                 )
                 df = df.merge(row_metadata_df, on="row_id")
             if col_dict:
                 col_metadata_df = metadata_dataframe(
-                    objs=[get_node(id=i) for i in np.unique(df_data['col_id'])],
+                    objs=[get_node(id=i) for i in np.unique(df_data["col_id"])],
                     prefix="col_",
                 )
                 df = df.merge(col_metadata_df, on="col_id")
@@ -799,7 +837,8 @@ class LCA(Iterator):
     def has(self, label: str) -> bool:
         """Shortcut to find out if matrix data for type ``{label}_matrix`` is present in the given data objects.
 
-        Returns a boolean. Will return ``True`` even if data for a zero-dimensional matrix is given."""
+        Returns a boolean. Will return ``True`` even if data for a zero-dimensional matrix is given.
+        """
         return any(
             True
             for package in self.packages
@@ -813,19 +852,35 @@ class LCA(Iterator):
 
     @property
     def activity_dict(self):
-        warnings.warn("This method is deprecated, please use `.dicts.activity` instead", DeprecationWarning)
+        warnings.warn(
+            "This method is deprecated, please use `.dicts.activity` instead",
+            DeprecationWarning,
+        )
         return self.dicts.activity
 
     @property
     def product_dict(self):
-        warnings.warn("This method is deprecated, please use `.dicts.product` instead", DeprecationWarning)
+        warnings.warn(
+            "This method is deprecated, please use `.dicts.product` instead",
+            DeprecationWarning,
+        )
         return self.dicts.product
 
     @property
     def biosphere_dict(self):
-        warnings.warn("This method is deprecated, please use `.dicts.biosphere` instead", DeprecationWarning)
+        warnings.warn(
+            "This method is deprecated, please use `.dicts.biosphere` instead",
+            DeprecationWarning,
+        )
         return self.dicts.biosphere
 
     def reverse_dict(self):
-        warnings.warn("This method is deprecated, please use `.dicts.X.reversed` directly", DeprecationWarning)
-        return self.dicts.activity.reversed, self.dicts.product.reversed, self.dicts.biosphere.reversed
+        warnings.warn(
+            "This method is deprecated, please use `.dicts.X.reversed` directly",
+            DeprecationWarning,
+        )
+        return (
+            self.dicts.activity.reversed,
+            self.dicts.product.reversed,
+            self.dicts.biosphere.reversed,
+        )

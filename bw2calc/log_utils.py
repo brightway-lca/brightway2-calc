@@ -99,7 +99,8 @@ def create_logger(dirpath=None, name=None, **kwargs):
 
     Returns the filepath of the created log file.
 
-    TODO: Decide on whether we copy safe_filepath to this package or create a common core package."""
+    TODO: Decide on whether we copy safe_filepath to this package or create a common core package.
+    """
     if dirpath is None:
         return
 

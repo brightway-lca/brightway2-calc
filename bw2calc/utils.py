@@ -20,7 +20,9 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
     global_list = [
         resource.get("global_index")
         for package in packages
-        for resource in package.filter_by_attribute("matrix", matrix).filter_by_attribute("kind", "indices").resources
+        for resource in package.filter_by_attribute("matrix", matrix)
+        .filter_by_attribute("kind", "indices")
+        .resources
     ]
     if len(set(global_list)) > 1:
         raise InconsistentGlobalIndex(

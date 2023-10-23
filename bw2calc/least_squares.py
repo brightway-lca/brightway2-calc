@@ -1,7 +1,7 @@
 import warnings
 
-from scipy.sparse.linalg import lsmr
 import numpy as np
+from scipy.sparse.linalg import lsmr
 
 from .errors import EfficiencyWarning, NoSolutionFound
 from .lca import LCA
@@ -17,6 +17,7 @@ class LeastSquaresLCA(LCA):
     * `Another least-squares algorithm in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsqr.html#scipy.sparse.linalg.lsqr>`_
 
     """
+
     def load_lci_data(self) -> None:
         super().load_lci_data(nonsquare_ok=True)
 

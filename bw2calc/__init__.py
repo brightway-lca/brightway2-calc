@@ -41,7 +41,7 @@ except ImportError:
     PackagesDataLoader = None
 try:
     from bw2data import __version__ as _bw2data_version
-    from bw2data import prepare_lca_inputs, get_activity
+    from bw2data import get_activity, prepare_lca_inputs
 
     if not _bw2data_version >= (4, 0):
         raise ImportError
