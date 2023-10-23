@@ -593,6 +593,9 @@ class LCA(Iterator):
         """Use one-shot approach to efficiently calculate the inverse of the
         technosphere matrix by simultaneously solving ``Ax=b`` for all ``b``.
 
+        Technosphere matrix inversion is often not the most efficient approach.
+        See https://github.com/brightway-lca/brightway2-calc/issues/35
+
         See `Intel forum <https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/How-to-find-inverse-of-a-sparse-matrix-using-pardiso/m-p/1165970#M28249>`__
         for a discussion on why we use this approach."""
         assert hasattr(self, "inventory"), "Must do lci first"
@@ -601,10 +604,6 @@ class LCA(Iterator):
             warnings.warn(
                 "Performance is much better with pypardiso (not available on MacOS ARM machines)"
             )
-
-        MESSAGE = """Technosphere matrix inversion is often not the most efficient approach.
-    See https://github.com/brightway-lca/brightway2-calc/issues/35"""
-        warnings.warn(MESSAGE)
 
         self.inverted_technosphere_matrix = spsolve(
             self.technosphere_matrix, np.eye(*self.technosphere_matrix.shape)
