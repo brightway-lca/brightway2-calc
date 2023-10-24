@@ -13,10 +13,10 @@ import pandas as pd
 from fs.base import FS
 from scipy import sparse
 
-from . import PYPARDISO, __version__, factorized, prepare_lca_inputs, spsolve
-from .lca_base import LCABase
+from . import PYPARDISO, __version__, prepare_lca_inputs
 from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
+from .lca_base import LCABase
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
 
@@ -37,9 +37,9 @@ class LCA(LCABase):
         "weighting_mm",
     ]
 
-    #############
-    ### Setup ###
-    #############
+    #########
+    # Setup #
+    #########
 
     def __init__(
         self,
@@ -59,24 +59,37 @@ class LCA(LCABase):
     ):
         """Create a new LCA calculation object.
 
-        Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative (scenario-based), depending on the ``data_objs`` input data..
+        Compatible with Brightway2 and 2.5 semantics. Can be static, stochastic, or iterative
+        (scenario-based), depending on the ``data_objs`` input data..
 
-        This class supports both stochastic and static LCA, and can use a variety of ways to describe uncertainty. The input flags `use_arrays` and `use_distributions` control some of this stochastic behaviour. See the [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more information on the technical implementation.
+        This class supports both stochastic and static LCA, and can use a variety of ways to
+        describe uncertainty. The input flags `use_arrays` and `use_distributions` control some of
+        this stochastic behaviour. See the
+        [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more
+        information on the technical implementation.
 
         Parameters
         ----------
         demand : dict[object: float]
-            The demand for which the LCA will be calculated. The keys can be Brightway `Node` instances, `(database, code)` tuples, or integer ids.
+            The demand for which the LCA will be calculated. The keys can be Brightway `Node`
+            instances, `(database, code)` tuples, or integer ids.
         method : tuple
-            Tuple defining the LCIA method, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+            Tuple defining the LCIA method, such as `('foo', 'bar')`. Only needed if not passing
+            `data_objs`.
         weighting : tuple
-            Tuple defining the LCIA weighting, such as `('foo', 'bar')`. Only needed if not passing `data_objs`.
+            Tuple defining the LCIA weighting, such as `('foo', 'bar')`. Only needed if not passing
+            `data_objs`.
         weighting : string
-            String defining the LCIA normalization, such as `'foo'`. Only needed if not passing `data_objs`.
+            String defining the LCIA normalization, such as `'foo'`. Only needed if not passing
+            `data_objs`.
         data_objs : list[bw_processing.Datapackage]
-            List of `bw_processing.Datapackage` objects. Can be loaded via `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed matrices.
+            List of `bw_processing.Datapackage` objects. Can be loaded via
+            `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed
+            matrices.
         remapping_dicts : dict[str : dict]
-            Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)` tuples. `remapping_dicts` can provide such remapping for any of `activity`, `product`, `biosphere`.
+            Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)`
+            tuples. `remapping_dicts` can provide such remapping for any of `activity`, `product`,
+            `biosphere`.
         log_config : dict
             Optional arguments to pass to logging. Not yet implemented.
         seed_override : int
@@ -86,7 +99,10 @@ class LCA(LCABase):
         use_distributions : bool
             Use probability distributions from the given `data_objs`
         selective_use : dict[str : dict]
-            Dictionary that gives more control on whether `use_arrays` or `use_distributions` should be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`. Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and `characterization_matrix`.
+            Dictionary that gives more control on whether `use_arrays` or `use_distributions` should
+            be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`.
+            Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and
+            `characterization_matrix`.
 
         """
         if not isinstance(demand, Mapping):
@@ -133,8 +149,7 @@ class LCA(LCABase):
 
     def __next__(self) -> None:
         skip_first_iteration = (
-            hasattr(self, "keep_first_iteration_flag")
-            and self.keep_first_iteration_flag
+            hasattr(self, "keep_first_iteration_flag") and self.keep_first_iteration_flag
         )
 
         for matrix in self.matrix_labels:
@@ -189,16 +204,15 @@ class LCA(LCABase):
             except KeyError:
                 if key in self.dicts.activity:
                     raise ValueError(
-                        f"LCA can only be performed on products, not activities ({key} is the wrong dimension)"
+                        f"LCA can only be performed on products, not activities ({key} is the"
+                        + " wrong dimension)"
                     )
                 else:
-                    raise OutsideTechnosphere(
-                        f"Can't find key {key} in product dictionary"
-                    )
+                    raise OutsideTechnosphere(f"Can't find key {key} in product dictionary")
 
-    ######################
-    ### Data retrieval ###
-    ######################
+    ##################
+    # Data retrieval #
+    ##################
 
     def load_lcia_data(
         self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
@@ -209,13 +223,9 @@ class LCA(LCABase):
 
         """
         global_index = consistent_global_index(data_objs or self.packages)
-        fltr = (
-            (lambda x: x["col"] == global_index) if global_index is not None else None
-        )
+        fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
 
-        use_arrays, use_distributions = self.check_selective_use(
-            "characterization_matrix"
-        )
+        use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
 
         try:
             self.characterization_mm = mu.MappedMatrix(
@@ -229,9 +239,7 @@ class LCA(LCABase):
                 custom_filter=fltr,
             )
         except mu.errors.AllArraysEmpty:
-            raise ValueError(
-                "Given `method` or `data_objs` have no characterization data"
-            )
+            raise ValueError("Given `method` or `data_objs` have no characterization data")
         self.characterization_matrix = self.characterization_mm.matrix
         if len(self.characterization_matrix.data) == 0:
             warnings.warn("All values in characterization matrix are zero")
@@ -269,14 +277,15 @@ class LCA(LCABase):
         )
         self.weighting_matrix = self.weighting_mm.matrix
 
-    ####################
-    ### Calculations ###
-    ####################
+    ################
+    # Calculations #
+    ################
 
     def lci_calculation(self) -> None:
         """The actual LCI calculation.
 
-        Separated from ``lci`` to be reusable in cases where the matrices are already built, e.g. ``redo_lci`` and Monte Carlo classes.
+        Separated from ``lci`` to be reusable in cases where the matrices are already built, e.g.
+        ``redo_lci`` and Monte Carlo classes.
 
         """
         self.supply_array = self.solve_linear_system()
@@ -289,7 +298,8 @@ class LCA(LCABase):
     def lcia_calculation(self) -> None:
         """The actual LCIA calculation.
 
-        Separated from ``lcia`` to be reusable in cases where the matrices are already built, e.g. ``redo_lcia`` and Monte Carlo classes.
+        Separated from ``lcia`` to be reusable in cases where the matrices are already built, e.g.
+        ``redo_lcia`` and Monte Carlo classes.
 
         """
         self.characterized_inventory = self.characterization_matrix * self.inventory
@@ -298,14 +308,13 @@ class LCA(LCABase):
         """The actual normalization calculation.
 
         Creates ``self.normalized_inventory``."""
-        self.normalized_inventory = (
-            self.normalization_matrix * self.characterized_inventory
-        )
+        self.normalized_inventory = self.normalization_matrix * self.characterized_inventory
 
     def weighting_calculation(self) -> None:
         """The actual weighting calculation.
 
-        Multiples weighting value by normalized inventory, if available, otherwise by characterized inventory.
+        Multiples weighting value by normalized inventory, if available, otherwise by characterized
+        inventory.
 
         Creates ``self.weighted_inventory``."""
         if hasattr(self, "normalized_inventory"):
@@ -319,7 +328,8 @@ class LCA(LCABase):
         """
         The LCIA score as a ``float``.
 
-        Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_, so it is ``foo.lca``, not ``foo.score()``
+        Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_,
+        so it is ``foo.lca``, not ``foo.score()``
         """
         assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
         if hasattr(self, "weighted_inventory"):
@@ -329,9 +339,9 @@ class LCA(LCABase):
         else:
             return float(self.characterized_inventory.sum())
 
-    #########################
-    ### Redo calculations ###
-    #########################
+    #####################
+    # Redo calculations #
+    #####################
 
     def _switch(
         self,
@@ -347,9 +357,7 @@ class LCA(LCABase):
             setattr(self, label, obj)
         else:
             data_objs = list(obj)
-        self.packages = [
-            pkg.exclude({"matrix": matrix}) for pkg in self.packages
-        ] + data_objs
+        self.packages = [pkg.exclude({"matrix": matrix}) for pkg in self.packages] + data_objs
         func(data_objs=data_objs)
 
         logger.info(
@@ -360,9 +368,7 @@ class LCA(LCABase):
             },
         )
 
-    def switch_method(
-        self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
-    ) -> None:
+    def switch_method(self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
         """Load a new method and replace ``.characterization_mm`` and ``.characterization_matrix``.
 
         Does not do any new calculations or change ``.characterized_inventory``."""
@@ -406,7 +412,8 @@ class LCA(LCABase):
             for key in demand:
                 if key not in self.dicts.product and not isinstance(key, int):
                     raise KeyError(
-                        f"Key '{key}' not in product dictionary; make sure to pass the integer id, not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object."
+                        f"Key '{key}' not in product dictionary; make sure to pass the integer id"
+                        + ", not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object."
                     )
 
     def to_dataframe(
@@ -428,15 +435,24 @@ class LCA(LCABase):
         * biosphere_matrix
         * characterization_matrix
 
-        For these common matrices, we already have ``row_dict`` and ``col_dict`` which link row and column indices to database ids. For other matrices, or if you have a custom mapping dictionary, override ``row_dict`` and/or ``col_dict``. They have the form ``{matrix index: identifier}``.
+        For these common matrices, we already have ``row_dict`` and ``col_dict`` which link row and
+        column indices to database ids. For other matrices, or if you have a custom mapping
+        dictionary, override ``row_dict`` and/or ``col_dict``. They have the form
+        ``{matrix index: identifier}``.
 
-        If ``bw2data`` is installed, this function will try to look up metadata on the row and column objects. To turn this off, set ``annotate`` to ``False``.
+        If ``bw2data`` is installed, this function will try to look up metadata on the row and
+        column objects. To turn this off, set ``annotate`` to ``False``.
 
-        Instead of returning all possible values, you can apply a cutoff. This cutoff can be specified in two ways, controlled by ``cutoff_mode``, which should be either ``fraction`` or ``number``.
+        Instead of returning all possible values, you can apply a cutoff. This cutoff can be
+        specified in two ways, controlled by ``cutoff_mode``, which should be either ``fraction`` or
+        ``number``.
 
-        If ``cutoff_mode`` is ``number`` (the default), then ``cutoff`` is the number of rows in the DataFrame. Data values are first sorted by their absolute value, and then the largest ``cutoff`` are taken.
+        If ``cutoff_mode`` is ``number`` (the default), then ``cutoff`` is the number of rows in the
+        DataFrame. Data values are first sorted by their absolute value, and then the largest
+        ``cutoff`` are taken.
 
-        If ``cutoff_mode`` is ``fraction``, then only values whose absolute value is greater than ``cutoff * total_score`` are taken. ``cutoff`` must be between 0 and 1.
+        If ``cutoff_mode`` is ``fraction``, then only values whose absolute value is greater than
+        ``cutoff * total_score`` are taken. ``cutoff`` must be between 0 and 1.
 
         The returned DataFrame will have the following columns:
 
@@ -572,9 +588,9 @@ class LCA(LCABase):
 
         return df
 
-    ####################
-    ### Contribution ###
-    ####################
+    ################
+    # Contribution #
+    ################
 
     # def top_emissions(self, **kwargs):
     #     """Call ``bw2analyzer.ContributionAnalyses.annotated_top_emissions``"""

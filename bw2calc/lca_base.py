@@ -6,18 +6,23 @@ from typing import Optional, Tuple
 import matrix_utils as mu
 import numpy as np
 
-from . import PYPARDISO, __version__, factorized, spsolve
+from . import PYPARDISO, factorized, spsolve
 from .errors import EmptyBiosphere, NonsquareTechnosphere
 
 
 class LCABase(Iterator):
     """Base class for single and multi LCA classes"""
+
     def keep_first_iteration(self):
-        """Set a flag to use the current values as first element when iterating.
+        """Set a flag to use the current values as first element when
+        iterating.
 
-        When creating the class instance, we already use the first index. This method allows us to use the values for the first index.
+        When creating the class instance, we already use the first index. This
+        method allows us to use the values for the first index.
 
-        Note that the methods ``.lci_calculation()`` and ``.lcia_calculation()`` will be called on the current values, even if these calculations have already been done.
+        Note that the methods ``.lci_calculation()`` and
+        ``.lcia_calculation()`` will be called on the current values, even if
+        these calculations have already been done.
         """
         self.keep_first_iteration_flag = True
 
@@ -50,9 +55,9 @@ class LCABase(Iterator):
         ):
             raise NonsquareTechnosphere(
                 (
-                    "Technosphere matrix is not square: {} activities (columns) and {} products (rows). "
-                    "Use LeastSquaresLCA to solve this system, or fix the input "
-                    "data"
+                    "Technosphere matrix is not square: {} activities "
+                    "(columns) and {} products (rows). Use LeastSquaresLCA to "
+                    "solve this system, or fix the input data"
                 ).format(
                     len(self.technosphere_mm.col_mapper),
                     len(self.technosphere_mm.row_mapper),
@@ -80,19 +85,16 @@ class LCABase(Iterator):
             )
 
     def remap_inventory_dicts(self) -> None:
-        """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand`` from database integer IDs to keys (``(database name, code)``).
+        """Remap ``self.dicts.activity|product|biosphere`` and ``self.demand``
+        from database integer IDs to keys (``(database name, code)``).
 
         Uses remapping dictionaries in ``self.remapping_dicts``."""
         if getattr(self, "_remapped", False):
-            warnings.warn(
-                "Remapping has already been done; returning without changing data"
-            )
+            warnings.warn("Remapping has already been done; returning without changing data")
             return
 
         if "product" in self.remapping_dicts:
-            self.demand = {
-                self.remapping_dicts["product"][k]: v for k, v in self.demand.items()
-            }
+            self.demand = {self.remapping_dicts["product"][k]: v for k, v in self.demand.items()}
 
         for label in ("activity", "product", "biosphere"):
             if label in self.remapping_dicts:
@@ -102,11 +104,16 @@ class LCABase(Iterator):
 
     def decompose_technosphere(self) -> None:
         """
-        Factorize the technosphere matrix into lower and upper triangular matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
+        Factorize the technosphere matrix into lower and upper triangular
+        matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
 
         Doesn't return anything, but creates ``self.solver``.
 
-        .. warning:: Incorrect results could occur if a technosphere matrix was factorized, and then a new technosphere matrix was constructed, as ``self.solver`` would still be the factorized older technosphere matrix. You are responsible for deleting ``self.solver`` when doing these types of advanced calculations.
+        .. warning:: Incorrect results could occur if a technosphere matrix was
+        factorized, and then a new technosphere matrix was constructed, as
+        ``self.solver`` would still be the factorized older technosphere
+        matrix. You are responsible for deleting ``self.solver`` when doing
+        these types of advanced calculations.
 
         """
         if PYPARDISO:
@@ -120,11 +127,17 @@ class LCABase(Iterator):
 
             To most numerical analysts, matrix inversion is a sin.
 
-            -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms, Society for Industrial and Applied Mathematics, Philadelphia, PA, USA, 2002, p. 260.
+            -- Nicolas Higham, Accuracy and Stability of Numerical Algorithms,
+            Society for Industrial and Applied Mathematics, Philadelphia, PA,
+            USA, 2002, p. 260.
 
-        We use `pypardiso <https://github.com/haasad/PyPardisoProject>`_ or `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is a very fast solver for sparse matrices.
+        We use `pypardiso <https://github.com/haasad/PyPardisoProject>`_ or
+        `UMFpack <http://www.cise.ufl.edu/research/sparse/umfpack/>`_, which is
+        a very fast solver for sparse matrices.
 
-        If the technosphere matrix has already been factorized, then the decomposed technosphere (``self.solver``) is reused. Otherwise the calculation is redone completely.
+        If the technosphere matrix has already been factorized, then the
+        decomposed technosphere (``self.solver``) is reused. Otherwise the
+        calculation is redone completely.
 
         """
         if demand is None:
@@ -138,15 +151,24 @@ class LCABase(Iterator):
         """
         Calculate a life cycle inventory.
 
-        #. Load LCI data, and construct the technosphere and biosphere matrices.
+        #. Load LCI data, and construct the technosphere and biosphere
+            matrices.
         #. Build the demand array
-        #. Solve the linear system to get the supply array and life cycle inventory.
+        #. Solve the linear system to get the supply array and life cycle
+            inventory.
 
         Args:
-            * *factorize* (bool, optional): Factorize the technosphere matrix. Makes additional calculations with the same technosphere matrix much faster. Default is ``False``; not useful is only doing one LCI calculation.
-            * *builder* (``MatrixBuilder`` object, optional): Default is ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases. Custom matrix builders can be used to manipulate data in creative ways before building the matrices.
+            * *factorize* (bool, optional): Factorize the technosphere matrix.
+            Makes additional calculations with the same technosphere matrix
+            much faster. Default is ``False``; not useful is only doing one LCI
+            calculation.
+            * *builder* (``MatrixBuilder`` object, optional): Default is
+            ``bw2calc.matrices.MatrixBuilder``, which is fine for most cases.
+            Custom matrix builders can be used to manipulate data in creative
+            ways before building the matrices.
 
-        Doesn't return anything, but creates ``self.supply_array`` and ``self.inventory``.
+        Doesn't return anything, but creates ``self.supply_array`` and
+        ``self.inventory``.
 
         """
         if not hasattr(self, "technosphere_matrix"):
@@ -175,7 +197,9 @@ class LCABase(Iterator):
         if not self.dicts.biosphere:
             raise EmptyBiosphere
 
-        if not (hasattr(self, "characterization_matrix") or hasattr(self, "characterization_matrices")):
+        if not (
+            hasattr(self, "characterization_matrix") or hasattr(self, "characterization_matrices")
+        ):
             self.load_lcia_data()
         if demand is not None:
             self.check_demand(demand)
@@ -184,8 +208,12 @@ class LCABase(Iterator):
         self.lcia_calculation()
 
     def normalize(self) -> None:
-        """Multiply characterized inventory by flow-specific normalization factors."""
-        if not (hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")):
+        """
+        Multiply characterized inventory by flow-specific normalization factors.
+        """
+        if not (
+            hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
+        ):
             raise ValueError("Must do lcia first")
         if not hasattr(self, "normalization_matrix"):
             self.load_normalization_data()
@@ -195,7 +223,9 @@ class LCABase(Iterator):
         """Multiply characterized inventory by weighting value.
 
         Can be done with or without normalization."""
-        if not (hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")):
+        if not (
+            hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
+        ):
             raise ValueError("Must do lcia first")
         if not hasattr(self, "weighting_value"):
             self.load_weighting_data()
@@ -208,8 +238,8 @@ class LCABase(Iterator):
         Technosphere matrix inversion is often not the most efficient approach.
         See https://github.com/brightway-lca/brightway2-calc/issues/35
 
-        See `Intel forum <https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/How-to-find-inverse-of-a-sparse-matrix-using-pardiso/m-p/1165970#M28249>`__
-        for a discussion on why we use this approach."""
+        See `Intel forum <https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ How-to-find-inverse-of-a-sparse-matrix-using-pardiso/m-p/1165970#M28249>`__
+        for a discussion on why we use this approach."""  # noqa: E501
         assert hasattr(self, "inventory"), "Must do lci first"
 
         if not PYPARDISO:
@@ -223,9 +253,11 @@ class LCABase(Iterator):
         return self.inverted_technosphere_matrix
 
     def has(self, label: str) -> bool:
-        """Shortcut to find out if matrix data for type ``{label}_matrix`` is present in the given data objects.
+        """Shortcut to find out if matrix data for type ``{label}_matrix`` is
+        present in the given data objects.
 
-        Returns a boolean. Will return ``True`` even if data for a zero-dimensional matrix is given.
+        Returns a boolean. Will return ``True`` even if data for a
+        zero-dimensional matrix is given.
         """
         return any(
             True
@@ -234,9 +266,9 @@ class LCABase(Iterator):
             if resource["matrix"] == f"{label}_matrix"
         )
 
-    #####################
-    ### Compatibility ###
-    #####################
+    #################
+    # Compatibility #
+    #################
 
     @property
     def activity_dict(self):
@@ -279,31 +311,36 @@ class LCABase(Iterator):
         Args:
             * *demand* (dict): A demand dictionary.
 
-        Doesn't return anything, but overwrites ``self.demand_array``, ``self.supply_array``, and ``self.inventory``.
+        Doesn't return anything, but overwrites ``self.demand_array``,
+        ``self.supply_array``, and ``self.inventory``.
 
-        .. warning:: If you want to redo the LCIA as well, use ``redo_lcia(demand)`` directly.
+        .. warning:: If you want to redo the LCIA as well, use
+        ``redo_lcia(demand)`` directly.
 
         """
-        warnings.warn(
-            "Please use .lci(demand=demand) instead of `redo_lci`.", DeprecationWarning
-        )
+        warnings.warn("Please use .lci(demand=demand) instead of `redo_lci`.", DeprecationWarning)
         self.lci(demand=demand)
 
     def redo_lcia(self, demand: Optional[dict] = None) -> None:
         """Redo LCIA, optionally with new demand.
 
         Args:
-            * *demand* (dict, optional): New demand dictionary. Optional, defaults to ``self.demand``.
+            * *demand* (dict, optional): New demand dictionary. Optional,
+            defaults to ``self.demand``.
 
-        Doesn't return anything, but overwrites ``self.characterized_inventory``. If ``demand`` is given, also overwrites ``self.demand_array``, ``self.supply_array``, and ``self.inventory``.
+        Doesn't return anything, but overwrites
+        ``self.characterized_inventory``. If ``demand`` is given, also
+        overwrites ``self.demand_array``, ``self.supply_array``, and
+        ``self.inventory``.
 
         """
-        warnings.warn(
-            "Please use .lcia(demand=demand) instead of `redo_lci`.", DeprecationWarning
-        )
+        warnings.warn("Please use .lcia(demand=demand) instead of `redo_lci`.", DeprecationWarning)
         self.lcia(demand=demand)
 
     def weighting(self) -> None:
-        """Backwards compatibility. Switching to verb form consistent with ``.normalize``."""
+        """
+        Backwards compatibility. Switching to verb form consistent with
+        ``.normalize``.
+        """
         warnings.warn("Please switch to `.weight`", DeprecationWarning)
         return self.weight()
