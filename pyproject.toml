@@ -24,6 +24,7 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
         "bw_processing",
+        "json_logging",
         "matrix_utils",
         "numpy",
         "pandas",
