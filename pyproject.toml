@@ -52,6 +52,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "setuptools",
+    "Flake8-pyproject",
 ]
 
 [tool.setuptools]
@@ -73,7 +74,7 @@ testpaths = ["tests/*.py"]
 
 [tool.flake8]
 # Some sane defaults for the code style checker flake8
-max_line_length = 100
+max-line-length = 100
 extend_ignore = ["E203", "W503"]
 # ^  Black-compatible
 #    E203 and W503 have edge cases handled by black
