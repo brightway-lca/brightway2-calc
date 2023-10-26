@@ -50,5 +50,4 @@ repos:
   rev: 6.0.0
   hooks:
   - id: flake8
-  ## You can add flake8 plugins via `additional_dependencies`:
-  #  additional_dependencies: [flake8-bugbear]
+    additional_dependencies: [Flake8-pyproject]
