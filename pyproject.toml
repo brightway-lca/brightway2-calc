@@ -28,6 +28,7 @@ dependencies = [
         "matrix_utils",
         "numpy",
         "pandas",
+        "pydantic",
         "scipy",
         "stats_arrays",
 ]
