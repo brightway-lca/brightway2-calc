@@ -23,9 +23,7 @@ class LeastSquaresLCA(LCA):
 
     def solve_linear_system(self, solver=lsmr) -> np.ndarray:
         if self.technosphere_matrix.shape[0] == self.technosphere_matrix.shape[1]:
-            warnings.warn(
-                "Don't use LeastSquaresLCA for square matrices", EfficiencyWarning
-            )
+            warnings.warn("Don't use LeastSquaresLCA for square matrices", EfficiencyWarning)
         self.solver_results = solver(self.technosphere_matrix, self.demand_array)
         if self.solver_results[1] not in {1, 2}:
             warnings.warn(

@@ -61,6 +61,4 @@ def get_datapackage(obj):
         return bwp.load_datapackage(OSFS(Path(obj)))
 
     else:
-        raise TypeError(
-            "Unknown input type for loading datapackage: {}: {}".format(type(obj), obj)
-        )
+        raise TypeError("Unknown input type for loading datapackage: {}: {}".format(type(obj), obj))

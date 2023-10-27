@@ -3,14 +3,14 @@ import logging
 import warnings
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, Sequence
 
 import bw_processing as bwp
 import matrix_utils as mu
 import numpy as np
 from fs.base import FS
-from scipy import sparse
 from pydantic import BaseModel
+from scipy import sparse
 
 from . import PYPARDISO, __version__
 from .dictionary_manager import DictionaryManager
@@ -101,8 +101,8 @@ class MultiLCA(LCABase):
 
     def __init__(
         self,
-        demands: Iterable[Mapping],
-        method_config: Union[dict, MethodConfig],
+        demands: Sequence[Mapping],
+        method_config: dict,
         inventory_data_objs: Iterable[Union[Path, FS, bwp.DatapackageBase]],
         method_data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
         normalization_data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
@@ -116,9 +116,10 @@ class MultiLCA(LCABase):
     ):
         # Resolve potential iterator
         self.demands = list(demands)
-        for i, fu in enumerate(self.demands):
-            if not isinstance(fu, Mapping):
-                raise ValueError(f"Demand section {i}: {fu} not a dictionary")
+
+        # Validation checks
+        DemandsValidator(demands)
+        MethodConfig(method_config)
 
         self.packages = [get_datapackage(obj) for obj in inventory_data_objs]
 
