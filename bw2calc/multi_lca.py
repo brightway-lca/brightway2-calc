@@ -10,6 +10,7 @@ import matrix_utils as mu
 import numpy as np
 from fs.base import FS
 from scipy import sparse
+from pydantic import BaseModel
 
 from . import PYPARDISO, __version__
 from .dictionary_manager import DictionaryManager
@@ -20,6 +21,10 @@ from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
 
 logger = logging.getLogger("bw2calc")
+
+
+class DemandsValidator(BaseModel):
+    demands: dict[str, dict[int, float]]
 
 
 class MultiLCA(LCABase):
