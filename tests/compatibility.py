@@ -1,5 +1,6 @@
-from bw2calc.lca import LCA
 from pathlib import Path
+
+from bw2calc.lca import LCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 

@@ -1,16 +1,18 @@
-from bw2calc.errors import (
-    OutsideTechnosphere,
-    NonsquareTechnosphere,
-    EmptyBiosphere,
-    InconsistentGlobalIndex,
-)
-from bw2calc.lca import LCA, PYPARDISO
-from pathlib import Path
-import bw_processing as bwp
 import json
+from collections.abc import Mapping
+from pathlib import Path
+
+import bw_processing as bwp
 import numpy as np
 import pytest
-from collections.abc import Mapping
+
+from bw2calc.errors import (
+    EmptyBiosphere,
+    InconsistentGlobalIndex,
+    NonsquareTechnosphere,
+    OutsideTechnosphere,
+)
+from bw2calc.lca import LCA, PYPARDISO
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
@@ -157,7 +159,12 @@ def test_selective_use():
     packages = [
         fixture_dir / "mc_basic.zip",
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True, selective_use={"biosphere_matrix": {"use_distributions": False}})
+    mc = LCA(
+        {3: 1},
+        data_objs=packages,
+        use_distributions=True,
+        selective_use={"biosphere_matrix": {"use_distributions": False}},
+    )
     mc.lci()
     mc.lcia()
     assert mc.technosphere_mm.use_distributions
@@ -321,6 +328,7 @@ def test_load_lcia_data_empty_characterization():
     with pytest.warns(UserWarning):
         lca.lcia()
 
+
 ######
 ### remap_inventory_dicts
 ######
@@ -362,6 +370,7 @@ def test_remap_inventory_dicts_again():
     assert lca.dicts.activity[101] == 0
     assert lca.dicts.activity[102] == 1
     assert lca.dicts.biosphere["z"] == 0
+
 
 ######
 ### load_lcia_data
@@ -907,9 +916,7 @@ def test_switch_method():
     cm = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 10]])
     assert np.allclose(lca.characterization_matrix.toarray(), cm)
     assert len(lca.packages) == 2
-    assert not any(
-        res["matrix"] == "characterization_matrix" for res in lca.packages[0].resources
-    )
+    assert not any(res["matrix"] == "characterization_matrix" for res in lca.packages[0].resources)
 
 
 ######
@@ -987,9 +994,7 @@ def test_switch_normalization():
     assert lca.normalization_matrix.shape == (2, 2)
     assert lca.normalization_matrix.sum() == 102 + 142
     assert len(lca.packages) == 2
-    assert not any(
-        res["matrix"] == "normalization_matrix" for res in lca.packages[0].resources
-    )
+    assert not any(res["matrix"] == "normalization_matrix" for res in lca.packages[0].resources)
 
 
 ######
@@ -1063,9 +1068,7 @@ def test_switch_weighting():
     assert lca.weighting_matrix.shape == (2, 2)
     assert lca.weighting_matrix.sum() == 42 * 2
     assert lca.score == 11 * 4
-    assert not any(
-        res["matrix"] == "weighting_matrix" for res in lca.packages[0].resources
-    )
+    assert not any(res["matrix"] == "weighting_matrix" for res in lca.packages[0].resources)
     lca.weight()
     assert lca.score == 11 * 42
 
@@ -1146,8 +1149,8 @@ def test_redo_lci_fails_if_passed_bw2_key_tuple():
 
     with pytest.deprecated_call():
         with pytest.raises(KeyError) as excinfo:
-            lca.redo_lci({('foo', 'bar'): 1})
-            assert 'make sure to pass the integer id' in str(excinfo)
+            lca.redo_lci({("foo", "bar"): 1})
+            assert "make sure to pass the integer id" in str(excinfo)
 
 
 def test_redo_lci_with_no_new_demand_no_error():
@@ -1182,8 +1185,8 @@ def test_redo_lcia_keyerror_bw2_key():
 
     with pytest.deprecated_call():
         with pytest.raises(KeyError) as excinfo:
-            lca.redo_lcia(('foo', 'bar'))
-            assert 'make sure to pass the integer id' in str(excinfo)
+            lca.redo_lcia(("foo", "bar"))
+            assert "make sure to pass the integer id" in str(excinfo)
 
 
 def test_redo_lcia_outside_technosphere():

@@ -1,10 +1,10 @@
-from bw_processing import create_datapackage, INDICES_DTYPE, UNCERTAINTY_DTYPE
-from fs.zipfs import ZipFS
-from fs.osfs import OSFS
-from pathlib import Path
 import json
-import numpy as np
+from pathlib import Path
 
+import numpy as np
+from bw_processing import INDICES_DTYPE, UNCERTAINTY_DTYPE, create_datapackage
+from fs.osfs import OSFS
+from fs.zipfs import ZipFS
 
 fixture_dir = Path(__file__).resolve().parent
 
@@ -123,11 +123,16 @@ def create_basic_fixture_zipfile():
 
 
 def create_missing_characterization():
-    _create_basic_fixture(ZipFS(str(fixture_dir / "missing_characterization.zip"), write=True), characterization=False)
+    _create_basic_fixture(
+        ZipFS(str(fixture_dir / "missing_characterization.zip"), write=True), characterization=False
+    )
 
 
 def create_empty_characterization():
-    _create_basic_fixture(ZipFS(str(fixture_dir / "empty_characterization.zip"), write=True), characterization_values=False)
+    _create_basic_fixture(
+        ZipFS(str(fixture_dir / "empty_characterization.zip"), write=True),
+        characterization_values=False,
+    )
 
 
 def create_basic_fixture_directory():
@@ -135,9 +140,7 @@ def create_basic_fixture_directory():
 
 
 def create_svdm_fixtures():
-    dp = create_datapackage(
-        fs=ZipFS(str(fixture_dir / "svdm.zip"), write=True), sequential=True
-    )
+    dp = create_datapackage(fs=ZipFS(str(fixture_dir / "svdm.zip"), write=True), sequential=True)
 
     data_array = np.array([42])
     indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)

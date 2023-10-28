@@ -1,8 +1,7 @@
-from bw2calc.dictionary_manager import (
-    DictionaryManager as DM,
-    ReversibleRemappableDictionary as RRD,
-)
 import pytest
+
+from bw2calc.dictionary_manager import DictionaryManager as DM
+from bw2calc.dictionary_manager import ReversibleRemappableDictionary as RRD
 
 
 def test_dm_initiation():

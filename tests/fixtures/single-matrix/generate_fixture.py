@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
 import itertools
 import json
-import numpy as np
 import os
 import random
 import tarfile
 import tempfile
+from pathlib import Path
+
+import numpy as np
 
 
 def generate_fixture():
@@ -38,10 +39,7 @@ def generate_fixture():
 
     a = [(a, b, random.random(), 12) for a, b in itertools.combinations(LETTERS, 2)]
     b = [(x, x, 1, 11) for x in LETTERS]
-    c = [
-        (random.choice(NUMBERS), random.choice(LETTERS), random.random(), 11)
-        for _ in range(10)
-    ]
+    c = [(random.choice(NUMBERS), random.choice(LETTERS), random.random(), 11) for _ in range(10)]
     d = [(x, x, 1, 11) for x in NUMBERS]
     e = [(x, y, random.random(), 11) for x, y in zip(GREEK, NUMBERS)]
     f = [(x, x, 1, 11) for x in GREEK]
@@ -80,9 +78,7 @@ def generate_fixture():
 
             path = os.path.join(t, "categories.mapping")
             with open(path, "w", encoding="utf-8") as j:
-                json.dump(
-                    {"foo": {g: mapping[g] for g in GREEK[:5]}}, j, ensure_ascii=False
-                )
+                json.dump({"foo": {g: mapping[g] for g in GREEK[:5]}}, j, ensure_ascii=False)
             f.add(path, "categories.mapping")
 
 

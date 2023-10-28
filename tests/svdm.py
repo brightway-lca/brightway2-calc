@@ -1,10 +1,12 @@
-from bw2calc.errors import MultipleValues
-from matrix_utils.errors import AllArraysEmpty
-from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix as SVDM
-from bw2calc.utils import get_datapackage
 from pathlib import Path
+
 import numpy as np
 import pytest
+from matrix_utils.errors import AllArraysEmpty
+
+from bw2calc.errors import MultipleValues
+from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix as SVDM
+from bw2calc.utils import get_datapackage
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 

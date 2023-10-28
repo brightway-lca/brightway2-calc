@@ -1,7 +1,8 @@
-from bw2data import Database, Method, projects
-import numpy as np
 import os
 import uuid
+
+import numpy as np
+from bw2data import Database, Method, projects
 
 basedir = os.path.dirname(os.path.abspath(__file__))
 
