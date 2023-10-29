@@ -6,6 +6,66 @@ from .errors import InconsistentLCIA
 
 
 class MethodConfig(BaseModel):
+    """
+    A class that stores the logical relationships between impact categories, normalization, and
+    weighting.
+
+    The basic object in all three categories is an identifying tuple, i.e. tuples of strings. These
+    tuples have no length restrictions.
+
+    `impact_categories` is a list of identifying tuples.
+
+    `normalizations` link normalization factors to impact categories. They are optional. If
+    provided, they take the form of a dictionary, with keys of identifying tuples, and values of
+    lists of identifying tuples. They keys identify the normalization data, and the values refer to
+    impact categories.
+
+    If `normalizations` is defined, **all** impact categories must have a normalization.
+
+    `weightings` link weighting factors to either normalizations or impact categories. They are
+    optional. If provided, they take the form of a dictionary, with keys of identifying tuples, and
+    values of lists of identifying tuples. They keys identify the weighting data, and the values
+    refer to either impact categories or normalizations - mixing impact categories and
+    normalizations is not allowed.
+
+    If `normalizations` is defined, **all** impact categories or normalizations must have a
+    weighting.
+
+    The identifying tuples for `impact_categories`, `normalizations`, and `weightings` must all be
+    unique.
+
+    Example
+    -------
+
+    ```python
+    {
+        "impact_categories": [
+            ("climate change", "100 years"),
+            ("climate change", "20 years"),
+            ("eutrophication",),
+        ],
+        "normalizations": {
+            ("climate change", "global normalization"): [
+                ("climate change", "100 years"),
+                ("climate change", "20 years"),
+            ],
+            ("eut european reference", "1990"): [
+                ("eutrophication",),
+            ]
+        },
+        "weightings": {
+            ("climate change", "bad"): [
+                ("climate change", "global normalization")
+            ],
+            ("eutrophication", "also bad"): [
+                ("eut european reference", "1990")
+            ]
+        }
+    }
+    ```
+
+    """
+
     impact_categories: Sequence[tuple[str, ...]]
     normalizations: Optional[dict[tuple[str, ...], list[tuple[str, ...]]]] = None
     weightings: Optional[dict[tuple[str, ...], list[tuple[str, ...]]]] = None
