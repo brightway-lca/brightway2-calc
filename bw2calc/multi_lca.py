@@ -14,7 +14,7 @@ from scipy import sparse
 
 from . import PYPARDISO, __version__
 from .dictionary_manager import DictionaryManager
-from .errors import InconsistentLCIADatapackages, OutsideTechnosphere
+from .errors import OutsideTechnosphere
 from .lca import LCABase
 from .method_config import MethodConfig
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
@@ -147,7 +147,7 @@ class MultiLCA(LCABase):
         #     and self.weighting_packages
         #     and len(self.method_packages) != len(self.weighting_packages)
         # ):
-        #     raise InconsistentLCIADatapackages(
+        #     raise InconsistentLCIA(
         #         "Found {} methods and {} weightings (must be the same)".format(
         #             len(self.method_packages), len(self.weighting_packages)
         #         )
@@ -157,7 +157,7 @@ class MultiLCA(LCABase):
         #     and self.normalization_packages
         #     and len(self.method_packages) != len(self.normalization_packages)
         # ):
-        #     raise InconsistentLCIADatapackages(
+        #     raise InconsistentLCIA(
         #         "Found {} methods and {} normalizations (must be the same)".format(
         #             len(self.method_packages), len(self.normalization_packages)
         #         )
@@ -249,11 +249,11 @@ class MultiLCA(LCABase):
             A 1-dimensional NumPy array
 
         """
-        demand = demand or self.demand
+        demands = demands or self.demands
         self.demand_array = np.zeros(len(self.dicts.product))
-        for key in demand:
+        for key in demands:
             try:
-                self.demand_array[self.dicts.product[key]] = demand[key]
+                self.demand_array[self.dicts.product[key]] = demands[key]
             except KeyError:
                 if key in self.dicts.activity:
                     raise ValueError(

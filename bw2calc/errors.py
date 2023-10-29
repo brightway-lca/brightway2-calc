@@ -11,7 +11,8 @@ class OutsideTechnosphere(BW2CalcError):
 
 
 class EfficiencyWarning(RuntimeWarning):
-    """Least squares is much less efficient than direct computation for square, full-rank matrices"""
+    """Least squares is much less efficient than direct computation for square, full-rank
+    matrices"""
 
     pass
 
@@ -53,7 +54,9 @@ class NoArrays(BW2CalcError):
 
 
 class InconsistentGlobalIndex(BW2CalcError):
-    """LCIA matrices are diagonal, and use the ``col`` field for regionalization. If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."""
+    """LCIA matrices are diagonal, and use the ``col`` field for regionalization. If multiple LCIA
+    datapackages are present, they must use the same value for ``GLO``, the global location, in
+    order for filtering for site-generic LCIA to work correctly."""
 
     pass
 
@@ -64,7 +67,7 @@ class MultipleValues(BW2CalcError):
     pass
 
 
-class InconsistentLCIADatapackages(BW2CalcError):
+class InconsistentLCIA(BW2CalcError):
     """Provided weighting or normalization doesn't fit the impact category"""
 
     pass
