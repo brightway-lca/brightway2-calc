@@ -3,7 +3,7 @@ import logging
 import warnings
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Iterable, Optional, Union, Sequence
+from typing import Iterable, Optional, Sequence, Union
 
 import bw_processing as bwp
 import matrix_utils as mu
@@ -21,6 +21,12 @@ from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
 
 logger = logging.getLogger("bw2calc")
+
+
+# TBD
+# Check that model config refers to resources present in the datapackages
+# Filter datapackages by resources referred to in `ModelConfig`
+# Make multiplication work with the relationships given in `MethodConfig`
 
 
 class DemandsValidator(BaseModel):
@@ -136,26 +142,26 @@ class MultiLCA(LCABase):
         else:
             self.normalization_packages = []
 
-        if (
-            self.method_packages
-            and self.weighting_packages
-            and len(self.method_packages) != len(self.weighting_packages)
-        ):
-            raise InconsistentLCIADatapackages(
-                "Found {} methods and {} weightings (must be the same)".format(
-                    len(self.method_packages), len(self.weighting_packages)
-                )
-            )
-        elif (
-            self.method_packages
-            and self.normalization_packages
-            and len(self.method_packages) != len(self.normalization_packages)
-        ):
-            raise InconsistentLCIADatapackages(
-                "Found {} methods and {} normalizations (must be the same)".format(
-                    len(self.method_packages), len(self.normalization_packages)
-                )
-            )
+        # if (
+        #     self.method_packages
+        #     and self.weighting_packages
+        #     and len(self.method_packages) != len(self.weighting_packages)
+        # ):
+        #     raise InconsistentLCIADatapackages(
+        #         "Found {} methods and {} weightings (must be the same)".format(
+        #             len(self.method_packages), len(self.weighting_packages)
+        #         )
+        #     )
+        # elif (
+        #     self.method_packages
+        #     and self.normalization_packages
+        #     and len(self.method_packages) != len(self.normalization_packages)
+        # ):
+        #     raise InconsistentLCIADatapackages(
+        #         "Found {} methods and {} normalizations (must be the same)".format(
+        #             len(self.method_packages), len(self.normalization_packages)
+        #         )
+        #     )
 
         self.dicts = DictionaryManager()
         self.use_arrays = use_arrays
@@ -233,7 +239,7 @@ class MultiLCA(LCABase):
         if hasattr(self, "characterized_inventory"):
             self.lcia_calculation()
 
-    def build_demand_array(self, demand: Optional[dict] = None) -> None:
+    def build_demand_arrays(self, demands: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
 
         Args:
