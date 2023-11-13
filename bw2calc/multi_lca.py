@@ -23,12 +23,6 @@ from .utils import consistent_global_index, get_datapackage, wrap_functional_uni
 logger = logging.getLogger("bw2calc")
 
 
-# TBD
-# Check that model config refers to resources present in the datapackages
-# Filter datapackages by resources referred to in `ModelConfig`
-# Make multiplication work with the relationships given in `MethodConfig`
-
-
 class DemandsValidator(BaseModel):
     demands: dict[str, dict[int, float]]
 
@@ -124,8 +118,8 @@ class MultiLCA(LCABase):
         self.demands = list(demands)
 
         # Validation checks
-        DemandsValidator(demands)
-        MethodConfig(method_config)
+        DemandsValidator(demands=demands)
+        MethodConfig(**method_config)
 
         self.packages = [get_datapackage(obj) for obj in inventory_data_objs]
 
