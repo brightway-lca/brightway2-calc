@@ -10,7 +10,7 @@ authors = [
 maintainers = [
   { name=" Chris Mutel", email="cmutel@gmail.com" }
 ]
-description = "The calculation engine for the Brightway2 life cycle assessment framework."
+description = "The calculation engine for the Brightway life cycle assessment framework."
 readme = "README.md"
 dynamic = ["version"]
 classifiers = [
