@@ -294,6 +294,200 @@ def create_mc_basic():
     dp.finalize_serialization()
 
 
+def create_multilca_simple():
+    # First technosphere
+    #           α: 1    β: 2    γ: 3
+    #   L: 100  -0.2    -0.5    1
+    #   M: 101  1
+    #   N: 102  -0.5    1
+
+    dp1 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_1.zip"), write=True),
+    )
+    data_array = np.array([0.2, 0.5, 1, 1, 0.5, 1])
+    indices_array = np.array(
+        [(100, 1), (100, 2), (100, 3), (101, 1), (102, 1), (102, 2)], dtype=INDICES_DTYPE
+    )
+    flip_array = np.array([1, 1, 0, 0, 1, 0], dtype=bool)
+    # distributions_array = np.array(
+    #     [
+    #         (4, 0.1, np.NaN, np.NaN, 0.2, 0.8, False),
+    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+    #     ],
+    #     dtype=UNCERTAINTY_DTYPE,
+    # )
+    dp1.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        # distributions_array=distributions_array,
+        flip_array=flip_array,
+    )
+
+    # Second technosphere
+    #           δ: 4    ε: 5
+    #   L: 100  -0.1
+    #   M: 101  -0.2    -0.1
+    #   O: 103  -0.4    1
+    #   P: 104  1
+
+    dp2 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_2.zip"), write=True),
+    )
+    data_array = np.array([0.1, 0.2, 0.1, 0.4, 1, 1])
+    indices_array = np.array(
+        [(100, 4), (101, 4), (101, 5), (103, 4), (103, 5), (104, 4)], dtype=INDICES_DTYPE
+    )
+    flip_array = np.array([1, 1, 1, 1, 0, 0], dtype=bool)
+    dp2.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    # Third technosphere
+    #           ζ: 6
+    #   L: 100  -0.1
+    #   N: 102  -0.2
+    #   Q: 105  1
+
+    dp3 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_3.zip"), write=True),
+    )
+    data_array = np.array([0.1, 0.2, 1])
+    indices_array = np.array([(100, 6), (102, 6), (105, 6)], dtype=INDICES_DTYPE)
+    flip_array = np.array([1, 1, 0], dtype=bool)
+    dp3.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=data_array,
+        name="technosphere",
+        indices_array=indices_array,
+        flip_array=flip_array,
+    )
+
+    # First biosphere
+    #           α: 1    β: 2    γ: 3
+    #   200     2       4       8
+    #   201     1       2       3
+
+    data_array = np.array([2, 4, 8, 1, 2, 3])
+    indices_array = np.array(
+        [(200, 1), (200, 2), (200, 3), (201, 1), (201, 2), (201, 3)], dtype=INDICES_DTYPE
+    )
+    # distributions_array = np.array(
+    #     [
+    #         (4, 0.1, np.NaN, np.NaN, 0.2, 0.8, False),
+    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+    #     ],
+    #     dtype=UNCERTAINTY_DTYPE,
+    # )
+    dp1.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+        # distributions_array=distributions_array,
+    )
+
+    # Second biosphere
+    #           δ: 4    ε: 5
+    #   200     1       2
+    #   202             1
+
+    data_array = np.array([1, 2, 1])
+    indices_array = np.array([(200, 4), (200, 5), (202, 5)], dtype=INDICES_DTYPE)
+    dp2.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    # Third biosphere
+    #           ζ: 6
+    #   200     1
+    #   202     2
+    #   203     3
+
+    data_array = np.array([1, 2, 3])
+    indices_array = np.array([(200, 6), (202, 6), (203, 6)], dtype=INDICES_DTYPE)
+    dp3.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=data_array,
+        name="biosphere",
+        indices_array=indices_array,
+    )
+
+    # First characterization
+    # 200-206   1
+
+    dp4 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_4.zip"), write=True),
+    )
+    indices_array = np.array(
+        [(200, 0), (201, 0), (202, 0), (203, 0), (204, 0), (205, 0), (206, 0)], dtype=INDICES_DTYPE
+    )
+    distributions_array = np.array(
+        [
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 0.1, np.NaN, np.NaN, 0.5, 1.5, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
+    dp4.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.ones(7),
+        name="characterization-1",
+        identifier=("first", "category"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        global_index=0,
+    )
+
+    # Second characterization
+    # 201   10
+    # 203   10
+    # 205   10
+
+    dp5 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_5.zip"), write=True),
+    )
+    indices_array = np.array([(201, 0), (203, 0), (205, 0)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (5, 10, np.NaN, np.NaN, 8, 15, False),
+            (5, 10, np.NaN, np.NaN, 8, 15, False),
+            (5, 10, np.NaN, np.NaN, 8, 15, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
+    dp5.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.ones(3) * 10,
+        name="characterization-1",
+        identifier=("second", "category"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        global_index=0,
+    )
+
+    dp1.finalize_serialization()
+    dp2.finalize_serialization()
+    dp3.finalize_serialization()
+    dp4.finalize_serialization()
+    dp5.finalize_serialization()
+
+
 def create_mc_complete():
     # Flow 1: biosphere
     # Flow 2: biosphere
@@ -345,9 +539,10 @@ if __name__ == "__main__":
     # bw2io_example_database()
     # create_mc_basic()
     # create_mc_complete()
-    create_missing_characterization()
-    create_empty_characterization()
+    # create_missing_characterization()
+    # create_empty_characterization()
     # create_basic_fixture_zipfile()
     # create_basic_fixture_directory()
     # create_array_fixtures()
     # create_svdm_fixtures()
+    create_multilca_simple()

@@ -68,6 +68,10 @@ def test_inventory_matrix_construction(dps, config, func_units):
         print(name)
         print(mat.todense())
 
+    for name, arr in mlca.supply_arrays.items():
+        print(name)
+        print(arr)
+
     tm = [
         (100, 1, -0.2),
         (100, 2, -0.5),
@@ -95,3 +99,30 @@ def test_inventory_matrix_construction(dps, config, func_units):
         assert mlca.biosphere_matrix[mlca.dicts.biosphere[a], mlca.dicts.activity[b]] == c
 
     assert mlca.biosphere_matrix.sum() == np.array([2, 4, 8, 1, 2, 1, 1, 2, 3, 1, 2, 3]).sum()
+
+    for a in range(200, 204):
+        assert (
+            mlca.characterization_matrices[("first", "category")][
+                mlca.dicts.biosphere[a], mlca.dicts.biosphere[a]
+            ]
+            == 1
+        )
+
+    assert mlca.characterization_matrices[("first", "category")].sum() == 4
+
+    assert (
+        mlca.characterization_matrices[("second", "category")][
+            mlca.dicts.biosphere[201], mlca.dicts.biosphere[201]
+        ]
+        == 10
+    )
+    assert (
+        mlca.characterization_matrices[("second", "category")][
+            mlca.dicts.biosphere[203], mlca.dicts.biosphere[203]
+        ]
+        == 10
+    )
+    assert mlca.characterization_matrices[("second", "category")].sum() == 20
+
+    assert mlca.scores[("ζ", ("second", "category"))] == 3 * (3 * 10 + 1 * 10)
+    assert mlca.scores[("γ", ("first", "category"))] == 8 + 3
