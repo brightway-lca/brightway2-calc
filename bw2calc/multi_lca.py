@@ -91,7 +91,7 @@ class MultiLCA(LCABase):
         selective_use: Optional[dict] = None,
     ):
         # Validation checks
-        # DemandsValidator(demands=demands)
+        DemandsValidator(demands=demands)
         MethodConfig(**method_config)
 
         self.demands = demands

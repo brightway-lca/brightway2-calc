@@ -95,5 +95,3 @@ def test_inventory_matrix_construction(dps, config, func_units):
         assert mlca.biosphere_matrix[mlca.dicts.biosphere[a], mlca.dicts.activity[b]] == c
 
     assert mlca.biosphere_matrix.sum() == np.array([2, 4, 8, 1, 2, 1, 1, 2, 3, 1, 2, 3]).sum()
-
-    assert 0
