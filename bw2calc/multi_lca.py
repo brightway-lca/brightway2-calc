@@ -1,9 +1,8 @@
 import datetime
 import logging
 import warnings
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, Optional, Union
 
 import bw_processing as bwp
 import matrix_utils as mu
@@ -12,13 +11,14 @@ from fs.base import FS
 from pydantic import BaseModel
 from scipy import sparse
 
-from . import PYPARDISO, __version__
+from . import PYPARDISO, __version__, spsolve
 from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
 from .lca import LCABase
 from .method_config import MethodConfig
-from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
+
+# from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
+from .utils import consistent_global_index, get_datapackage
 
 logger = logging.getLogger("bw2calc")
 
@@ -28,61 +28,30 @@ class DemandsValidator(BaseModel):
 
 
 class MultiLCA(LCABase):
-    matrix_labels = [
-        "technosphere_mm",
-        "biosphere_mm",
-    ]
-    matrix_list_labels = [
-        "characterization_mm_list",
-        "normalization_mm_list",
-        "weighting_mm_list",
-    ]
-
     """
-    Perform LCA on multiple demands and multiple impact categories.
+    Perform LCA on multiple demands, impact categories, and normalization and weighting sets.
 
     Builds only *one* technosphere and biosphere matrix which can cover all demands.
 
-    Differs from the base `LCA` class in that:
+    Main differences from the base `LCA` class:
 
-    * `supply_arrays` in place of `supply array`; Numpy array with dimensions (biosphere flows,
-        demand dictionaries)
-    * `inventories` in place of `inventory`; List of matrices with length number of demand
-        dictionaries
-    * `characterized_inventories` in place of `characterized_inventory`; like `inventories`
-    * `scores` instead of `score`; Numpy array with dimensions (demand dictionaries, impact
-        categories)
+    * Many attributes are plural, such as `supply_arrays`, `inventories`, characterization_matrices`
+    * `demands` must be a dictionary with `str` keys, e.g. `{'my truck': {12345: 1}}`
+    * `demands` must have integer IDs; you can't pass `('database', 'code')` or `Activity` objects.
+    * Calculation results are a dictionary with keys of functional units and impact categories
 
-    The input arguments are also different, and are mostly plural.
-
-    Instantiation requires separate `data_objs` for the method, normalization, and weighting, as
-    these are all impact category-specific. Use a `bw2data` compatibility function to get data
-    prepared in the correct way.
-
-    This class supports both stochastic and static LCA, and can use a variety of ways to describe
-    uncertainty. The input flags `use_arrays` and `use_distributions` control some of this
-    stochastic behaviour. See the
-    [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more
-    information on the technical implementation.
+    The calculation procedure is the same as for singular LCA: `lci()`, `lcia()`, and `next()`. See
+    the LCA documentation on this behaviour and input arguments.
 
     Parameters
     ----------
-    demands : Iterable[dict[int: float]]
-        The demands for which the LCA will be calculated. The keys **must be** integers ids.
-    inventory_data_objs : list[bw_processing.Datapackage]
-        List of `bw_processing.Datapackage` objects **for the inventory**. Can be loaded via
-        `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed
-        matrices.
-    methods : List[bw_processing.Datapackage]
-        Tuple defining the LCIA method, such as `('foo', 'bar')`. Only needed if not passing
-        `data_objs`.
-    weighting : List[bw_processing.Datapackage]
-        Tuple defining the LCIA weighting, such as `('foo', 'bar')`. Only needed if not passing
-        `data_objs`.
-    weighting : List[bw_processing.Datapackage]
-        String defining the LCIA normalization, such as `'foo'`. Only needed if not passing
-        `data_objs`.
-    remapping_dicts : dict[str : dict]
+    demands : dict[str, dict[int, float]]
+        The demands for which the LCA will be calculated. The keys identify functional unit sets.
+    method_config : dict
+        Dictionary satisfying the `MethodConfig` specification.
+    data_objs : list[bw_processing.Datapackage]
+        List of `bw_processing.Datapackage` objects. Should include data for all needed matrices.
+    remapping_dicts : dict[str, dict]
         Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)` tuples.
         `remapping_dicts` can provide such remapping for any of `activity`, `product`, `biosphere`.
     log_config : dict
@@ -93,20 +62,27 @@ class MultiLCA(LCABase):
         Use arrays instead of vectors from the given `data_objs`
     use_distributions : bool
         Use probability distributions from the given `data_objs`
-    selective_use : dict[str : dict]
+    selective_use : dict[str, dict]
         Dictionary that gives more control on whether `use_arrays` or `use_distributions` should be
         used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`. Standard
         matrix labels are `technosphere_matrix`, `biosphere_matrix`, and `characterization_matrix`.
     """
 
+    matrix_labels = [
+        "technosphere_mm",
+        "biosphere_mm",
+    ]
+    matrix_list_labels = [
+        "characterization_mm_list",
+        "normalization_mm_list",
+        "weighting_mm_list",
+    ]
+
     def __init__(
         self,
-        demands: Sequence[Mapping],
+        demands: dict[str, dict[int, float]],
         method_config: dict,
-        inventory_data_objs: Iterable[Union[Path, FS, bwp.DatapackageBase]],
-        method_data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
-        normalization_data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
-        weighting_data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
+        data_objs: Iterable[Union[Path, FS, bwp.DatapackageBase]],
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
@@ -114,49 +90,13 @@ class MultiLCA(LCABase):
         use_distributions: Optional[bool] = False,
         selective_use: Optional[dict] = None,
     ):
-        # Resolve potential iterator
-        self.demands = list(demands)
-
         # Validation checks
-        DemandsValidator(demands=demands)
+        # DemandsValidator(demands=demands)
         MethodConfig(**method_config)
 
-        self.packages = [get_datapackage(obj) for obj in inventory_data_objs]
-
-        if method_data_objs is not None:
-            self.method_packages = [get_datapackage(obj) for obj in method_data_objs]
-        else:
-            self.method_packages = []
-        if weighting_data_objs is not None:
-            self.weighting_packages = [get_datapackage(obj) for obj in weighting_data_objs]
-        else:
-            self.method_packages = []
-        if normalization_data_objs is not None:
-            self.normalization_packages = [get_datapackage(obj) for obj in normalization_data_objs]
-        else:
-            self.normalization_packages = []
-
-        # if (
-        #     self.method_packages
-        #     and self.weighting_packages
-        #     and len(self.method_packages) != len(self.weighting_packages)
-        # ):
-        #     raise InconsistentLCIA(
-        #         "Found {} methods and {} weightings (must be the same)".format(
-        #             len(self.method_packages), len(self.weighting_packages)
-        #         )
-        #     )
-        # elif (
-        #     self.method_packages
-        #     and self.normalization_packages
-        #     and len(self.method_packages) != len(self.normalization_packages)
-        # ):
-        #     raise InconsistentLCIA(
-        #         "Found {} methods and {} normalizations (must be the same)".format(
-        #             len(self.method_packages), len(self.normalization_packages)
-        #         )
-        #     )
-
+        self.demands = demands
+        self.config = method_config
+        self.packages = [get_datapackage(obj) for obj in data_objs]
         self.dicts = DictionaryManager()
         self.use_arrays = use_arrays
         self.use_distributions = use_distributions
@@ -172,7 +112,7 @@ class MultiLCA(LCABase):
         logger.info(
             message,
             extra={
-                "demand": wrap_functional_unit(self.demand),
+                "demands": self.demands,
                 "data_objs": str(self.packages),
                 "bw2calc": __version__,
                 "pypardiso": PYPARDISO,
@@ -187,13 +127,18 @@ class MultiLCA(LCABase):
     # Modified methods #
     ####################
 
+    # Don't allow new demand
     def redo_lci(self) -> None:
-        # Don't allow new demand
         return super().redo_lci()
 
+    def lci(self) -> None:
+        return super().lci()
+
     def redo_lcia(self) -> None:
-        # Don't allow new demand
         return super().redo_lcia()
+
+    def lcia(self) -> None:
+        return super().lcia()
 
     ####################
     # LCA Calculations #
@@ -233,7 +178,7 @@ class MultiLCA(LCABase):
         if hasattr(self, "characterized_inventory"):
             self.lcia_calculation()
 
-    def build_demand_arrays(self, demands: Optional[dict] = None) -> None:
+    def build_demand_array(self, demands: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
 
         Args:
@@ -243,27 +188,42 @@ class MultiLCA(LCABase):
             A 1-dimensional NumPy array
 
         """
-        demands = demands or self.demands
-        self.demand_array = np.zeros(len(self.dicts.product))
-        for key in demands:
-            try:
-                self.demand_array[self.dicts.product[key]] = demands[key]
-            except KeyError:
-                if key in self.dicts.activity:
-                    raise ValueError(
-                        f"LCA can only be performed on products, not activities ({key} is the"
-                        + " wrong dimension)"
-                    )
-                else:
-                    raise OutsideTechnosphere(f"Can't find key {key} in product dictionary")
+        demands = self.demands if demands is None else demands
+        self.demand_arrays = {}
+
+        for key, value in demands.items():
+            array = np.zeros(len(self.dicts.product))
+
+            for process_id, process_amount in value.items():
+                try:
+                    array[self.dicts.product[process_id]] = process_amount
+                except KeyError:
+                    if process_id in self.dicts.activity:
+                        raise ValueError(
+                            f"LCA can only be performed on products, not activities ({process_id} "
+                            + "is the wrong dimension)"
+                        )
+                    else:
+                        raise OutsideTechnosphere(
+                            f"Can't find key {process_id} in product dictionary"
+                        )
+
+            self.demand_arrays[key] = array
 
     ##################
     # Data retrieval #
     ##################
 
-    def load_lcia_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
-    ) -> None:
+    def filter_package_identifier(
+        self, data_objs: Iterable[bwp.DatapackageBase], identifier: list[str]
+    ) -> list[bwp.DatapackageBase]:
+        """Filter the datapackage resources in `data_objs` whose "identifier" attribute equals
+        `identifier`.
+
+        Used in splitting up impact categories, normalization, and weighting matrices."""
+        return [dp.filter_by_attribute("identifier", identifier) for dp in data_objs]
+
+    def load_lcia_data(self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None) -> None:
         """Load data and create characterization matrix.
 
         This method will filter out regionalized characterization factors.
@@ -274,59 +234,72 @@ class MultiLCA(LCABase):
 
         use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
 
-        try:
-            self.characterization_mm = mu.MappedMatrix(
-                packages=data_objs or self.packages,
-                matrix="characterization_matrix",
-                use_arrays=use_arrays,
-                use_distributions=use_distributions,
-                seed_override=self.seed_override,
-                row_mapper=self.biosphere_mm.row_mapper,
-                diagonal=True,
-                custom_filter=fltr,
-            )
-        except mu.errors.AllArraysEmpty:
-            raise ValueError("Given `method` or `data_objs` have no characterization data")
-        self.characterization_matrix = self.characterization_mm.matrix
-        if len(self.characterization_matrix.data) == 0:
-            warnings.warn("All values in characterization matrix are zero")
+        self.characterization_mm_list = {}
+        self.characterization_matrices = {}
 
-    def load_normalization_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
-    ) -> None:
-        """Load normalization data."""
-        use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
+        for ic in self.config["impact_categories"]:
+            try:
+                mm = mu.MappedMatrix(
+                    packages=self.filter_package_identifier(
+                        data_objs=data_objs or self.packages, identifier=list(ic)
+                    ),
+                    matrix="characterization_matrix",
+                    use_arrays=use_arrays,
+                    use_distributions=use_distributions,
+                    seed_override=self.seed_override,
+                    row_mapper=self.biosphere_mm.row_mapper,
+                    diagonal=True,
+                    custom_filter=fltr,
+                )
+                self.characterization_mm_list[ic] = mm
+                self.characterization_matrices[ic] = mm.matrix
+                if len(mm.matrix.data) == 0:
+                    warnings.warn(f"All values in characterization matrix for {ic} are zero")
+            except mu.errors.AllArraysEmpty:
+                raise ValueError(
+                    f"Given `method` or `data_objs` for impact category {ic} have no "
+                    + "characterization data"
+                )
 
-        self.normalization_mm = mu.MappedMatrix(
-            packages=data_objs or self.packages,
-            matrix="normalization_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
-            row_mapper=self.biosphere_mm.row_mapper,
-            diagonal=True,
-        )
-        self.normalization_matrix = self.normalization_mm.matrix
+    # def load_normalization_data(
+    #     self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
+    # ) -> None:
+    #     """Load normalization data."""
+    #     use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
 
-    def load_weighting_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
-    ) -> None:
-        """Load normalization data."""
-        use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
+    #     self.normalization_mm = mu.MappedMatrix(
+    #         packages=data_objs or self.packages,
+    #         matrix="normalization_matrix",
+    #         use_arrays=use_arrays,
+    #         use_distributions=use_distributions,
+    #         seed_override=self.seed_override,
+    #         row_mapper=self.biosphere_mm.row_mapper,
+    #         diagonal=True,
+    #     )
+    #     self.normalization_matrix = self.normalization_mm.matrix
 
-        self.weighting_mm = SingleValueDiagonalMatrix(
-            packages=data_objs or self.packages,
-            matrix="weighting_matrix",
-            dimension=len(self.biosphere_mm.row_mapper),
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
-        )
-        self.weighting_matrix = self.weighting_mm.matrix
+    # def load_weighting_data(
+    #     self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
+    # ) -> None:
+    #     """Load normalization data."""
+    #     use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
+
+    #     self.weighting_mm = SingleValueDiagonalMatrix(
+    #         packages=data_objs or self.packages,
+    #         matrix="weighting_matrix",
+    #         dimension=len(self.biosphere_mm.row_mapper),
+    #         use_arrays=use_arrays,
+    #         use_distributions=use_distributions,
+    #         seed_override=self.seed_override,
+    #     )
+    #     self.weighting_matrix = self.weighting_mm.matrix
 
     ################
     # Calculations #
     ################
+
+    def decompose_technosphere(self) -> None:
+        raise NotImplementedError
 
     def lci_calculation(self) -> None:
         """The actual LCI calculation.
@@ -335,12 +308,16 @@ class MultiLCA(LCABase):
         ``redo_lci`` and Monte Carlo classes.
 
         """
-        self.supply_array = self.solve_linear_system()
-        # Turn 1-d array into diagonal matrix
         count = len(self.dicts.activity)
-        self.inventory = self.biosphere_matrix * sparse.spdiags(
-            [self.supply_array], [0], count, count
+        solutions = spsolve(
+            self.technosphere_matrix, np.vstack([arr for arr in self.demand_arrays.values()]).T
         )
+        self.supply_arrays = {name: arr for name, arr in zip(self.demands, solutions.T)}
+        # Turn 1-d array into diagonal matrix
+        self.inventories = {
+            name: self.biosphere_matrix @ sparse.spdiags([arr], [0], count, count)
+            for name, arr in self.supply_arrays.items()
+        }
 
     def lcia_calculation(self) -> None:
         """The actual LCIA calculation.
@@ -349,50 +326,50 @@ class MultiLCA(LCABase):
         ``redo_lcia`` and Monte Carlo classes.
 
         """
-        self.characterized_inventory = self.characterization_matrix * self.inventory
+        self.characterized_inventories = {}
 
-    def normalization_calculation(self) -> None:
-        """The actual normalization calculation.
+        for demand_name, mat_inv in self.inventories.items():
+            for ic_name, mat_ia in self.characterization_matrices.items():
+                self.characterized_inventories[(demand_name, ic_name)] = mat_ia @ mat_inv
 
-        Creates ``self.normalized_inventory``."""
-        self.normalized_inventory = self.normalization_matrix * self.characterized_inventory
+    # def normalization_calculation(self) -> None:
+    #     """The actual normalization calculation.
 
-    def weighting_calculation(self) -> None:
-        """The actual weighting calculation.
+    #     Creates ``self.normalized_inventory``."""
+    #     self.normalized_inventory = self.normalization_matrix * self.characterized_inventory
 
-        Multiples weighting value by normalized inventory, if available, otherwise by characterized
-        inventory.
+    # def weighting_calculation(self) -> None:
+    #     """The actual weighting calculation.
 
-        Creates ``self.weighted_inventory``."""
-        if hasattr(self, "normalized_inventory"):
-            obj = self.normalized_inventory
-        else:
-            obj = self.characterized_inventory
-        self.weighted_inventory = self.weighting_matrix * obj
+    #     Multiples weighting value by normalized inventory, if available, otherwise by
+    #   characterized inventory.
+
+    #     Creates ``self.weighted_inventory``."""
+    #     if hasattr(self, "normalized_inventory"):
+    #         obj = self.normalized_inventory
+    #     else:
+    #         obj = self.characterized_inventory
+    #     self.weighted_inventory = self.weighting_matrix * obj
 
     @property
-    def score(self) -> float:
+    def scores(self) -> dict:
         """
         The LCIA score as a ``float``.
 
         Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_,
         so it is ``foo.lca``, not ``foo.score()``
         """
-        assert hasattr(self, "characterized_inventory"), "Must do LCIA first"
-        if hasattr(self, "weighted_inventory"):
-            return float(self.weighted_inventory.sum())
-        elif hasattr(self, "normalized_inventory"):
-            return float(self.normalized_inventory.sum())
-        else:
-            return float(self.characterized_inventory.sum())
+        assert hasattr(self, "characterized_inventories"), "Must do LCIA first"
+        return {key: arr.sum() for key, arr in self.characterized_inventories.items()}
+        # if hasattr(self, "weighted_inventory"):
+        #     return float(self.weighted_inventory.sum())
+        # elif hasattr(self, "normalized_inventory"):
+        #     return float(self.normalized_inventory.sum())
+        # else:
+        #     return float(self.characterized_inventory.sum())
 
-    def check_demand(self, demand: Optional[dict] = None):
-        if demand is None:
-            return
-        else:
-            for key in demand:
-                if key not in self.dicts.product and not isinstance(key, int):
-                    raise KeyError(
-                        f"Key '{key}' not in product dictionary; make sure to pass the integer id"
-                        + ", not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object."
-                    )
+
+class MultiLCAResult:
+    def __init__(self):
+        """Container for storing and interpreting `MultiLCA` results."""
+        pass

@@ -193,7 +193,7 @@ class LCABase(Iterator):
         Doesn't return anything, but creates ``self.characterized_inventory``.
 
         """
-        assert hasattr(self, "inventory"), "Must do lci first"
+        assert hasattr(self, "inventory") or (self, "inventories"), "Must do lci first"
         if not self.dicts.biosphere:
             raise EmptyBiosphere
 

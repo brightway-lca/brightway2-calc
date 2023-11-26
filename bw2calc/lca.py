@@ -86,7 +86,7 @@ class LCA(LCABase):
             List of `bw_processing.Datapackage` objects. Can be loaded via
             `bw2data.prepare_lca_inputs` or constructed manually. Should include data for all needed
             matrices.
-        remapping_dicts : dict[str : dict]
+        remapping_dicts : dict[str, dict]
             Dict of remapping dictionaries that link Brightway `Node` ids to `(database, code)`
             tuples. `remapping_dicts` can provide such remapping for any of `activity`, `product`,
             `biosphere`.
@@ -98,7 +98,7 @@ class LCA(LCABase):
             Use arrays instead of vectors from the given `data_objs`
         use_distributions : bool
             Use probability distributions from the given `data_objs`
-        selective_use : dict[str : dict]
+        selective_use : dict[str, dict]
             Dictionary that gives more control on whether `use_arrays` or `use_distributions` should
             be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`.
             Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and
