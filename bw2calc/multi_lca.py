@@ -336,7 +336,7 @@ class MultiLCA(LCABase):
     #     """The actual normalization calculation.
 
     #     Creates ``self.normalized_inventory``."""
-    #     self.normalized_inventory = self.normalization_matrix * self.characterized_inventory
+    #     self.normalized_inventory = self.normalization_matrix @ self.characterized_inventory
 
     # def weighting_calculation(self) -> None:
     #     """The actual weighting calculation.
@@ -349,7 +349,7 @@ class MultiLCA(LCABase):
     #         obj = self.normalized_inventory
     #     else:
     #         obj = self.characterized_inventory
-    #     self.weighted_inventory = self.weighting_matrix * obj
+    #     self.weighted_inventory = self.weighting_matrix @ obj
 
     @property
     def scores(self) -> dict:
