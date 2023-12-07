@@ -153,7 +153,7 @@ class MultiLCA(LCABase):
             if not skip_first_iteration and hasattr(self, matrix):
                 obj = getattr(self, matrix)
                 next(obj)
-                message = """Iterating {matrix}. Indexers: {indexer_state}""".format(
+                message = """Iterating matrix {matrix}. Indexers: {indexer_state}""".format(
                     matrix=matrix,
                     indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
                 )
@@ -163,6 +163,23 @@ class MultiLCA(LCABase):
                         "matrix": matrix,
                         "indexers": [(str(p), p.indexer.index) for p in obj.packages],
                         "matrix_sum": obj.matrix.sum(),
+                        "utc": datetime.datetime.utcnow(),
+                    },
+                )
+
+        for matrix_dict in self.matrix_list_labels:
+            if not skip_first_iteration and hasattr(self, matrix_dict):
+                obj = getattr(self, matrix_dict)
+                next(obj)
+                message = """Iterating matrix dict {matrix}. Indexer: {indexer_state}""".format(
+                    matrix=matrix, indexer_state=obj.global_indexer.index
+                )
+                logger.debug(
+                    message,
+                    extra={
+                        "matrix_dict": matrix_dict,
+                        "indexer": obj.global_indexer.index,
+                        "matrix_sums": [matrix.sum() for matrix in obj.values()],
                         "utc": datetime.datetime.utcnow(),
                     },
                 )
@@ -214,7 +231,7 @@ class MultiLCA(LCABase):
     # Data retrieval #
     ##################
 
-    def filter_package_identifier(
+    def filter_package_by_identifier(
         self, data_objs: Iterable[bwp.DatapackageBase], identifier: list[str]
     ) -> list[bwp.DatapackageBase]:
         """Filter the datapackage resources in `data_objs` whose "identifier" attribute equals
@@ -234,32 +251,29 @@ class MultiLCA(LCABase):
 
         use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
 
-        self.characterization_mm_list = {}
-        self.characterization_matrices = {}
+        self.characterization_mm_list = mu.MappedMatrixDict(
+            packages={
+                ic: self.filter_package_by_identifier(
+                    data_objs=data_objs or self.packages, identifier=list(ic)
+                )
+                for ic in self.config["impact_categories"]
+            },
+            matrix="characterization_matrix",
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            seed_override=self.seed_override,
+            row_mapper=self.biosphere_mm.row_mapper,
+            col_mapper=None,
+            diagonal=True,
+            custom_filter=fltr,
+        )
+        for key, value in self.characterization_mm_list.items():
+            if len(value.matrix.data) == 0:
+                warnings.warn(f"All values in characterization matrix for {key} are zero")
 
-        for ic in self.config["impact_categories"]:
-            try:
-                mm = mu.MappedMatrix(
-                    packages=self.filter_package_identifier(
-                        data_objs=data_objs or self.packages, identifier=list(ic)
-                    ),
-                    matrix="characterization_matrix",
-                    use_arrays=use_arrays,
-                    use_distributions=use_distributions,
-                    seed_override=self.seed_override,
-                    row_mapper=self.biosphere_mm.row_mapper,
-                    diagonal=True,
-                    custom_filter=fltr,
-                )
-                self.characterization_mm_list[ic] = mm
-                self.characterization_matrices[ic] = mm.matrix
-                if len(mm.matrix.data) == 0:
-                    warnings.warn(f"All values in characterization matrix for {ic} are zero")
-            except mu.errors.AllArraysEmpty:
-                raise ValueError(
-                    f"Given `method` or `data_objs` for impact category {ic} have no "
-                    + "characterization data"
-                )
+        self.characterization_matrices = mu.SparseMatrixDict(
+            [(key, value.matrix) for key, value in self.characterization_mm_list.items()]
+        )
 
     # def load_normalization_data(
     #     self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
@@ -314,10 +328,12 @@ class MultiLCA(LCABase):
         )
         self.supply_arrays = {name: arr for name, arr in zip(self.demands, solutions.T)}
         # Turn 1-d array into diagonal matrix
-        self.inventories = {
-            name: self.biosphere_matrix @ sparse.spdiags([arr], [0], count, count)
-            for name, arr in self.supply_arrays.items()
-        }
+        self.inventories = mu.SparseMatrixDict(
+            [
+                (name, self.biosphere_matrix @ sparse.spdiags([arr], [0], count, count))
+                for name, arr in self.supply_arrays.items()
+            ]
+        )
 
     def lcia_calculation(self) -> None:
         """The actual LCIA calculation.
@@ -326,11 +342,7 @@ class MultiLCA(LCABase):
         ``redo_lcia`` and Monte Carlo classes.
 
         """
-        self.characterized_inventories = {}
-
-        for demand_name, mat_inv in self.inventories.items():
-            for ic_name, mat_ia in self.characterization_matrices.items():
-                self.characterized_inventories[(demand_name, ic_name)] = mat_ia @ mat_inv
+        self.characterized_inventories = self.characterization_matrices @ self.inventories
 
     # def normalization_calculation(self) -> None:
     #     """The actual normalization calculation.
