@@ -42,9 +42,9 @@ tracker = "https://github.com/brightway-lca/brightway2-calc/issues"
 testing = [
     "bw2calc",
     "bw2data>=4.0.DEV32",
-    "pypardiso",
     "pytest",
     "pytest-cov",
+    "pytest-randomly",
     "python-coveralls"
 ]
 dev = [
