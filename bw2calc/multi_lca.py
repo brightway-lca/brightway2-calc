@@ -16,8 +16,7 @@ from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
 from .lca import LCABase
 from .method_config import MethodConfig
-
-# from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
+from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage
 
 logger = logging.getLogger("bw2calc")
@@ -73,9 +72,9 @@ class MultiLCA(LCABase):
         "biosphere_mm",
     ]
     matrix_list_labels = [
-        "characterization_mm_list",
-        "normalization_mm_list",
-        "weighting_mm_list",
+        "characterization_mm_dict",
+        "normalization_mm_dict",
+        "weighting_mm_dict",
     ]
 
     def __init__(
@@ -241,7 +240,7 @@ class MultiLCA(LCABase):
         return [dp.filter_by_attribute("identifier", identifier) for dp in data_objs]
 
     def load_lcia_data(self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None) -> None:
-        """Load data and create characterization matrix.
+        """Load data and create characterization matrices.
 
         This method will filter out regionalized characterization factors.
 
@@ -251,7 +250,7 @@ class MultiLCA(LCABase):
 
         use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
 
-        self.characterization_mm_list = mu.MappedMatrixDict(
+        self.characterization_mm_dict = mu.MappedMatrixDict(
             packages={
                 ic: self.filter_package_by_identifier(
                     data_objs=data_objs or self.packages, identifier=list(ic)
@@ -267,46 +266,69 @@ class MultiLCA(LCABase):
             diagonal=True,
             custom_filter=fltr,
         )
-        for key, value in self.characterization_mm_list.items():
+        for key, value in self.characterization_mm_dict.items():
             if len(value.matrix.data) == 0:
                 warnings.warn(f"All values in characterization matrix for {key} are zero")
 
         self.characterization_matrices = mu.SparseMatrixDict(
-            [(key, value.matrix) for key, value in self.characterization_mm_list.items()]
+            [(key, value.matrix) for key, value in self.characterization_mm_dict.items()]
         )
 
-    # def load_normalization_data(
-    #     self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
-    # ) -> None:
-    #     """Load normalization data."""
-    #     use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
+    def load_normalization_data(
+        self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None
+    ) -> None:
+        """Load normalization data."""
+        use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
 
-    #     self.normalization_mm = mu.MappedMatrix(
-    #         packages=data_objs or self.packages,
-    #         matrix="normalization_matrix",
-    #         use_arrays=use_arrays,
-    #         use_distributions=use_distributions,
-    #         seed_override=self.seed_override,
-    #         row_mapper=self.biosphere_mm.row_mapper,
-    #         diagonal=True,
-    #     )
-    #     self.normalization_matrix = self.normalization_mm.matrix
+        self.normalization_mm_dict = mu.MappedMatrixDict(
+            packages={
+                nrml: self.filter_package_by_identifier(
+                    data_objs=data_objs or self.packages, identifier=list(nrml)
+                )
+                for nrml in self.config["normalizations"]
+            },
+            matrix="normalization_matrix",
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            seed_override=self.seed_override,
+            row_mapper=self.biosphere_mm.row_mapper,
+            diagonal=True,
+        )
+        for key, value in self.normalization_mm_dict.items():
+            if len(value.matrix.data) == 0:
+                warnings.warn(f"All values in normalization matrix for {key} are zero")
 
-    # def load_weighting_data(
-    #     self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
-    # ) -> None:
-    #     """Load normalization data."""
-    #     use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
+        self.normalization_matrices = mu.SparseMatrixDict(
+            [(key, value.matrix) for key, value in self.normalization_mm_dict.items()]
+        )
 
-    #     self.weighting_mm = SingleValueDiagonalMatrix(
-    #         packages=data_objs or self.packages,
-    #         matrix="weighting_matrix",
-    #         dimension=len(self.biosphere_mm.row_mapper),
-    #         use_arrays=use_arrays,
-    #         use_distributions=use_distributions,
-    #         seed_override=self.seed_override,
-    #     )
-    #     self.weighting_matrix = self.weighting_mm.matrix
+    def load_weighting_data(
+        self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None
+    ) -> None:
+        """Load weighting data."""
+        use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
+
+        self.weighting_mm_dict = mu.MappedMatrixDict(
+            packages={
+                wng: self.filter_package_by_identifier(
+                    data_objs=data_objs or self.packages, identifier=list(wng)
+                )
+                for wng in self.config["weightings"]
+            },
+            matrix="weighting_matrix",
+            dimension=len(self.biosphere_mm.row_mapper),
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            seed_override=self.seed_override,
+            matrix_class=SingleValueDiagonalMatrix,
+        )
+        for key, value in self.weighting_mm_dict.items():
+            if len(value.matrix.data) == 0:
+                warnings.warn(f"All values in weighting matrix for {key} are zero")
+
+        self.weighting_matrices = mu.SparseMatrixDict(
+            [(key, value.matrix) for key, value in self.weighting_mm_dict.items()]
+        )
 
     ################
     # Calculations #
@@ -343,6 +365,10 @@ class MultiLCA(LCABase):
 
         """
         self.characterized_inventories = self.characterization_matrices @ self.inventories
+        if hasattr(self, "normalization_matrices"):
+            self.normalization_calculation()
+        if hasattr(self, "weighting_matrices"):
+            self.weighting_calculation()
 
     # def normalization_calculation(self) -> None:
     #     """The actual normalization calculation.

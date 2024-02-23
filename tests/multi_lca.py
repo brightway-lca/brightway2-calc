@@ -126,3 +126,7 @@ def test_inventory_matrix_construction(dps, config, func_units):
 
     assert mlca.scores[(("second", "category"), "ζ")] == 3 * (3 * 10 + 1 * 10)
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
+
+
+def test_consistent_indexing():
+    pass

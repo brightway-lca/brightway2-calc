@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -17,9 +18,7 @@ from bw2calc.lca import LCA, PYPARDISO
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
 
-######
-### Basic functionality
-######
+# Basic functionality
 
 
 def test_example_db_basic():
@@ -67,9 +66,7 @@ def test_circular_inputs():
     pass
 
 
-######
-### __init__
-######
+# __init__
 
 
 def test_invalid_datapackage():
@@ -104,9 +101,7 @@ def test_demand_mapping_but_not_dict():
     assert np.allclose(answer, lca.supply_array)
 
 
-######
-### __next__
-######
+# __next__
 
 
 def test_next_data_array():
@@ -206,9 +201,7 @@ def test_next_monte_carlo_all_matrices_change():
         assert x != y
 
 
-######
-### build_demand_array
-######
+# build_demand_array
 
 
 def test_build_demand_array():
@@ -258,9 +251,7 @@ def test_build_demand_array_pass_object():
         LCA(obj, data_objs=packages)
 
 
-######
-### load_lci_data
-######
+# load_lci_data
 
 
 def test_load_lci_data():
@@ -329,9 +320,7 @@ def test_load_lcia_data_empty_characterization():
         lca.lcia()
 
 
-######
-### remap_inventory_dicts
-######
+# remap_inventory_dicts
 
 
 def test_remap_inventory_dicts():
@@ -372,9 +361,7 @@ def test_remap_inventory_dicts_again():
     assert lca.dicts.biosphere["z"] == 0
 
 
-######
-### load_lcia_data
-######
+# load_lcia_data
 
 
 def test_load_lcia_data():
@@ -599,9 +586,7 @@ def test_load_lcia_data_nonglobal_filtered():
     assert lca.characterization_matrix.sum() == 1
 
 
-######
-### Warnings on uncommon inputs
-######
+# Warnings on uncommon inputs
 
 
 @pytest.mark.filterwarnings("ignore:no biosphere")
@@ -631,9 +616,7 @@ def test_lca_has():
     assert not lca.has("foo")
 
 
-######
-### normalize
-######
+# normalize
 
 
 def test_lca_with_normalization():
@@ -688,9 +671,7 @@ def test_lca_with_normalization():
     assert lca.normalization_matrix.sum() == 14
 
 
-######
-### weighting
-######
+# weighting
 
 
 def test_lca_with_weighting():
@@ -855,9 +836,7 @@ def test_lca_with_weighting_and_normalization():
     assert lca.score == (1 * 10 + 10 * 4) * 8
 
 
-######
-### switch_method
-######
+# switch_method
 
 
 def test_switch_method():
@@ -919,9 +898,7 @@ def test_switch_method():
     assert not any(res["matrix"] == "characterization_matrix" for res in lca.packages[0].resources)
 
 
-######
-### switch_normalization
-######
+# switch_normalization
 
 
 def test_switch_normalization():
@@ -997,9 +974,7 @@ def test_switch_normalization():
     assert not any(res["matrix"] == "normalization_matrix" for res in lca.packages[0].resources)
 
 
-######
-### switch_weighting
-######
+# switch_weighting
 
 
 def test_switch_weighting():
@@ -1073,9 +1048,7 @@ def test_switch_weighting():
     assert lca.score == 11 * 42
 
 
-######
-### invert_technosphere
-######
+# invert_technosphere
 
 
 @pytest.mark.skipif(not PYPARDISO, reason="Pardiso library not available")
@@ -1094,9 +1067,7 @@ def test_invert_technosphere():
     assert np.allclose(itm, expected)
 
 
-######
-### redo_lci
-######
+# redo_lci
 
 
 def test_redo_lci():
@@ -1161,9 +1132,7 @@ def test_redo_lci_with_no_new_demand_no_error():
         lca.redo_lci()
 
 
-######
-### redo_lcia
-######
+# redo_lcia
 
 
 def test_redo_lcia():
@@ -1223,9 +1192,7 @@ def test_redo_lcia_deprecated():
     assert lca.score != ref
 
 
-######
-### has
-######
+# has
 
 
 def test_has():
@@ -1234,6 +1201,45 @@ def test_has():
     assert lca.has("technosphere")
     assert lca.has("biosphere")
     assert lca.has("characterization")
+
+
+###
+# logging
+###
+
+
+def test_logging_next(caplog):
+    caplog.set_level(logging.DEBUG)
+    mapping = dict(json.load(open(fixture_dir / "bw2io_example_db_mapping.json")))
+    id_ = mapping["Driving an electric car"]
+    packages = [
+        fixture_dir / "bw2io_example_db.zip",
+        fixture_dir / "ipcc_simple.zip",
+    ]
+
+    lca = LCA(
+        {id_: 1},
+        data_objs=packages,
+    )
+    lca.lci()
+    lca.lcia()
+
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0][0] == "bw2calc"
+    assert caplog.record_tuples[0][1] == 20
+    assert caplog.record_tuples[0][2].startswith(
+        "Initialized LCA object. Demand: {" + str(id_) + ": 1}, data_objs"
+    )
+
+    caplog.clear()
+    next(lca)
+
+    assert len(caplog.record_tuples) == 3
+
+    for x, y, z in caplog.record_tuples:
+        assert x == "bw2calc"
+        assert y == 10
+        assert z.startswith("Iterating")
 
 
 #     def test_circular_chains(self):
