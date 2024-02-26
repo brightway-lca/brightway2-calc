@@ -29,6 +29,20 @@ try:
     from pypardiso import factorized, spsolve
 except ImportError:
     from scipy.sparse.linalg import factorized, spsolve
+
+    from scipy.sparse.linalg._dsolve import linsolve
+    if not linsolve.useUmfpack :
+        logging.warn("""
+        Did not findPypardisio or Umfpack. Matrix computation may be very slow.
+        
+        If you are on an Intel architecture, please install pypardiso as explained in the docs :
+        https://docs.brightway.dev/en/latest/content/installation/index.html
+        
+        > pip install pypardiso
+        or 
+        > conda install pypardiso
+        """)
+
 try:
     import pandas
 except ImportError:
