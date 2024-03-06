@@ -1,5 +1,12 @@
 # `bw2calc` Changelog
 
+## DEV
+
+* Removed graph traversal completely - use [bw_graph_tools](https://github.com/brightway-lca/bw_graph_tools) instead.
+* Start using [`@` for matrix multiplication](https://peps.python.org/pep-0465/)
+* Some progress on a new `MultiLCA` implementation
+* Removed `MonteCarloLCA` (normal LCA class can do Monte Carlo) and added `IterativeLCA` (different solving strategy)
+
 ## 2.0.DEV16 (2023-10-22)
 
 * Fix [#78](https://github.com/brightway-lca/brightway2-calc/issues/78): Allow for selective use of distributions or arrays depending on matrix label
