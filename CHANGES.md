@@ -6,6 +6,7 @@
 * Start using [`@` for matrix multiplication](https://peps.python.org/pep-0465/)
 * Some progress on a new `MultiLCA` implementation
 * Removed `MonteCarloLCA` (normal LCA class can do Monte Carlo) and added `IterativeLCA` (different solving strategy)
+* Fix miscellaneous deprecated API calls
 
 ## 2.0.DEV16 (2023-10-22)
 

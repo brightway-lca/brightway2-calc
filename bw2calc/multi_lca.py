@@ -118,7 +118,7 @@ class MultiLCA(LCABase):
                 "numpy": np.__version__,
                 "matrix_utils": mu.__version__,
                 "bw_processing": bwp.__version__,
-                "utc": datetime.datetime.utcnow(),
+                "utc": datetime.datetime.now(datetime.UTC),
             },
         )
 
@@ -162,7 +162,7 @@ class MultiLCA(LCABase):
                         "matrix": matrix,
                         "indexers": [(str(p), p.indexer.index) for p in obj.packages],
                         "matrix_sum": obj.matrix.sum(),
-                        "utc": datetime.datetime.utcnow(),
+                        "utc": datetime.datetime.now(datetime.UTC),
                     },
                 )
 
@@ -179,7 +179,7 @@ class MultiLCA(LCABase):
                         "matrix_dict": matrix_dict,
                         "indexer": obj.global_indexer.index,
                         "matrix_sums": [matrix.sum() for matrix in obj.values()],
-                        "utc": datetime.datetime.utcnow(),
+                        "utc": datetime.datetime.now(datetime.UTC),
                     },
                 )
 

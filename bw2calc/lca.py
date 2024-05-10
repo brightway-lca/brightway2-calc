@@ -143,7 +143,7 @@ class LCA(LCABase):
                 "numpy": np.__version__,
                 "matrix_utils": mu.__version__,
                 "bw_processing": bwp.__version__,
-                "utc": datetime.datetime.utcnow(),
+                "utc": datetime.datetime.now(datetime.UTC),
             },
         )
 
@@ -166,7 +166,7 @@ class LCA(LCABase):
                         "matrix": matrix,
                         "indexers": [(str(p), p.indexer.index) for p in obj.packages],
                         "matrix_sum": obj.matrix.sum(),
-                        "utc": datetime.datetime.utcnow(),
+                        "utc": datetime.datetime.now(datetime.UTC),
                     },
                 )
 
@@ -364,7 +364,7 @@ class LCA(LCABase):
             f"""Switched LCIA {label}. data_objs: {data_objs}""",
             extra={
                 "data_objs": str(data_objs),
-                "utc": datetime.datetime.utcnow(),
+                "utc": datetime.datetime.now(datetime.UTC),
             },
         )
 
