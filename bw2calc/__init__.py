@@ -37,7 +37,6 @@ try:
     from pypardiso import factorized, spsolve
 
     PYPARDISO = True
-    print("Woot")
 except ImportError:
     pltf = platform.machine().lower()
 
