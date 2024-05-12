@@ -1,4 +1,3 @@
-import datetime
 import logging
 import warnings
 from pathlib import Path
@@ -17,7 +16,7 @@ from .errors import OutsideTechnosphere
 from .lca import LCABase
 from .method_config import MethodConfig
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage
+from .utils import consistent_global_index, get_datapackage, utc_now
 
 logger = logging.getLogger("bw2calc")
 
@@ -118,7 +117,7 @@ class MultiLCA(LCABase):
                 "numpy": np.__version__,
                 "matrix_utils": mu.__version__,
                 "bw_processing": bwp.__version__,
-                "utc": datetime.datetime.now(datetime.UTC),
+                "utc": utc_now(),
             },
         )
 
@@ -162,7 +161,7 @@ class MultiLCA(LCABase):
                         "matrix": matrix,
                         "indexers": [(str(p), p.indexer.index) for p in obj.packages],
                         "matrix_sum": obj.matrix.sum(),
-                        "utc": datetime.datetime.now(datetime.UTC),
+                        "utc": utc_now(),
                     },
                 )
 
@@ -179,7 +178,7 @@ class MultiLCA(LCABase):
                         "matrix_dict": matrix_dict,
                         "indexer": obj.global_indexer.index,
                         "matrix_sums": [matrix.sum() for matrix in obj.values()],
-                        "utc": datetime.datetime.now(datetime.UTC),
+                        "utc": utc_now(),
                     },
                 )
 

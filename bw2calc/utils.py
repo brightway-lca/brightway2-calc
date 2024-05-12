@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 
 import bw_processing as bwp
@@ -62,3 +63,11 @@ def get_datapackage(obj):
 
     else:
         raise TypeError("Unknown input type for loading datapackage: {}: {}".format(type(obj), obj))
+
+
+def utc_now() -> datetime.datetime:
+    """Get current datetime compatible with Py 3.8 to 3.12"""
+    if hasattr(datetime, "UTC"):
+        return datetime.datetime.now(datetime.UTC)
+    else:
+        return datetime.datetime.utcnow()

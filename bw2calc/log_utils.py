@@ -2,7 +2,8 @@ import json
 import logging
 import os
 import uuid
-import datetime
+
+from .utils import utc_now
 
 """Adapted from json-log-formatter (https://github.com/marselester/json-log-formatter)
 
@@ -81,7 +82,7 @@ class JSONFormatter(logging.Formatter):
         else:
             # Also support logger.info({'foo': 'bar'})
             data = eval(message)
-        data["time"] = str(datetime.datetime.now(datetime.UTC))
+        data["time"] = utc_now().isoformat() + 'Z'
 
         if record.exc_info:
             data["exc_info"] = self.formatException(record.exc_info)
@@ -107,7 +108,7 @@ def create_logger(dirpath=None, name=None, **kwargs):
     assert os.path.isdir(dirpath) and os.access(dirpath, os.W_OK)
 
     # Use safe_filepath here
-    filename = "{}.{}.json".format(name or uuid.uuid4().hex, str(datetime.datetime.now(datetime.UTC)))
+    filename = "{}.{}.json".format(name or uuid.uuid4().hex, utc_now().isoformat() + 'Z')
 
     formatter = JSONFormatter()
     fp = os.path.abspath(os.path.join(dirpath, filename))

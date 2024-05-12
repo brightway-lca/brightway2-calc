@@ -1,4 +1,3 @@
-import datetime
 import logging
 import warnings
 from collections.abc import Mapping
@@ -18,7 +17,7 @@ from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
 from .lca_base import LCABase
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage, wrap_functional_unit
+from .utils import consistent_global_index, get_datapackage, wrap_functional_unit, utc_now
 
 try:
     from bw2data import get_node
@@ -143,7 +142,7 @@ class LCA(LCABase):
                 "numpy": np.__version__,
                 "matrix_utils": mu.__version__,
                 "bw_processing": bwp.__version__,
-                "utc": datetime.datetime.now(datetime.UTC),
+                "utc": utc_now(),
             },
         )
 
@@ -166,7 +165,7 @@ class LCA(LCABase):
                         "matrix": matrix,
                         "indexers": [(str(p), p.indexer.index) for p in obj.packages],
                         "matrix_sum": obj.matrix.sum(),
-                        "utc": datetime.datetime.now(datetime.UTC),
+                        "utc": utc_now(),
                     },
                 )
 
@@ -364,7 +363,7 @@ class LCA(LCABase):
             f"""Switched LCIA {label}. data_objs: {data_objs}""",
             extra={
                 "data_objs": str(data_objs),
-                "utc": datetime.datetime.now(datetime.UTC),
+                "utc": utc_now(),
             },
         )
 
