@@ -11,14 +11,44 @@ __version__ = "2.0.DEV16"
 
 
 import json_logging
+import platform
+import warnings
 
 json_logging.init_non_web(enable_json=True)
+
+ARM = {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"}
+AMD_INTEL = {"ia64", "i386", "i686", "x86_64"}
+UMFPACK_WARNING = """
+It seems like you have an ARM architecture, but haven't installed scikit-umfpack:
+
+    https://pypi.org/project/scikit-umfpack/
+
+Installing it could give you much faster calculations.
+"""
+PYPARDISO_WARNING = """
+It seems like you have an ARM/INTEL architecture, but haven't installed pypardiso:
+
+    https://pypi.org/project/pypardiso/
+
+Installing it could give you much faster calculations.
+"""
 
 try:
     from pypardiso import factorized, spsolve
 
     PYPARDISO = True
+    print("Woot")
 except ImportError:
+    pltf = platform.machine().lower()
+
+    if pltf in ARM:
+        try:
+            import scikits.umfpack
+        except ImportError:
+            warnings.warn(UMFPACK_WARNING)
+    elif pltf in AMD_INTEL:
+        warnings.warn(PYPARDISO_WARNING)
+
     from scipy.sparse.linalg import factorized, spsolve
 
     PYPARDISO = False
