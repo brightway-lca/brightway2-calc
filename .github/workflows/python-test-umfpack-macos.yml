@@ -32,8 +32,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        py-version: ["3.11"]
+        os: [macos-latest]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        py-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
@@ -44,6 +45,10 @@ jobs:
         with:
           python-version: ${{ matrix.py-version }}
 
+      - name: Install suitesparse dependencies
+      run: |
+        brew install swig suite-sparse
+
       - name: Update pip & install testing pkgs
         run: |
           python -VV
@@ -53,7 +58,12 @@ jobs:
       - name: Install package and test deps
         run: |
           pip install .[testing] # install the package and the testing deps
-          pip install scikit-umfpack
+
+      - name: Install scikit-umfpack
+        run: |
+          echo "SuiteSparse version:"
+          ls /opt/homebrew/Cellar/suite-sparse/
+          pip install scikit-umfpack -Csetup-args=--native-file=$PWD/custom-config.ini
 
       - name: Test with pytest
         run: |
