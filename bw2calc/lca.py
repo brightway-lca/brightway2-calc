@@ -147,9 +147,7 @@ class LCA(LCABase):
         )
 
     def __next__(self) -> None:
-        skip_first_iteration = (
-            hasattr(self, "keep_first_iteration_flag") and self.keep_first_iteration_flag
-        )
+        skip_first_iteration = getattr(self, "keep_first_iteration_flag")
 
         for matrix in self.matrix_labels:
             if not skip_first_iteration and hasattr(self, matrix):

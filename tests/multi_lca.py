@@ -128,5 +128,5 @@ def test_inventory_matrix_construction(dps, config, func_units):
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
 
 
-def test_consistent_indexing():
+def test_consistent_indexing_for_single_sparse_matrix_dict():
     pass

@@ -13,20 +13,20 @@ class MethodConfig(BaseModel):
     The basic object in all three categories is an identifying tuple, i.e. tuples of strings. These
     tuples have no length restrictions.
 
-    `impact_categories` is a list of identifying tuples.
+    `impact_categories` is a list of tuples which identify each impact category (`bw2data.Method`).
 
     `normalizations` link normalization factors to impact categories. They are optional. If
-    provided, they take the form of a dictionary, with keys of identifying tuples, and values of
-    lists of identifying tuples. They keys identify the normalization data, and the values refer to
-    impact categories.
+    provided, they take the form of a dictionary, with keys of tuples which identify each
+    normalization (`bw2data.Normalization`), and values of *lists* of impact categories tuples.
 
     If `normalizations` is defined, **all** impact categories must have a normalization.
 
-    `weightings` link weighting factors to either normalizations or impact categories. They are
-    optional. If provided, they take the form of a dictionary, with keys of identifying tuples, and
-    values of lists of identifying tuples. They keys identify the weighting data, and the values
-    refer to either impact categories or normalizations - mixing impact categories and
-    normalizations is not allowed.
+    `weightings` link weighting factors to either normalizations *or* impact categories. They are
+    optional. If provided, they take the form of a dictionary, with keys of tuples which identify
+    each weighting (`bw2data.Weighting`), and values of *lists* of normalizations or impact
+    categories tuples. They keys identify the weighting data, and the values refer to either
+    impact categories or normalizations - mixing impact categories and normalizations is not
+    allowed.
 
     If `normalizations` is defined, **all** impact categories or normalizations must have a
     weighting.

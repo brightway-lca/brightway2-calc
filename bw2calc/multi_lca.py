@@ -39,7 +39,7 @@ class MultiLCA(LCABase):
     * Calculation results are a dictionary with keys of functional units and impact categories
 
     The calculation procedure is the same as for singular LCA: `lci()`, `lcia()`, and `next()`. See
-    the LCA documentation on this behaviour and input arguments.
+    the LCA documentation for these methods and their input arguments.
 
     Parameters
     ----------
@@ -143,9 +143,7 @@ class MultiLCA(LCABase):
     ####################
 
     def __next__(self) -> None:
-        skip_first_iteration = (
-            hasattr(self, "keep_first_iteration_flag") and self.keep_first_iteration_flag
-        )
+        skip_first_iteration = getattr(self, "keep_first_iteration_flag")
 
         for matrix in self.matrix_labels:
             if not skip_first_iteration and hasattr(self, matrix):
@@ -212,16 +210,16 @@ class MultiLCA(LCABase):
             for process_id, process_amount in value.items():
                 try:
                     array[self.dicts.product[process_id]] = process_amount
-                except KeyError:
+                except KeyError as exc:
                     if process_id in self.dicts.activity:
                         raise ValueError(
-                            f"LCA can only be performed on products, not activities ({process_id} "
-                            + "is the wrong dimension)"
-                        )
+                            f"LCA can only be performed on products, not processes ({process_id} "
+                            + "is a process id)"
+                        ) from exc
                     else:
                         raise OutsideTechnosphere(
                             f"Can't find key {process_id} in product dictionary"
-                        )
+                        ) from exc
 
             self.demand_arrays[key] = array
 
@@ -233,7 +231,7 @@ class MultiLCA(LCABase):
         self, data_objs: Iterable[bwp.DatapackageBase], identifier: list[str]
     ) -> list[bwp.DatapackageBase]:
         """Filter the datapackage resources in `data_objs` whose "identifier" attribute equals
-        `identifier`.
+        input argument `identifier`.
 
         Used in splitting up impact categories, normalization, and weighting matrices."""
         return [dp.filter_by_attribute("identifier", identifier) for dp in data_objs]
