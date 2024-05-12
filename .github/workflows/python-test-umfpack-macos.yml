@@ -34,7 +34,7 @@ jobs:
       matrix:
         os: [macos-latest]
         # os: [ubuntu-latest, windows-latest, macos-latest]
-        py-version: ["3.12"]
+        py-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
