@@ -3,8 +3,8 @@ from pathlib import Path
 
 import bw_processing as bwp
 import pytest
-from fs.osfs import OSFS
-from fs.zipfs import ZipFS
+from bw_processing.io_helpers import generic_directory_filesystem
+from fsspec.implementations.zip import ZipFileSystem as ZFS
 
 from bw2calc.utils import get_datapackage, get_seed
 
@@ -23,19 +23,24 @@ def test_consistent_global_index():
 
 
 def test_get_datapackage():
-    dp = bwp.load_datapackage(ZipFS(fixture_dir / "basic_fixture.zip"))
+    dp = bwp.load_datapackage(ZFS(fixture_dir / "basic_fixture.zip"))
     assert get_datapackage(dp) is dp
 
-    assert get_datapackage(ZipFS(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
+    assert get_datapackage(ZFS(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
 
     assert get_datapackage(fixture_dir / "basic_fixture.zip").metadata == dp.metadata
 
     assert get_datapackage(str(fixture_dir / "basic_fixture.zip")).metadata == dp.metadata
 
-    dp = bwp.load_datapackage(OSFS(fixture_dir / "basic_fixture"))
+    dp = bwp.load_datapackage(generic_directory_filesystem(dirpath=fixture_dir / "basic_fixture"))
     assert get_datapackage(dp) is dp
 
-    assert get_datapackage(OSFS(fixture_dir / "basic_fixture")).metadata == dp.metadata
+    assert (
+        get_datapackage(
+            generic_directory_filesystem(dirpath=fixture_dir / "basic_fixture")
+        ).metadata
+        == dp.metadata
+    )
 
     assert get_datapackage(str(fixture_dir / "basic_fixture")).metadata == dp.metadata
 

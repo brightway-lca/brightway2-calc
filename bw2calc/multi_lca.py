@@ -6,7 +6,7 @@ from typing import Iterable, Optional, Union
 import bw_processing as bwp
 import matrix_utils as mu
 import numpy as np
-from fs.base import FS
+from fsspec import AbstractFileSystem
 from pydantic import BaseModel
 from scipy import sparse
 
@@ -80,7 +80,7 @@ class MultiLCA(LCABase):
         self,
         demands: dict[str, dict[int, float]],
         method_config: dict,
-        data_objs: Iterable[Union[Path, FS, bwp.DatapackageBase]],
+        data_objs: Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]],
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
@@ -188,8 +188,12 @@ class MultiLCA(LCABase):
 
         if hasattr(self, "inventory"):
             self.lci_calculation()
-        if hasattr(self, "characterized_inventory"):
+        if hasattr(self, "characterized_inventories"):
             self.lcia_calculation()
+        if hasattr(self, "normalized_inventories"):
+            self.normalization_calculation()
+        if hasattr(self, "weighted_inventories"):
+            self.weighting_calculation()
 
     def build_demand_array(self, demands: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.

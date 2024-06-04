@@ -13,6 +13,7 @@ The `MultiLCA` class can be used for both static and Monte Carlo calculations. Y
 ### Other changes
 
 * Removed graph traversal completely - use [bw_graph_tools](https://github.com/brightway-lca/bw_graph_tools) instead.
+* Migrate from `fs` to `fsspec`
 * Start using [`@` for matrix multiplication](https://peps.python.org/pep-0465/)
 * Removed `MonteCarloLCA` (normal LCA class can do Monte Carlo) and added `IterativeLCA` (different solving strategy)
 * Fix miscellaneous deprecated API calls

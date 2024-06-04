@@ -9,7 +9,7 @@ import bw_processing as bwp
 import matrix_utils as mu
 import numpy as np
 import pandas as pd
-from fs.base import FS
+from fsspec import AbstractFileSystem
 from scipy import sparse
 
 from . import PYPARDISO, __version__, prepare_lca_inputs
@@ -48,7 +48,7 @@ class LCA(LCABase):
         weighting: Optional[str] = None,
         normalization: Optional[str] = None,
         # Brightway 2.5 calling convention
-        data_objs: Optional[Iterable[Union[Path, FS, bwp.DatapackageBase]]] = None,
+        data_objs: Optional[Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
@@ -212,7 +212,7 @@ class LCA(LCABase):
     ##################
 
     def load_lcia_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
+        self, data_objs: Optional[Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load data and create characterization matrix.
 
@@ -242,7 +242,7 @@ class LCA(LCABase):
             warnings.warn("All values in characterization matrix are zero")
 
     def load_normalization_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
+        self, data_objs: Optional[Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
         use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
@@ -259,7 +259,7 @@ class LCA(LCABase):
         self.normalization_matrix = self.normalization_mm.matrix
 
     def load_weighting_data(
-        self, data_objs: Optional[Iterable[Union[FS, bwp.DatapackageBase]]] = None
+        self, data_objs: Optional[Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
         use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
@@ -343,7 +343,7 @@ class LCA(LCABase):
 
     def _switch(
         self,
-        obj: Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]],
+        obj: Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]],
         label: str,
         matrix: str,
         func: Callable,
@@ -366,7 +366,9 @@ class LCA(LCABase):
             },
         )
 
-    def switch_method(self, method=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]) -> None:
+    def switch_method(
+        self, method=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
+    ) -> None:
         """Load a new method and replace ``.characterization_mm`` and ``.characterization_matrix``.
 
         Does not do any new calculations or change ``.characterized_inventory``."""
@@ -378,7 +380,7 @@ class LCA(LCABase):
         )
 
     def switch_normalization(
-        self, normalization=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
+        self, normalization=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
     ) -> None:
         """Load a new normalization and replace ``.normalization_mm`` and ``.normalization_matrix``.
 
@@ -391,7 +393,7 @@ class LCA(LCABase):
         )
 
     def switch_weighting(
-        self, weighting=Union[tuple, Iterable[Union[FS, bwp.DatapackageBase]]]
+        self, weighting=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
     ) -> None:
         """Load a new weighting and replace ``.weighting_mm`` and ``.weighting_matrix``.
 

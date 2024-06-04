@@ -3,9 +3,9 @@ from pathlib import Path
 
 import bw_processing as bwp
 import numpy as np
-from fs.base import FS
-from fs.osfs import OSFS
-from fs.zipfs import ZipFS
+from bw_processing.io_helpers import generic_directory_filesystem
+from fsspec import AbstractFileSystem
+from fsspec.implementations.zip import ZipFileSystem
 
 from .errors import InconsistentGlobalIndex
 
@@ -27,7 +27,9 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
     ]
     if len(set(global_list)) > 1:
         raise InconsistentGlobalIndex(
-            f"Multiple global index values found: {global_list}. If multiple LCIA datapackages are present, they must use the same value for ``GLO``, the global location, in order for filtering for site-generic LCIA to work correctly."
+            f"Multiple global index values found: {global_list}. If multiple LCIA datapackages"
+            + " are present, they must use the same value for ``GLO``, the global location, in "
+            + " order for filtering for site-generic LCIA to work correctly."
         )
     return global_list[0] if global_list else None
 
@@ -50,16 +52,16 @@ def wrap_functional_unit(dct):
 def get_datapackage(obj):
     if isinstance(obj, bwp.DatapackageBase):
         return obj
-    elif isinstance(obj, FS):
+    elif isinstance(obj, AbstractFileSystem):
         return bwp.load_datapackage(obj)
     elif isinstance(obj, Path) and obj.suffix.lower() == ".zip":
-        return bwp.load_datapackage(ZipFS(obj))
+        return bwp.load_datapackage(ZipFileSystem(obj))
     elif isinstance(obj, Path) and obj.is_dir():
-        return bwp.load_datapackage(OSFS(obj))
+        return bwp.load_datapackage(generic_directory_filesystem(dirpath=obj))
     elif isinstance(obj, str) and obj.lower().endswith(".zip") and Path(obj).is_file():
-        return bwp.load_datapackage(ZipFS(Path(obj)))
+        return bwp.load_datapackage(ZipFileSystem(Path(obj)))
     elif isinstance(obj, str) and Path(obj).is_dir():
-        return bwp.load_datapackage(OSFS(Path(obj)))
+        return bwp.load_datapackage(generic_directory_filesystem(dirpath=Path(obj)))
 
     else:
         raise TypeError("Unknown input type for loading datapackage: {}: {}".format(type(obj), obj))
