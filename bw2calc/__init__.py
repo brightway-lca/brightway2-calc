@@ -10,9 +10,10 @@ __all__ = [
 __version__ = "2.0.DEV16"
 
 
-import json_logging
 import platform
 import warnings
+
+import json_logging
 
 json_logging.init_non_web(enable_json=True)
 

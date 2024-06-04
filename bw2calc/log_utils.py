@@ -82,7 +82,7 @@ class JSONFormatter(logging.Formatter):
         else:
             # Also support logger.info({'foo': 'bar'})
             data = eval(message)
-        data["time"] = utc_now().isoformat() + 'Z'
+        data["time"] = utc_now().isoformat() + "Z"
 
         if record.exc_info:
             data["exc_info"] = self.formatException(record.exc_info)
@@ -92,11 +92,13 @@ class JSONFormatter(logging.Formatter):
 def create_logger(dirpath=None, name=None, **kwargs):
     """Create a ``logger`` instance named ``bw2calc`` that can be used to log calculations.
 
-    ``dirpath`` is the directory where the log file is saved. If ``dirpath`` is ``None``, no logger is created.
+    ``dirpath`` is the directory where the log file is saved. If ``dirpath`` is ``None``, no logger
+    is created.
 
     ``name`` is the name of the calculation run, used to construct the log filepath.
 
-    You can add other types of loggers, just add another handler to the ``bw2calc`` named logger before starting your calculations.
+    You can add other types of loggers, just add another handler to the ``bw2calc`` named logger
+    before starting your calculations.
 
     Returns the filepath of the created log file.
 
@@ -108,7 +110,7 @@ def create_logger(dirpath=None, name=None, **kwargs):
     assert os.path.isdir(dirpath) and os.access(dirpath, os.W_OK)
 
     # Use safe_filepath here
-    filename = "{}.{}.json".format(name or uuid.uuid4().hex, utc_now().isoformat() + 'Z')
+    filename = "{}.{}.json".format(name or uuid.uuid4().hex, utc_now().isoformat() + "Z")
 
     formatter = JSONFormatter()
     fp = os.path.abspath(os.path.join(dirpath, filename))

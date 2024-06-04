@@ -51,7 +51,7 @@ class SingleValueDiagonalMatrix(MappedMatrix):
         seed_override: Union[int, None] = None,
         indexer_override: Any = None,
         custom_filter: Union[Callable, None] = None,
-        **kwargs
+        **kwargs,
     ):
         self.dimension = dimension
 
