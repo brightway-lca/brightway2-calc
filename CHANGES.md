@@ -2,9 +2,18 @@
 
 ## DEV
 
+### New `MultiLCA` implementation
+
+The new `MultiLCA` implementation support efficient calculation of multiple functional units, impact categories, normalizations, and weightings, and support advanced features of datapackages across the complete calculation chain, including scenarios and correlated uncertainty.
+
+To perform a `MultiLCA`, you first need to define your configuration. There is a `pydantic` [validator `MethodConfig`](https://github.com/brightway-lca/brightway2-calc/blob/9c94ec64c68103d21f4c7d262c3038e83fb09978/bw2calc/method_config.py#L8) to make sure it is constructed correctly; see its docs for more info.
+
+The `MultiLCA` class can be used for both static and Monte Carlo calculations. You can configure which types of uncertainty to use where with `selective_use`. See the [`MultiLCA` class docs](https://github.com/brightway-lca/brightway2-calc/blob/main/bw2calc/multi_lca.py) for more information.
+
+### Other changes
+
 * Removed graph traversal completely - use [bw_graph_tools](https://github.com/brightway-lca/bw_graph_tools) instead.
 * Start using [`@` for matrix multiplication](https://peps.python.org/pep-0465/)
-* Some progress on a new `MultiLCA` implementation
 * Removed `MonteCarloLCA` (normal LCA class can do Monte Carlo) and added `IterativeLCA` (different solving strategy)
 * Fix miscellaneous deprecated API calls
 
