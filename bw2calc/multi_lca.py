@@ -313,11 +313,13 @@ class MultiLCA(LCABase):
                 for wng in self.config["weightings"]
             },
             matrix="weighting_matrix",
+            row_mapper=None,
             dimension=len(self.biosphere_mm.row_mapper),
             use_arrays=use_arrays,
             use_distributions=use_distributions,
             seed_override=self.seed_override,
             matrix_class=SingleValueDiagonalMatrix,
+            diagonal=True,
         )
         for key, value in self.weighting_mm_dict.items():
             if len(value.matrix.data) == 0:

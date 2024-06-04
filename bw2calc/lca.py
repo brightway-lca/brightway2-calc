@@ -17,7 +17,7 @@ from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
 from .lca_base import LCABase
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage, wrap_functional_unit, utc_now
+from .utils import consistent_global_index, get_datapackage, utc_now, wrap_functional_unit
 
 try:
     from bw2data import get_node
@@ -267,6 +267,7 @@ class LCA(LCABase):
         self.weighting_mm = SingleValueDiagonalMatrix(
             packages=data_objs or self.packages,
             matrix="weighting_matrix",
+            row_mapper=None,
             dimension=len(self.biosphere_mm.row_mapper),
             use_arrays=use_arrays,
             use_distributions=use_distributions,

@@ -55,10 +55,10 @@ class MethodConfig(BaseModel):
         },
         "weightings": {
             ("climate change", "bad"): [
-                ("climate change", "global normalization")
+                ("how bad?", "dead", "people")
             ],
             ("eutrophication", "also bad"): [
-                ("eut european reference", "1990")
+                ("how bad?", "dead", "fish")
             ]
         }
     }
