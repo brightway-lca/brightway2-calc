@@ -369,24 +369,23 @@ class MultiLCA(LCABase):
         if hasattr(self, "weighting_matrices"):
             self.weighting_calculation()
 
-    # def normalization_calculation(self) -> None:
-    #     """The actual normalization calculation.
+    def normalization_calculation(self) -> None:
+        """The actual normalization calculation.
 
-    #     Creates ``self.normalized_inventory``."""
-    #     self.normalized_inventory = self.normalization_matrix @ self.characterized_inventory
+        Creates ``self.normalized_inventories``."""
+        self.normalized_inventories = self.normalization_matrices @ self.characterized_inventories
 
-    # def weighting_calculation(self) -> None:
-    #     """The actual weighting calculation.
+    def weighting_calculation(self) -> None:
+        """The actual weighting calculation.
 
-    #     Multiples weighting value by normalized inventory, if available, otherwise by
-    #   characterized inventory.
+          Multiplies weighting value by normalized inventories, if available, otherwise by
+        characterized inventories.
 
-    #     Creates ``self.weighted_inventory``."""
-    #     if hasattr(self, "normalized_inventory"):
-    #         obj = self.normalized_inventory
-    #     else:
-    #         obj = self.characterized_inventory
-    #     self.weighted_inventory = self.weighting_matrix @ obj
+          Creates ``self.weighted_inventories``."""
+        if hasattr(self, "normalized_inventories"):
+            self.weighted_inventories = self.weighting_matrices @ self.normalized_inventories
+        else:
+            self.weighted_inventories = self.weighting_matrices @ self.characterized_inventories
 
     @property
     def scores(self) -> dict:
@@ -396,17 +395,12 @@ class MultiLCA(LCABase):
         Note that this is a `property <http://docs.python.org/2/library/functions.html#property>`_,
         so it is ``foo.lca``, not ``foo.score()``
         """
-        assert hasattr(self, "characterized_inventories"), "Must do LCIA first"
-        return {key: arr.sum() for key, arr in self.characterized_inventories.items()}
-        # if hasattr(self, "weighted_inventory"):
-        #     return float(self.weighted_inventory.sum())
-        # elif hasattr(self, "normalized_inventory"):
-        #     return float(self.normalized_inventory.sum())
-        # else:
-        #     return float(self.characterized_inventory.sum())
+        if not hasattr(self, "characterized_inventories"):
+            raise ValueError("Must do LCIA first")
 
-
-class MultiLCAResult:
-    def __init__(self):
-        """Container for storing and interpreting `MultiLCA` results."""
-        pass
+        if hasattr(self, "weighted_inventories"):
+            return {key: arr.sum() for key, arr in self.weighted_inventories.items()}
+        elif hasattr(self, "normalized_inventories"):
+            return {key: arr.sum() for key, arr in self.normalized_inventories.items()}
+        else:
+            return {key: arr.sum() for key, arr in self.characterized_inventories.items()}

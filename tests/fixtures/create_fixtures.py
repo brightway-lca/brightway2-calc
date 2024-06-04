@@ -481,11 +481,53 @@ def create_multilca_simple():
         global_index=0,
     )
 
+    dp6 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_normalization.zip"), write=True),
+    )
+    indices_array = np.array([(201, 0), (203, 0)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (4, 1.0, np.NaN, np.NaN, 0.5, 1.5, False),
+            (4, 1.0, np.NaN, np.NaN, 0.5, 1.5, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
+    dp6.add_persistent_vector(
+        matrix="normalization_matrix",
+        data_array=np.ones(2).astype(float),
+        name="normalization-1",
+        identifier=("n", "1"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        global_index=0,
+    )
+
+    dp7 = create_datapackage(
+        fs=ZipFS(str(fixture_dir / "multi_lca_simple_weighting.zip"), write=True),
+    )
+    indices_array = np.array([(0, 0)], dtype=INDICES_DTYPE)
+    distributions_array = np.array(
+        [
+            (3, 42.0, 2.71, np.NaN, np.NaN, np.NaN, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
+    dp7.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=np.array([42]),
+        name="weighting-1",
+        identifier=("w", "1"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+    )
+
     dp1.finalize_serialization()
     dp2.finalize_serialization()
     dp3.finalize_serialization()
     dp4.finalize_serialization()
     dp5.finalize_serialization()
+    dp6.finalize_serialization()
+    dp7.finalize_serialization()
 
 
 def create_mc_complete():
@@ -535,14 +577,14 @@ def create_mc_complete():
 
 
 if __name__ == "__main__":
-    # empty_biosphere()
-    # bw2io_example_database()
-    # create_mc_basic()
-    # create_mc_complete()
-    # create_missing_characterization()
-    # create_empty_characterization()
-    # create_basic_fixture_zipfile()
-    # create_basic_fixture_directory()
-    # create_array_fixtures()
-    # create_svdm_fixtures()
+    empty_biosphere()
+    bw2io_example_database()
+    create_mc_basic()
+    create_mc_complete()
+    create_missing_characterization()
+    create_empty_characterization()
+    create_basic_fixture_zipfile()
+    create_basic_fixture_directory()
+    create_array_fixtures()
+    create_svdm_fixtures()
     create_multilca_simple()

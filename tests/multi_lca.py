@@ -130,3 +130,108 @@ def test_inventory_matrix_construction(dps, config, func_units):
 
 def test_consistent_indexing_for_single_sparse_matrix_dict():
     pass
+
+
+def test_normalization(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+
+    assert len(mlca.normalization_matrices) == 1
+    assert len(mlca.normalized_inventories) == len(mlca.characterized_inventories)
+
+    rows = np.zeros(mlca.biosphere_matrix.shape[0])
+    rows = np.array([mlca.dicts.biosphere[201], mlca.dicts.biosphere[203]])
+
+    for key, mat in mlca.normalized_inventories.items():
+        expected = mlca.characterized_inventories[key[1:]][rows, :].sum()
+        assert mat.sum() == expected
+
+
+def test_normalization_with_weighting(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    assert len(mlca.weighting_matrices) == 1
+    assert len(mlca.normalized_inventories) == len(mlca.characterized_inventories)
+    assert len(mlca.weighted_inventories) == len(mlca.characterized_inventories)
+
+    rows = np.zeros(mlca.biosphere_matrix.shape[0])
+    rows = np.array([mlca.dicts.biosphere[201], mlca.dicts.biosphere[203]])
+
+    for key, mat in mlca.weighted_inventories.items():
+        expected = mlca.characterized_inventories[key[2:]][rows, :].sum()
+        assert np.allclose(mat.sum(), expected * 42)
+
+
+def test_normalization_without_weighting(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "weightings": {
+            ("w", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.weight()
+
+    assert len(mlca.weighting_matrices) == 1
+    assert len(mlca.weighted_inventories) == len(mlca.characterized_inventories)
+
+    for key, mat in mlca.weighted_inventories.items():
+        expected = mlca.characterized_inventories[key[1:]].sum()
+        assert np.allclose(mat.sum(), expected * 42)
