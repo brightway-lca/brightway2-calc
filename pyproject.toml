@@ -25,7 +25,7 @@ requires-python = ">=3.9"
 dependencies = [
         "bw_processing",
         "json_logging",
-        "matrix_utils",
+        "matrix_utils >=0.4.3",
         "numpy",
         "pandas",
         "pydantic",
@@ -41,7 +41,7 @@ tracker = "https://github.com/brightway-lca/brightway2-calc/issues"
 [project.optional-dependencies]
 testing = [
     "bw2calc",
-    "bw2data>=4.0.DEV32",
+    "bw2data>=4.0.DEV39",
     "pytest",
     "pytest-cov",
     "pytest-randomly",
