@@ -175,7 +175,7 @@ class MultiLCA(LCABase):
                     extra={
                         "matrix_dict": matrix_dict,
                         "indexer": obj.global_indexer.index,
-                        "matrix_sums": [matrix.sum() for matrix in obj.values()],
+                        "matrix_sums": [mm.matrix.sum() for mm in obj.values()],
                         "utc": utc_now(),
                     },
                 )
