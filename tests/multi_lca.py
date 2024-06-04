@@ -128,10 +128,6 @@ def test_inventory_matrix_construction(dps, config, func_units):
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
 
 
-def test_consistent_indexing_for_single_sparse_matrix_dict():
-    pass
-
-
 def test_normalization(dps, func_units):
     config = {
         "impact_categories": [
@@ -201,6 +197,10 @@ def test_normalization_with_weighting(dps, func_units):
     rows = np.zeros(mlca.biosphere_matrix.shape[0])
     rows = np.array([mlca.dicts.biosphere[201], mlca.dicts.biosphere[203]])
 
+    for k, v in mlca.weighting_matrices.items():
+        print(k)
+        print(v.todense())
+
     for key, mat in mlca.weighted_inventories.items():
         expected = mlca.characterized_inventories[key[2:]][rows, :].sum()
         assert np.allclose(mat.sum(), expected * 42)
@@ -235,3 +235,112 @@ def test_normalization_without_weighting(dps, func_units):
     for key, mat in mlca.weighted_inventories.items():
         expected = mlca.characterized_inventories[key[1:]].sum()
         assert np.allclose(mat.sum(), expected * 42)
+
+
+def test_selective_use(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    su = {
+        "characterization_matrix": {"use_distributions": True},
+        "weighting_matrix": {"use_distributions": True},
+    }
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    results = {key: mat.sum() for key, mat in mlca.weighted_inventories.items()}
+    w = {key: mat.sum() for key, mat in mlca.weighting_matrices.items()}
+    n = {key: mat.sum() for key, mat in mlca.normalization_matrices.items()}
+    c = {key: mat.sum() for key, mat in mlca.characterization_matrices.items()}
+    t = mlca.technosphere_matrix.sum()
+    b = mlca.biosphere_matrix.sum()
+
+    next(mlca)
+
+    assert not any(
+        np.allclose(mat.sum(), results[key]) for key, mat in mlca.weighted_inventories.items()
+    )
+    assert not any(np.allclose(mat.sum(), w[key]) for key, mat in mlca.weighting_matrices.items())
+    assert all(np.allclose(mat.sum(), n[key]) for key, mat in mlca.normalization_matrices.items())
+    assert not any(
+        np.allclose(mat.sum(), c[key]) for key, mat in mlca.characterization_matrices.items()
+    )
+    assert np.allclose(b, mlca.biosphere_matrix.sum())
+    assert np.allclose(t, mlca.technosphere_matrix.sum())
+
+
+def test_selective_use_keep_first(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    su = {
+        "characterization_matrix": {"use_distributions": True},
+        "weighting_matrix": {"use_distributions": True},
+    }
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+    mlca.keep_first_iteration()
+
+    results = {key: mat.sum() for key, mat in mlca.weighted_inventories.items()}
+    w = {key: mat.sum() for key, mat in mlca.weighting_matrices.items()}
+    n = {key: mat.sum() for key, mat in mlca.normalization_matrices.items()}
+    c = {key: mat.sum() for key, mat in mlca.characterization_matrices.items()}
+    t = mlca.technosphere_matrix.sum()
+    b = mlca.biosphere_matrix.sum()
+
+    next(mlca)
+
+    assert all(
+        np.allclose(mat.sum(), results[key]) for key, mat in mlca.weighted_inventories.items()
+    )
+    assert all(np.allclose(mat.sum(), w[key]) for key, mat in mlca.weighting_matrices.items())
+    assert all(np.allclose(mat.sum(), n[key]) for key, mat in mlca.normalization_matrices.items())
+    assert all(
+        np.allclose(mat.sum(), c[key]) for key, mat in mlca.characterization_matrices.items()
+    )
+    assert np.allclose(b, mlca.biosphere_matrix.sum())
+    assert np.allclose(t, mlca.technosphere_matrix.sum())

@@ -55,6 +55,10 @@ class SingleValueDiagonalMatrix(MappedMatrix):
     ):
         self.dimension = dimension
 
+        # We let it build an incorrect matrix, mappers, etc. just to ignore them
+        # It would be riskier to copy/paste out parts of the `__init__`, and
+        # remember to be consistent in the future. The resource cost
+        # of this approach is very low.
         super().__init__(
             packages=packages,
             matrix=matrix,
@@ -75,7 +79,6 @@ class SingleValueDiagonalMatrix(MappedMatrix):
                 ).format(len(self.raw_data), "\n\t".join([str(x) for x in self.packages]))
             )
 
-    def rebuild_matrix(self):
         self.matrix = sparse.coo_matrix(
             (
                 np.ones(self.dimension),
@@ -84,6 +87,9 @@ class SingleValueDiagonalMatrix(MappedMatrix):
             (self.dimension, self.dimension),
             dtype=np.float64,
         ).tocsr()
+        self.rebuild_matrix()
 
+    def rebuild_matrix(self):
         self.raw_data = np.hstack([group.calculate()[2] for group in self.groups])
-        self.matrix *= self.raw_data[0]
+        self.matrix.data *= 0
+        self.matrix.data += float(self.raw_data[0])
