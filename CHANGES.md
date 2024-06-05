@@ -1,14 +1,71 @@
 # `bw2calc` Changelog
 
-## DEV
+## 2.0.DEV17 (2024-06-05)
 
 ### New `MultiLCA` implementation
 
-The new `MultiLCA` implementation support efficient calculation of multiple functional units, impact categories, normalizations, and weightings, and support advanced features of datapackages across the complete calculation chain, including scenarios and correlated uncertainty.
+The new `MultiLCA` implementation support efficient calculation of multiple functional units, impact categories, normalizations, and weightings, and supports advanced features of `bw_processign` datapackages across the complete calculation chain, including scenarios and correlated uncertainty. It also adds usability improvements compared to previous implementations.
 
 To perform a `MultiLCA`, you first need to define your configuration. There is a `pydantic` [validator `MethodConfig`](https://github.com/brightway-lca/brightway2-calc/blob/9c94ec64c68103d21f4c7d262c3038e83fb09978/bw2calc/method_config.py#L8) to make sure it is constructed correctly; see its docs for more info.
 
+Here is an example `MultiLCA` calculation in action:
+
+```python
+import bw2data as bd
+import bw2io as bi
+
+# All the LCI and LCIA data exist in the current project
+functional_units = {
+    "γ": {bd.get_node(name="foo").id: 1},
+    "ε": {bd.get_node(name="bar").id: 2},
+    "ζ": {bd.get_node(name="baz").id: 3},
+}
+config = {
+    "impact_categories": [
+        ("first", "categ."),
+        ("second", "categ."),
+    ],
+    "normalizations": {
+        ("am I normal?",): [
+            ("first", "categ."),
+            ("second", "categ."),
+        ]
+    },
+    "weightings": {("heavy", "weight"): [("am I normal?",)]},
+}
+data_objs = bd.get_multilca_data_objs(functional_units=functional_units, method_config=config)
+mlca = MultiLCA(demands=functional_units, method_config=config, data_objs=dps)
+mlca.lci()
+mlca.lcia()
+mlca.normalize()
+mlca.weight()
+mlca.scores
+>>> {
+  (("heavy", "weight"), ("am I normal?",), ('first', 'categ.'), 'γ'): 190.31896453011996,
+  (("heavy", "weight"), ("am I normal?",), ('first', 'categ.'), 'ε'): 42.504568745060126,
+  (("heavy", "weight"), ("am I normal?",), ('first', 'categ.'), 'ζ'): 431.9104810103497,
+  (("heavy", "weight"), ("am I normal?",), ('second', 'categ.'), 'γ'): 1205.2506281852936,
+  (("heavy", "weight"), ("am I normal?",), ('second', 'categ.'), 'ε'): 269.17264029471556,
+  (("heavy", "weight"), ("am I normal?",), ('second', 'categ.'), 'ζ'): 5614.00396766416
+}
+```
+
+One big change compared to previous implementations is the labelling of matrices and results, which is used across the `MultiLCA` class.
+
 The `MultiLCA` class can be used for both static and Monte Carlo calculations. You can configure which types of uncertainty to use where with `selective_use`. See the [`MultiLCA` class docs](https://github.com/brightway-lca/brightway2-calc/blob/main/bw2calc/multi_lca.py) for more information.
+
+Here is an example of a selective use config. In this case, assuming `use_distributions=False` was passed to the `MultiLCA` constructor, on the characterization and weighting matrices would draw from the probability distribution information provided.
+
+```python
+{
+    "characterization_matrix": {"use_distributions": True},
+    "weighting_matrix": {"use_distributions": True},
+}
+```
+
+**Gotcha**: In `MultiLCA`, you need to use the selective use flags `characterization_matrix`, `normalization_matrix`, and `weighting_matrix`, even though all three of these are dictionaries, and called `characterization_matrices`, `normalization_matrices`, and `weighting_matrices`. This is because selective use flags can also be used in the base `LCA` class, and use the same code. The flags apply to **all** impact categories, normalizations, and weightings; You would need to write a custom subclass to turn on certain forms of uncertainty only for selected impact categories.
+
+Result matrices (`characterized_inventories`, `normalized_inventories`, `weighted_inventories`) are all dictionaries, with each combination of functional unit and impact category/normalization/weighting possible as described in the `MethodConfig`. The values in this dictionary are sparse matrices with the same dimensions as the `inventory`, namely biosphere flows (rows) by processes (columns).
 
 ### Other changes
 
