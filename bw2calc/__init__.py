@@ -27,7 +27,7 @@ It seems like you have an ARM architecture, but haven't installed scikit-umfpack
 Installing it could give you much faster calculations.
 """
 PYPARDISO_WARNING = """
-It seems like you have an ARM/INTEL architecture, but haven't installed pypardiso:
+It seems like you have an AMD/INTEL x64 architecture, but haven't installed pypardiso:
 
     https://pypi.org/project/pypardiso/
 
