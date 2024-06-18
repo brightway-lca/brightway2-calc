@@ -34,7 +34,7 @@ config = {
     "weightings": {("heavy", "weight"): [("am I normal?",)]},
 }
 data_objs = bd.get_multilca_data_objs(functional_units=functional_units, method_config=config)
-mlca = MultiLCA(demands=functional_units, method_config=config, data_objs=dps)
+mlca = MultiLCA(demands=functional_units, method_config=config, data_objs=data_objs)
 mlca.lci()
 mlca.lcia()
 mlca.normalize()
