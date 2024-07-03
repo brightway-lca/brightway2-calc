@@ -13,10 +13,6 @@ __version__ = "2.0.DEV17"
 import platform
 import warnings
 
-import json_logging
-
-json_logging.init_non_web(enable_json=True)
-
 ARM = {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"}
 AMD_INTEL = {"ia64", "i386", "i686", "x86_64"}
 UMFPACK_WARNING = """

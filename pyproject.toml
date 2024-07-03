@@ -25,7 +25,6 @@ requires-python = ">=3.9"
 dependencies = [
         "bw_processing",
         "fsspec",
-        "json_logging",
         "matrix_utils >=0.4.3",
         "numpy",
         "pandas",
