@@ -1,6 +1,7 @@
 import logging
 import warnings
 from pathlib import Path
+from scipy.sparse import csc_matrix, csr_matrix
 from typing import Iterable, Optional, Union
 
 import bw_processing as bwp
@@ -348,6 +349,12 @@ class MultiLCA(LCABase):
 
         """
         count = len(self.dicts.activity)
+
+        if PYPARDISO and isinstance(self.technosphere_matrix, csc_matrix):
+            self.technosphere_matrix.tocsr()
+        elif not PYPARDISO and isinstance(self.technosphere_matrix, csr_matrix):
+            self.technosphere_matrix.tocsc()
+
         solutions = spsolve(
             self.technosphere_matrix, np.vstack([arr for arr in self.demand_arrays.values()]).T
         )

@@ -1,8 +1,8 @@
 import warnings
 from collections.abc import Iterator
 from functools import partial
-from typing import Optional, Tuple
 from scipy.sparse import csc_matrix, csr_matrix
+from typing import Optional, Tuple
 
 import matrix_utils as mu
 import numpy as np
@@ -154,7 +154,14 @@ class LCABase(Iterator):
         if hasattr(self, "solver"):
             return self.solver(demand)
         else:
-            return spsolve(self.technosphere_matrix, demand)
+            if ((PYPARDISO and isinstance(self.technosphere_matrix, csr_matrix)) or
+                    (not PYPARDISO and isinstance(self.technosphere_matrix, csc_matrix))):
+                return spsolve(self.technosphere_matrix, demand)
+            elif PYPARDISO:
+                return spsolve(self.technosphere_matrix.tocsr(), demand)
+            else:
+                return spsolve(self.technosphere_matrix.tocsc(), demand)
+
 
     def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
