@@ -1,6 +1,7 @@
 import logging
 import warnings
 from pathlib import Path
+from scipy.sparse import csc_matrix, csr_matrix
 from typing import Iterable, Optional, Union
 
 import bw_processing as bwp

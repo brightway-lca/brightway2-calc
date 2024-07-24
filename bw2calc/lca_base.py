@@ -1,6 +1,7 @@
 import warnings
 from collections.abc import Iterator
 from functools import partial
+from scipy.sparse import csc_matrix, csr_matrix
 from typing import Optional, Tuple
 
 import matrix_utils as mu
@@ -45,7 +46,13 @@ class LCABase(Iterator):
             use_distributions=use_distributions,
             seed_override=self.seed_override,
         )
-        self.technosphere_matrix = self.technosphere_mm.matrix
+
+        # explicitly set technosphere format to optimal CSR/CSC format depending on solver
+        # see this link for discussion https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
+        if PYPARDISO:
+            self.technosphere_matrix = self.technosphere_mm.matrix.tocsr()
+        else:
+            self.technosphere_matrix = self.technosphere_mm.matrix.tocsc()
         self.dicts.product = partial(self.technosphere_mm.row_mapper.to_dict)
         self.dicts.activity = partial(self.technosphere_mm.col_mapper.to_dict)
 
@@ -119,7 +126,9 @@ class LCABase(Iterator):
         if PYPARDISO:
             warnings.warn("PARDISO installed; this is a no-op")
         else:
-            self.solver = factorized(self.technosphere_matrix.tocsc())
+            if isinstance(self.technosphere_matrix, csr_matrix):
+                self.technosphere_matrix.tocsc()
+            self.solver = factorized(self.technosphere_matrix)
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> None:
         """
@@ -145,7 +154,14 @@ class LCABase(Iterator):
         if hasattr(self, "solver"):
             return self.solver(demand)
         else:
-            return spsolve(self.technosphere_matrix, demand)
+            if ((PYPARDISO and isinstance(self.technosphere_matrix, csr_matrix)) or
+                    (not PYPARDISO and isinstance(self.technosphere_matrix, csc_matrix))):
+                return spsolve(self.technosphere_matrix, demand)
+            elif PYPARDISO:
+                return spsolve(self.technosphere_matrix.tocsr(), demand)
+            else:
+                return spsolve(self.technosphere_matrix.tocsc(), demand)
+
 
     def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
