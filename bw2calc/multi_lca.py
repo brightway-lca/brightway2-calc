@@ -349,15 +349,8 @@ class MultiLCA(LCABase):
 
         """
         count = len(self.dicts.activity)
-
-        if PYPARDISO and isinstance(self.technosphere_matrix, csc_matrix):
-            self.technosphere_matrix.tocsr()
-        elif not PYPARDISO and isinstance(self.technosphere_matrix, csr_matrix):
-            self.technosphere_matrix.tocsc()
-
-        solutions = spsolve(
-            self.technosphere_matrix, np.vstack([arr for arr in self.demand_arrays.values()]).T
-        )
+        demand_matrix = np.vstack([arr for arr in self.demand_arrays.values()]).T
+        solutions = spsolve(self.technosphere_matrix, demand_matrix).reshape(count, -1)
         self.supply_arrays = {name: arr for name, arr in zip(self.demands, solutions.T)}
         # Turn 1-d array into diagonal matrix
         self.inventories = mu.SparseMatrixDict(
