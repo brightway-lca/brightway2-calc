@@ -128,6 +128,16 @@ def test_inventory_matrix_construction(dps, config, func_units):
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
 
 
+def test_single_demand(dps, config):
+    single_func_unit = {"γ": {100: 1}}
+    mlca = MultiLCA(demands=single_func_unit, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    
+    assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
+    assert mlca.scores[(("second", "category"), "γ")] == 3 * 10
+
+
 def test_normalization(dps, func_units):
     config = {
         "impact_categories": [
