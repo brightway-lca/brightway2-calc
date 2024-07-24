@@ -1,7 +1,6 @@
 import logging
 import warnings
 from pathlib import Path
-from scipy.sparse import csc_matrix, csr_matrix
 from typing import Iterable, Optional, Union
 
 import bw_processing as bwp
@@ -184,6 +183,11 @@ class MultiLCA(LCABase):
         if not skip_first_iteration and hasattr(self, "after_matrix_iteration"):
             self.after_matrix_iteration()
 
+        # Avoid this conversion each time we do a calculation in the future
+        # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
+        if PYPARDISO:
+            self.technosphere_matrix = self.technosphere_matrix.tocsr()
+
         if skip_first_iteration:
             delattr(self, "keep_first_iteration_flag")
 
@@ -350,8 +354,12 @@ class MultiLCA(LCABase):
         """
         count = len(self.dicts.activity)
         demand_matrix = np.vstack([arr for arr in self.demand_arrays.values()]).T
-        solutions = spsolve(self.technosphere_matrix, demand_matrix).reshape(count, -1)
-        self.supply_arrays = {name: arr for name, arr in zip(self.demands, solutions.T)}
+        self.supply_arrays = {
+            name: arr
+            for name, arr in zip(
+                self.demands, spsolve(self.technosphere_matrix, demand_matrix).reshape(count, -1).T
+            )
+        }
         # Turn 1-d array into diagonal matrix
         self.inventories = mu.SparseMatrixDict(
             [

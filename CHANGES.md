@@ -1,5 +1,10 @@
 # `bw2calc` Changelog
 
+## 2.0.DEV18 (2024-07-24)
+
+* [#101](https://github.com/brightway-lca/brightway2-calc/pull/101): Convert `technosphere_matrix` to `csr` when using `pypardiso` for speed boost on repeated calculations.
+* [#104](https://github.com/brightway-lca/brightway2-calc/pull/104): Explicitly set array-size in MultiLCA's `lci_calculation()`. Solves bug with a single functional unit passed to `MultiLCA`.
+
 ## 2.0.DEV17 (2024-06-05)
 
 ### New `MultiLCA` implementation

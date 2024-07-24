@@ -133,7 +133,7 @@ def test_single_demand(dps, config):
     mlca = MultiLCA(demands=single_func_unit, method_config=config, data_objs=dps)
     mlca.lci()
     mlca.lcia()
-    
+
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
     assert mlca.scores[(("second", "category"), "γ")] == 3 * 10
 

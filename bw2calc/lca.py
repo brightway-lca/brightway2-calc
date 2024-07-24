@@ -170,6 +170,11 @@ class LCA(LCABase):
         if not skip_first_iteration and hasattr(self, "after_matrix_iteration"):
             self.after_matrix_iteration()
 
+        # Avoid this conversion each time we do a calculation in the future
+        # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
+        if PYPARDISO:
+            self.technosphere_matrix = self.technosphere_matrix.tocsr()
+
         if skip_first_iteration:
             delattr(self, "keep_first_iteration_flag")
 
