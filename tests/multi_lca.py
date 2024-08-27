@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -446,4 +447,48 @@ def test_monte_carlo_multiple_iterations_selective_use(dps, func_units):
     for key, lst in results_manual.items():
         assert np.unique(lst).shape == (10,)
     for key, lst in results_scores.items():
+        assert np.unique(lst).shape == (10,)
+
+
+def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    su = {
+        "characterization_matrix": {"use_distributions": True},
+        "weighting_matrix": {"use_distributions": True},
+    }
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    results = [mlca.scores for _ in zip(range(10), mlca)]
+
+    aggregated = defaultdict(list)
+    for line in results:
+        for k, v in line.items():
+            aggregated[k].append(v)
+
+    for key, lst in aggregated.items():
         assert np.unique(lst).shape == (10,)
