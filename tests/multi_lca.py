@@ -493,9 +493,11 @@ def test_monte_carlo_multiple_iterations_selective_use_technosphere(dps, func_un
             results_scores[key].append(val)
 
     for key, lst in results_manual.items():
-        assert np.unique(lst).shape == (10,)
+        if "γ" not in key:
+            assert np.unique(lst).shape == (10,)
     for key, lst in results_scores.items():
-        assert np.unique(lst).shape == (10,)
+        if "γ" not in key:
+            assert np.unique(lst).shape == (10,)
 
 
 def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps, func_units):

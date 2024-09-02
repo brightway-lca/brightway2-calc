@@ -38,7 +38,7 @@ def empty_biosphere():
     # Activity 1: The activity
 
     dp = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "empty_biosphere.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "empty_biosphere.zip", mode="w"),
     )
 
     data_array = np.array([1, 2, 3])
@@ -119,19 +119,19 @@ def _create_basic_fixture(fs, characterization=True, characterization_values=Tru
 
 
 def create_basic_fixture_zipfile():
-    _create_basic_fixture(ZipFileSystem(fixture_dir / "basic_fixture.zip", write=True))
+    _create_basic_fixture(ZipFileSystem(fixture_dir / "basic_fixture.zip", mode="w"))
 
 
 def create_missing_characterization():
     _create_basic_fixture(
-        ZipFileSystem(fixture_dir / "missing_characterization.zip", write=True),
+        ZipFileSystem(fixture_dir / "missing_characterization.zip", mode="w"),
         characterization=False,
     )
 
 
 def create_empty_characterization():
     _create_basic_fixture(
-        ZipFileSystem(fixture_dir / "empty_characterization.zip", write=True),
+        ZipFileSystem(fixture_dir / "empty_characterization.zip", mode="w"),
         characterization_values=False,
     )
 
@@ -141,7 +141,7 @@ def create_basic_fixture_directory():
 
 
 def create_svdm_fixtures():
-    dp = create_datapackage(fs=ZipFileSystem(fixture_dir / "svdm.zip", write=True), sequential=True)
+    dp = create_datapackage(fs=ZipFileSystem(fixture_dir / "svdm.zip", mode="w"), sequential=True)
 
     data_array = np.array([42])
     indices_array = np.array([(1, 1)], dtype=INDICES_DTYPE)
@@ -170,7 +170,7 @@ def create_svdm_fixtures():
 
     dp.finalize_serialization()
 
-    dp2 = create_datapackage(fs=ZipFileSystem(fixture_dir / "svdm2.zip", write=True))
+    dp2 = create_datapackage(fs=ZipFileSystem(fixture_dir / "svdm2.zip", mode="w"))
 
     data_array = np.array([88])
     indices_array = np.array([(2, 2)], dtype=INDICES_DTYPE)
@@ -188,7 +188,7 @@ def create_array_fixtures():
     # Products: 1, 2
     # Biosphere flows: 1
     dp = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "array_sequential.zip", write=True), sequential=True
+        fs=ZipFileSystem(fixture_dir / "array_sequential.zip", mode="w"), sequential=True
     )
 
     data_array = np.array([1, 1, 0.5])
@@ -233,7 +233,7 @@ def create_mc_basic():
     # Activity 1
     # Activity 2
     dp = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "mc_basic.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "mc_basic.zip", mode="w"),
     )
 
     data_array = np.array([1, 1, 0.5])
@@ -303,27 +303,30 @@ def create_multilca_simple():
     #   N: 102  -0.5    1
 
     dp1 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_1.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_1.zip", mode="w"),
     )
     data_array = np.array([0.2, 0.5, 1, 1, 0.5, 1])
     indices_array = np.array(
         [(100, 1), (100, 2), (100, 3), (101, 1), (102, 1), (102, 2)], dtype=INDICES_DTYPE
     )
     flip_array = np.array([1, 1, 0, 0, 1, 0], dtype=bool)
-    # distributions_array = np.array(
-    #     [
-    #         (4, 0.1, np.NaN, np.NaN, 0.2, 0.8, False),
-    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
-    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
-    #     ],
-    #     dtype=UNCERTAINTY_DTYPE,
-    # )
+    distributions_array = np.array(
+        [
+            (4, 0.2, np.NaN, np.NaN, 0.1, 0.8, False),
+            (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+            (4, 0.5, np.NaN, np.NaN, 0.2, 0.8, False),
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
     dp1.add_persistent_vector(
         matrix="technosphere_matrix",
         data_array=data_array,
         name="technosphere",
         indices_array=indices_array,
-        # distributions_array=distributions_array,
+        distributions_array=distributions_array,
         flip_array=flip_array,
     )
 
@@ -335,7 +338,7 @@ def create_multilca_simple():
     #   P: 104  1
 
     dp2 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_2.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_2.zip", mode="w"),
     )
     data_array = np.array([0.1, 0.2, 0.1, 0.4, 1, 1])
     indices_array = np.array(
@@ -357,16 +360,25 @@ def create_multilca_simple():
     #   Q: 105  1
 
     dp3 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_3.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_3.zip", mode="w"),
     )
     data_array = np.array([0.1, 0.2, 1])
     indices_array = np.array([(100, 6), (102, 6), (105, 6)], dtype=INDICES_DTYPE)
     flip_array = np.array([1, 1, 0], dtype=bool)
+    distributions_array = np.array(
+        [
+            (5, 0.1, np.NaN, np.NaN, 0.1, 0.8, False),
+            (5, 0.2, np.NaN, np.NaN, 0.2, 0.8, False),
+            (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
     dp3.add_persistent_vector(
         matrix="technosphere_matrix",
         data_array=data_array,
         name="technosphere",
         indices_array=indices_array,
+        distributions_array=distributions_array,
         flip_array=flip_array,
     )
 
@@ -379,20 +391,23 @@ def create_multilca_simple():
     indices_array = np.array(
         [(200, 1), (200, 2), (200, 3), (201, 1), (201, 2), (201, 3)], dtype=INDICES_DTYPE
     )
-    # distributions_array = np.array(
-    #     [
-    #         (4, 0.1, np.NaN, np.NaN, 0.2, 0.8, False),
-    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
-    #         (0, 1, np.NaN, np.NaN, np.NaN, np.NaN, False),
-    #     ],
-    #     dtype=UNCERTAINTY_DTYPE,
-    # )
+    distributions_array = np.array(
+        [
+            (5, 2, np.NaN, np.NaN, 0, 10, False),
+            (5, 4, np.NaN, np.NaN, 0, 10, False),
+            (5, 8, np.NaN, np.NaN, 0, 10, False),
+            (5, 1, np.NaN, np.NaN, 0, 10, False),
+            (5, 2, np.NaN, np.NaN, 0, 10, False),
+            (5, 3, np.NaN, np.NaN, 0, 10, False),
+        ],
+        dtype=UNCERTAINTY_DTYPE,
+    )
     dp1.add_persistent_vector(
         matrix="biosphere_matrix",
         data_array=data_array,
         name="biosphere",
         indices_array=indices_array,
-        # distributions_array=distributions_array,
+        distributions_array=distributions_array,
     )
 
     # Second biosphere
@@ -428,7 +443,7 @@ def create_multilca_simple():
     # 200-206   1
 
     dp4 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_4.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_4.zip", mode="w"),
     )
     indices_array = np.array(
         [(200, 0), (201, 0), (202, 0), (203, 0), (204, 0), (205, 0), (206, 0)], dtype=INDICES_DTYPE
@@ -461,7 +476,7 @@ def create_multilca_simple():
     # 205   10
 
     dp5 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_5.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_5.zip", mode="w"),
     )
     indices_array = np.array([(201, 0), (203, 0), (205, 0)], dtype=INDICES_DTYPE)
     distributions_array = np.array(
@@ -483,7 +498,7 @@ def create_multilca_simple():
     )
 
     dp6 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_normalization.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_normalization.zip", mode="w"),
     )
     indices_array = np.array([(201, 0), (203, 0)], dtype=INDICES_DTYPE)
     distributions_array = np.array(
@@ -504,7 +519,7 @@ def create_multilca_simple():
     )
 
     dp7 = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_weighting.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "multi_lca_simple_weighting.zip", mode="w"),
     )
     indices_array = np.array([(0, 0)], dtype=INDICES_DTYPE)
     distributions_array = np.array(
@@ -539,7 +554,7 @@ def create_mc_complete():
     # Activity 1
     # Activity 2
     dp = create_datapackage(
-        fs=ZipFileSystem(fixture_dir / "mc_complete.zip", write=True),
+        fs=ZipFileSystem(fixture_dir / "mc_complete.zip", mode="w"),
     )
 
     data_array = np.array([1, 2])
