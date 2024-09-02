@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## 2.0.DEV19 (2024-09-02)
+
+* Fix [#105](https://github.com/brightway-lca/brightway2-calc/issues/105): `MultiLCA` class returning identical results under iteration
+
 ## 2.0.DEV18 (2024-07-24)
 
 * [#101](https://github.com/brightway-lca/brightway2-calc/pull/101): Convert `technosphere_matrix` to `csr` when using `pypardiso` for speed boost on repeated calculations.
