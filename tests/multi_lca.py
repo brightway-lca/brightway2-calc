@@ -450,6 +450,54 @@ def test_monte_carlo_multiple_iterations_selective_use(dps, func_units):
         assert np.unique(lst).shape == (10,)
 
 
+def test_monte_carlo_multiple_iterations_selective_use_technosphere(dps, func_units):
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    su = {
+        "technosphere_matrix": {"use_distributions": True},
+    }
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    results_manual = {key: [mat.sum()] for key, mat in mlca.weighted_inventories.items()}
+    results_scores = {k: [v] for k, v in mlca.scores.items()}
+
+    for _ in range(9):
+        next(mlca)
+        for key, mat in mlca.weighted_inventories.items():
+            results_manual[key].append(mat.sum())
+        for key, val in mlca.scores.items():
+            results_scores[key].append(val)
+
+    for key, lst in results_manual.items():
+        assert np.unique(lst).shape == (10,)
+    for key, lst in results_scores.items():
+        assert np.unique(lst).shape == (10,)
+
+
 def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps, func_units):
     config = {
         "impact_categories": [

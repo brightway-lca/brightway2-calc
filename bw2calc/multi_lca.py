@@ -191,14 +191,10 @@ class MultiLCA(LCABase):
         if skip_first_iteration:
             delattr(self, "keep_first_iteration_flag")
 
-        if hasattr(self, "inventory"):
+        if hasattr(self, "inventories"):
             self.lci_calculation()
         if hasattr(self, "characterized_inventories"):
             self.lcia_calculation()
-        if hasattr(self, "normalized_inventories"):
-            self.normalization_calculation()
-        if hasattr(self, "weighted_inventories"):
-            self.weighting_calculation()
 
     def build_demand_array(self, demands: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
