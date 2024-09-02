@@ -23,10 +23,10 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-        "bw_processing",
+        "bw_processing >=1.0",
         "fsspec",
-        "matrix_utils >=0.4.3",
-        "numpy",
+        "matrix_utils >=0.5",
+        "numpy <2",
         "pandas",
         "pydantic",
         "scipy",

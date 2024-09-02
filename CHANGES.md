@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## 2.0.DEV20 (2024-09-02)
+
+* Bump dependencies as upstream has breaking changes
+
 ## 2.0.DEV19 (2024-09-02)
 
 * Fix [#105](https://github.com/brightway-lca/brightway2-calc/issues/105): `MultiLCA` class returning identical results under iteration
