@@ -517,6 +517,15 @@ def create_multilca_simple():
         distributions_array=distributions_array,
         global_index=0,
     )
+    dp6.add_persistent_vector(
+        matrix="normalization_matrix",
+        data_array=np.ones(2).astype(float),
+        name="normalization-2",
+        identifier=("n", "2"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+        global_index=0,
+    )
 
     dp7 = create_datapackage(
         fs=ZipFileSystem(fixture_dir / "multi_lca_simple_weighting.zip", mode="w"),
@@ -533,6 +542,14 @@ def create_multilca_simple():
         data_array=np.array([42]),
         name="weighting-1",
         identifier=("w", "1"),
+        indices_array=indices_array,
+        distributions_array=distributions_array,
+    )
+    dp7.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=np.array([84]),
+        name="weighting-2",
+        identifier=("w", "2"),
         indices_array=indices_array,
         distributions_array=distributions_array,
     )

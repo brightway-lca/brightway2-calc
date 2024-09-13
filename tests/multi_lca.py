@@ -61,18 +61,6 @@ def test_inventory_matrix_construction(dps, config, func_units):
     mlca.lci()
     mlca.lcia()
 
-    print(mlca.scores)
-    print(mlca.technosphere_matrix.todense())
-    print(mlca.biosphere_matrix.todense())
-
-    for name, mat in mlca.characterization_matrices.items():
-        print(name)
-        print(mat.todense())
-
-    for name, arr in mlca.supply_arrays.items():
-        print(name)
-        print(arr)
-
     tm = [
         (100, 1, -0.2),
         (100, 2, -0.5),
@@ -207,10 +195,6 @@ def test_normalization_with_weighting(dps, func_units):
 
     rows = np.zeros(mlca.biosphere_matrix.shape[0])
     rows = np.array([mlca.dicts.biosphere[201], mlca.dicts.biosphere[203]])
-
-    for k, v in mlca.weighting_matrices.items():
-        print(k)
-        print(v.todense())
 
     for key, mat in mlca.weighted_inventories.items():
         expected = mlca.characterized_inventories[key[2:]][rows, :].sum()
@@ -542,3 +526,51 @@ def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps
 
     for key, lst in aggregated.items():
         assert np.unique(lst).shape == (10,)
+
+
+def test_bug_108(dps, config, func_units):
+    # https://github.com/brightway-lca/brightway2-calc/issues/108
+    config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [("first", "category")],
+            ("n", "2"): [("second", "category")],
+        },
+        "weightings": {
+            ("w", "1"): [("n", "1")],
+            ("w", "2"): [("n", "2")],
+        },
+    }
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    assert len(mlca.scores) == len(func_units) * 2
+    assert sorted(mlca.scores) == sorted(
+        [
+            (("w", "1"), ("n", "1"), ("first", "category"), "γ"),
+            (("w", "1"), ("n", "1"), ("first", "category"), "ε"),
+            (("w", "1"), ("n", "1"), ("first", "category"), "ζ"),
+            (("w", "2"), ("n", "2"), ("second", "category"), "γ"),
+            (("w", "2"), ("n", "2"), ("second", "category"), "ε"),
+            (("w", "2"), ("n", "2"), ("second", "category"), "ζ"),
+        ]
+    )
+    assert (
+        mlca.scores[(("w", "2"), ("n", "2"), ("second", "category"), "ζ")]
+        == 3 * (3 * 10 + 1 * 10) * 84
+    )
+    assert mlca.scores[(("w", "1"), ("n", "1"), ("first", "category"), "γ")] == 3 * 42

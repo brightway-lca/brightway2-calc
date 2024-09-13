@@ -15,6 +15,7 @@ from .dictionary_manager import DictionaryManager
 from .errors import OutsideTechnosphere
 from .lca import LCABase
 from .method_config import MethodConfig
+from .restricted_sparse_matrix_dict import RestrictedSparseMatrixDict
 from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
 from .utils import consistent_global_index, get_datapackage, utc_now
 
@@ -300,8 +301,9 @@ class MultiLCA(LCABase):
             if len(value.matrix.data) == 0:
                 warnings.warn(f"All values in normalization matrix for {key} are zero")
 
-        self.normalization_matrices = mu.SparseMatrixDict(
-            [(key, value.matrix) for key, value in self.normalization_mm_dict.items()]
+        self.normalization_matrices = RestrictedSparseMatrixDict(
+            self.config["normalizations"],
+            [(key, value.matrix) for key, value in self.normalization_mm_dict.items()],
         )
 
     def load_weighting_data(
@@ -330,8 +332,9 @@ class MultiLCA(LCABase):
             if len(value.matrix.data) == 0:
                 warnings.warn(f"All values in weighting matrix for {key} are zero")
 
-        self.weighting_matrices = mu.SparseMatrixDict(
-            [(key, value.matrix) for key, value in self.weighting_mm_dict.items()]
+        self.weighting_matrices = RestrictedSparseMatrixDict(
+            self.config["weightings"],
+            [(key, value.matrix) for key, value in self.weighting_mm_dict.items()],
         )
 
     ################
