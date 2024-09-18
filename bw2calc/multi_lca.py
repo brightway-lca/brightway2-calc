@@ -46,8 +46,8 @@ class MultiLCA(LCABase):
     ----------
     demands : dict[str, dict[int, float]]
         The demands for which the LCA will be calculated. The keys identify functional unit sets.
-    method_config : dict
-        Dictionary satisfying the `MethodConfig` specification.
+    method_config : dict | MethodConfig
+        Dictionary satisfying the `MethodConfig` specification or `MethodConfig` instance.
     data_objs : list[bw_processing.Datapackage]
         List of `bw_processing.Datapackage` objects. Should include data for all needed matrices.
     remapping_dicts : dict[str, dict]
@@ -80,7 +80,7 @@ class MultiLCA(LCABase):
     def __init__(
         self,
         demands: dict[str, dict[int, float]],
-        method_config: dict,
+        method_config: Union[dict, MethodConfig],
         data_objs: Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]],
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
@@ -91,6 +91,10 @@ class MultiLCA(LCABase):
     ):
         # Validation checks
         DemandsValidator(demands=demands)
+        if isinstance(method_config, MethodConfig):
+            method_config = {
+                key: value for key, value in method_config.model_dump().items() if value is not None
+            }
         MethodConfig(**method_config)
 
         self.demands = demands
