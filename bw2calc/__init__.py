@@ -8,7 +8,7 @@ __all__ = [
     "MultiLCA",
 ]
 
-__version__ = "2.0.DEV22"
+__version__ = "2.0.DEV23"
 
 
 import platform
