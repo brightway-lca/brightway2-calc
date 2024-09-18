@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## 2.0.DEV22 (2024-09-18)
+
+* Add `MethodConfig` to `__init__.py` for better UX
+
 ## 2.0.DEV21 (2024-09-13)
 
 * Fix [#108](https://github.com/brightway-lca/brightway2-calc/issues/108): `MultiLCA` normalizes and weights in all combinations

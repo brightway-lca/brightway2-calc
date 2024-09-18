@@ -4,10 +4,11 @@ __all__ = [
     "LCA",
     "LeastSquaresLCA",
     "IterativeLCA",
+    "MethodConfig",
     "MultiLCA",
 ]
 
-__version__ = "2.0.DEV21"
+__version__ = "2.0.DEV22"
 
 
 import platform
@@ -66,4 +67,5 @@ from .dense_lca import DenseLCA
 from .iterative_lca import IterativeLCA
 from .lca import LCA
 from .least_squares import LeastSquaresLCA
+from .method_config import MethodConfig
 from .multi_lca import MultiLCA
