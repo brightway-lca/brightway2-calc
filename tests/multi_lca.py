@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bw2calc import MultiLCA
+from bw2calc import MethodConfig, MultiLCA
 from bw2calc.utils import get_datapackage
 
 # Technosphere
@@ -45,6 +45,16 @@ def config():
             ("second", "category"),
         ]
     }
+
+
+@pytest.fixture
+def method_config():
+    return MethodConfig(
+        impact_categories=[
+            ("first", "category"),
+            ("second", "category"),
+        ]
+    )
 
 
 @pytest.fixture
@@ -120,6 +130,16 @@ def test_inventory_matrix_construction(dps, config, func_units):
 def test_single_demand(dps, config):
     single_func_unit = {"γ": {100: 1}}
     mlca = MultiLCA(demands=single_func_unit, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+
+    assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
+    assert mlca.scores[(("second", "category"), "γ")] == 3 * 10
+
+
+def test_single_demand_method_config(dps, method_config):
+    single_func_unit = {"γ": {100: 1}}
+    mlca = MultiLCA(demands=single_func_unit, method_config=method_config, data_objs=dps)
     mlca.lci()
     mlca.lcia()
 
@@ -528,7 +548,7 @@ def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps
         assert np.unique(lst).shape == (10,)
 
 
-def test_bug_108(dps, config, func_units):
+def test_bug_108(dps, func_units):
     # https://github.com/brightway-lca/brightway2-calc/issues/108
     config = {
         "impact_categories": [
@@ -569,6 +589,42 @@ def test_bug_108(dps, config, func_units):
             (("w", "2"), ("n", "2"), ("second", "category"), "ζ"),
         ]
     )
+    assert (
+        mlca.scores[(("w", "2"), ("n", "2"), ("second", "category"), "ζ")]
+        == 3 * (3 * 10 + 1 * 10) * 84
+    )
+    assert mlca.scores[(("w", "1"), ("n", "1"), ("first", "category"), "γ")] == 3 * 42
+
+
+def test_pass_full_methodconfig(dps, func_units):
+    method_config = MethodConfig(
+        impact_categories=[
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        normalizations={
+            ("n", "1"): [("first", "category")],
+            ("n", "2"): [("second", "category")],
+        },
+        weightings={
+            ("w", "1"): [("n", "1")],
+            ("w", "2"): [("n", "2")],
+        },
+    )
+
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+    )
+    dps.append(
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    )
+
+    mlca = MultiLCA(demands=func_units, method_config=method_config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
     assert (
         mlca.scores[(("w", "2"), ("n", "2"), ("second", "category"), "ζ")]
         == 3 * (3 * 10 + 1 * 10) * 84

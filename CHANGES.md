@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## 2.0.DEV23 (2024-09-18)
+
+* Allow `MethodConfig` as an input to `MultiLCA`
+
 ## 2.0.DEV22 (2024-09-18)
 
 * Add `MethodConfig` to `__init__.py` for better UX
