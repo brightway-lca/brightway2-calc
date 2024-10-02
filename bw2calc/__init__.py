@@ -1,5 +1,6 @@
 # flake8: noqa
 __all__ = [
+    "CachingLCA",
     "DenseLCA",
     "LCA",
     "LeastSquaresLCA",
@@ -31,6 +32,8 @@ It seems like you have an AMD/INTEL x64 architecture, but haven't installed pypa
 Installing it could give you much faster calculations.
 """
 
+PYPARDISO, UMFPACK = False, False
+
 try:
     from pypardiso import factorized, spsolve
 
@@ -41,14 +44,14 @@ except ImportError:
     if pltf in ARM:
         try:
             import scikits.umfpack
+
+            UMFPACK = True
         except ImportError:
             warnings.warn(UMFPACK_WARNING)
     elif pltf in AMD_INTEL:
         warnings.warn(PYPARDISO_WARNING)
 
     from scipy.sparse.linalg import factorized, spsolve
-
-    PYPARDISO = False
 try:
     from presamples import PackagesDataLoader
 except ImportError:
@@ -63,6 +66,7 @@ except ImportError:
     prepare_lca_inputs = get_activity = None
 
 
+from .caching_lca import CachingLCA
 from .dense_lca import DenseLCA
 from .iterative_lca import IterativeLCA
 from .lca import LCA
