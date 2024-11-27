@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+# 2.0 (2025-11-27)
+
+* Add `CachingLCA` class which saves supply vector calculations
+
 ## 2.0.DEV23 (2024-09-18)
 
 * Allow `MethodConfig` as an input to `MultiLCA`
