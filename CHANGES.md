@@ -1,6 +1,10 @@
 # `bw2calc` Changelog
 
-# 2.0 (2025-11-27)
+# 2.0.1 (2024-12-10)
+
+* Update `matrix_utils` dependency
+
+# 2.0 (2024-11-27)
 
 * Add `CachingLCA` class which saves supply vector calculations
 
