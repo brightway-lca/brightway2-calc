@@ -26,7 +26,7 @@ dependencies = [
         "bw_processing >=1.0",
         "fsspec",
         "matrix_utils >=0.6",
-        "numpy <2",
+        "numpy <3",
         "pandas",
         "pydantic",
         "scipy",
