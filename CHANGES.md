@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+# 2.0.2 (2025-03-21)
+
+* Fix [#110](https://github.com/brightway-lca/brightway2-calc/issues/119): Method `invert_technosphere_matrix` crashes with multi LCA
+
 # 2.0.1 (2024-12-10)
 
 * Update `matrix_utils` dependency
