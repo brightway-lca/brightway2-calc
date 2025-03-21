@@ -245,7 +245,7 @@ class LCABase(Iterator):
 
         See `Intel forum <https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ How-to-find-inverse-of-a-sparse-matrix-using-pardiso/m-p/1165970#M28249>`__
         for a discussion on why we use this approach."""  # noqa: E501
-        assert hasattr(self, "inventory"), "Must do lci first"
+        assert hasattr(self, "technosphere_matrix"), "Must load lci data first"
 
         if not PYPARDISO:
             warnings.warn(

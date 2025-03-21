@@ -630,3 +630,15 @@ def test_pass_full_methodconfig(dps, func_units):
         == 3 * (3 * 10 + 1 * 10) * 84
     )
     assert mlca.scores[(("w", "1"), ("n", "1"), ("first", "category"), "γ")] == 3 * 42
+
+
+def test_inventory_matrix_inversion(dps, config, func_units):
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    with pytest.raises(AssertionError):
+        mlca.invert_technosphere_matrix()
+
+    mlca.load_lci_data()
+
+    result = mlca.invert_technosphere_matrix()
+    assert isinstance(result, np.ndarray)
+    assert result.sum()
