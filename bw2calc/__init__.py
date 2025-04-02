@@ -46,8 +46,10 @@ except ImportError:
             import scikits.umfpack
 
             UMFPACK = True
-        except ImportError:
+        except ModuleNotFoundError:
             warnings.warn(UMFPACK_WARNING)
+        except ImportError as e:
+            warnings.warn(f"scikit-umfpack found but couldn't be imported. Error: {e}")
     elif pltf in AMD_INTEL:
         warnings.warn(PYPARDISO_WARNING)
 
