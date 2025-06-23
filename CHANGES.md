@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+# 2.1 (2025-06-23)
+
+* [#125](https://github.com/brightway-lca/brightway2-calc/pull/125): Remove Numpy version pin to `<2`. Thanks @michaelweinold!
+
 # 2.0.2 (2025-03-21)
 
 * Fix [#110](https://github.com/brightway-lca/brightway2-calc/issues/119): Method `invert_technosphere_matrix` crashes with multi LCA
