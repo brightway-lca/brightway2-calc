@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bw2calc"
+license = "BSD-3-Clause"
 authors = [
   { name=" Chris Mutel", email="cmutel@gmail.com" }
 ]
@@ -15,7 +16,6 @@ readme = "README.md"
 dynamic = ["version"]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -58,7 +58,6 @@ dev = [
 ]
 
 [tool.setuptools]
-license-files = ["LICENSE"]
 include-package-data = true
 packages = ["bw2calc"]
 
