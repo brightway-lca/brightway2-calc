@@ -1208,6 +1208,9 @@ def test_has():
 ###
 
 
+def get_bw2calc_log_messages(data: list[tuple]) -> list[tuple]:
+    return [x for x in data if x[0] == "bw2calc"]
+
 def test_logging_next(caplog):
     caplog.set_level(logging.DEBUG)
     mapping = dict(json.load(open(fixture_dir / "bw2io_example_db_mapping.json")))
@@ -1224,19 +1227,21 @@ def test_logging_next(caplog):
     lca.lci()
     lca.lcia()
 
-    assert len(caplog.record_tuples) == 1
-    assert caplog.record_tuples[0][0] == "bw2calc"
-    assert caplog.record_tuples[0][1] == 20
-    assert caplog.record_tuples[0][2].startswith(
+    messages = get_bw2calc_log_messages(caplog.record_tuples)
+    assert len(messages) == 1
+    assert messages[0][0] == "bw2calc"
+    assert messages[0][1] == 20
+    assert messages[0][2].startswith(
         "Initialized LCA object. Demand: {" + str(id_) + ": 1}, data_objs"
     )
 
     caplog.clear()
     next(lca)
 
-    assert len(caplog.record_tuples) == 3
+    messages = get_bw2calc_log_messages(caplog.record_tuples)
+    assert len(messages) == 3
 
-    for x, y, z in caplog.record_tuples:
+    for x, y, z in messages:
         assert x == "bw2calc"
         assert y == 10
         assert z.startswith("Iterating")
