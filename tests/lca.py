@@ -6,7 +6,6 @@ from pathlib import Path
 import bw_processing as bwp
 import numpy as np
 import pytest
-
 from bw2calc.errors import (
     EmptyBiosphere,
     InconsistentGlobalIndex,
