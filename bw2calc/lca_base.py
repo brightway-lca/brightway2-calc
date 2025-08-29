@@ -124,7 +124,9 @@ class LCABase(Iterator):
         if PYPARDISO:
             warnings.warn("PARDISO installed; this is a no-op")
         else:
-            self.solver = factorized(self.technosphere_matrix)
+            # UMFPACK factorization needs CSC sparse matrix; see
+            # https://github.com/brightway-lca/brightway2-calc/issues/132
+            self.solver = factorized(self.technosphere_matrix.tocsc())
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> None:
         """

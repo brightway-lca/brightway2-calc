@@ -50,6 +50,16 @@ def test_basic():
     assert np.allclose(answer, lca.supply_array)
 
 
+def test_basic_factorize():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci(factorize=True)
+    answer = np.zeros((2,))
+    answer[lca.dicts.activity[101]] = 1
+    answer[lca.dicts.activity[102]] = 0.5
+    assert np.allclose(answer, lca.supply_array)
+
+
 def test_basic_negative_production():
     pass
 
@@ -1210,6 +1220,7 @@ def test_has():
 
 def get_bw2calc_log_messages(data: list[tuple]) -> list[tuple]:
     return [x for x in data if x[0] == "bw2calc"]
+
 
 def test_logging_next(caplog):
     caplog.set_level(logging.DEBUG)
