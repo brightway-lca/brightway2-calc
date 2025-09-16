@@ -1,5 +1,11 @@
 # `bw2calc` Changelog
 
+# 2.1.1 (2025-09-16)
+
+* [#132](https://github.com/brightway-lca/brightway2-calc/issues/132): `UMFPACK` converts to `CSC` sparse array on factorization and then raises an error
+* [#128](https://github.com/brightway-lca/brightway2-calc/pull/128): Recent `fsspec` emitting log messages and breaking tests
+* [#120](https://github.com/brightway-lca/brightway2-calc/pull/120): Improve `scikit-umfpack` import error handling
+
 # 2.1 (2025-06-23)
 
 * [#125](https://github.com/brightway-lca/brightway2-calc/pull/125): Remove Numpy version pin to `<2`. Thanks @michaelweinold!
