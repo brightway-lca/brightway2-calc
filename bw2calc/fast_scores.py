@@ -79,7 +79,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
 
     def _calculation(self) -> xarray.DataArray:
         # Calls lci_calculation() and lcia_calculation in parent class, but we don't have
-        # these as separate methods.
+        # these as separate methods, so need to override to change behaviour.
         return self.calculate()
 
     def calculate(self) -> xarray.DataArray:
@@ -112,7 +112,6 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         pass
 
     def _calculate_pardiso(self) -> xarray.DataArray:
-
         demand_array = np.vstack([arr for arr in self.demand_arrays.values()]).T
         supply_arrays = []
 
@@ -130,12 +129,14 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         lcia_array = np.vstack(list(self.precalculated.values()))
         scores = lcia_array @ self.supply_array
 
-        self.scores = xarray.DataArray(
-            scores,
-            coords=[["||".join(x) for x in self.precalculated], list(self.demand_arrays)],
-            dims=["LCIA", "processes"],
+        self._set_scores(
+            xarray.DataArray(
+                scores,
+                coords=[["||".join(x) for x in self.precalculated], list(self.demand_arrays)],
+                dims=["LCIA", "processes"],
+            )
         )
-        return self.scores
+        return self._get_scores()
 
     def _get_scores(self) -> xarray.DataArray:
         if not hasattr(self, "_scores"):
