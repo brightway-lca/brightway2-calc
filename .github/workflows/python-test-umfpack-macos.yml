@@ -33,21 +33,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest]
-        # os: [ubuntu-latest, windows-latest, macos-latest]
         py-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      # general Python setup
       - name: Set up Python ${{ matrix.py-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.py-version }}
 
       - name: Install suitesparse dependencies
-      run: |
-        brew install swig suite-sparse
+        run: |
+          brew install swig suite-sparse
 
       - name: Update pip & install testing pkgs
         run: |
