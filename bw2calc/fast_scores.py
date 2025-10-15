@@ -25,6 +25,9 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         super().__init__(*args, **kwargs)
         self.chunk_size = chunk_size
 
+        if chunk_size <= 0:
+            raise ValueError(f"Invalid chunk_size: {chunk_size}")
+
         if UMFPACK:
             warnings.warn(
                 """Using UMFPACK - the speedups in `FastScoresOnlyMultiLCA` work much better when using PARDISO"""  # noqa: E501
@@ -82,6 +85,15 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         # these as separate methods, so need to override to change behaviour.
         return self.calculate()
 
+    def _load_datapackages(self) -> None:
+        self.load_lci_data()
+        self.build_demand_array()
+        self.load_lcia_data()
+        if self.config.get("normalizations"):
+            self.load_normalization_data()
+        if self.config.get("weightings"):
+            self.load_weighting_data()
+
     def calculate(self) -> xarray.DataArray:
         """The actual LCI calculation.
 
@@ -90,9 +102,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
 
         """
         if not hasattr(self, "technosphere_matrix"):
-            self.load_lci_data()
-            self.build_demand_array()
-            self.load_lcia_data()
+            self._load_datapackages()
             self.build_precalculated()
 
         if PYPARDISO:
