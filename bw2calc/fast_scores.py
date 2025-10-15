@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import xarray
 
-from . import PYPARDISO, UMFPACK
+from . import PYPARDISO, UMFPACK, factorized
 from .multi_lca import MultiLCA
 
 if PYPARDISO:
@@ -105,11 +105,23 @@ class FastScoresOnlyMultiLCA(MultiLCA):
             )
 
     def _calculate_umfpack(self) -> xarray.DataArray:
-        # if UMFPACK:
-        #     self.decompose_technosphere()
+        solver = factorized(self.technosphere_matrix.tocsc())
+        self.supply_array = np.zeros((self.technosphere_matrix.shape[0], len(self.demand_arrays)))
 
-        # count = len(self.dicts.activity)
-        pass
+        for index, (label, arr) in enumerate(self.demand_arrays.items()):
+            self.supply_array[:index] = solver(arr)
+
+        lcia_array = np.vstack(list(self.precalculated.values()))
+        scores = lcia_array @ self.supply_array
+
+        self._set_scores(
+            xarray.DataArray(
+                scores,
+                coords=[["||".join(x) for x in self.precalculated], list(self.demand_arrays)],
+                dims=["LCIA", "processes"],
+            )
+        )
+        return self._get_scores()
 
     def _calculate_pardiso(self) -> xarray.DataArray:
         demand_array = np.vstack([arr for arr in self.demand_arrays.values()]).T
