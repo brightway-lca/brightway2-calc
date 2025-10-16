@@ -17,6 +17,24 @@ class RestrictedSparseMatrixDict(SparseMatrixDict):
         RestrictionsValidator(restrictions=restrictions)
         self._restrictions = restrictions
 
+    def _get_first_element(self, elem: Any) -> tuple:
+        """Get the first LCIA key from `elem`.
+
+        The keys can have the form `(("some", "lcia"), "functional-unit-id")` or
+        `("some", "lcia")."""
+        if isinstance(elem[0], tuple):
+            return elem[0]
+        else:
+            assert isinstance(elem, tuple), f"Wrong type: {type(elem)} should be tuple"
+            return elem
+
+    def _concatenate(self, a: tuple, b: tuple) -> tuple:
+        """Combine `a` and `b` while unwrapping `b`, if necessary."""
+        if isinstance(b[0], tuple):
+            return (a, *b)
+        else:
+            return (a, b)
+
     def __matmul__(self, other: Any) -> SparseMatrixDict:
         """Define logic for `@` matrix multiplication operator.
 
@@ -25,10 +43,10 @@ class RestrictedSparseMatrixDict(SparseMatrixDict):
         if isinstance(other, (SparseMatrixDict, RestrictedSparseMatrixDict)):
             return SparseMatrixDict(
                 {
-                    (a, *b): c @ d
+                    self._concatenate(a, b): c @ d
                     for a, c in self.items()
                     for b, d in other.items()
-                    if b[0] in self._restrictions[a]
+                    if self._get_first_element(b) in self._restrictions[a]
                 }
             )
         else:

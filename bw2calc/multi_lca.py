@@ -196,6 +196,10 @@ class MultiLCA(LCABase):
         if skip_first_iteration:
             delattr(self, "keep_first_iteration_flag")
 
+        self._calculation()
+
+    def _calculation(self) -> None:
+        """Factored out to allow subclasses to easily modify behaviour."""
         if hasattr(self, "inventories"):
             self.lci_calculation()
         if hasattr(self, "characterized_inventories"):
