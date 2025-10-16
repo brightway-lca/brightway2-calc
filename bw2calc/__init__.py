@@ -41,17 +41,19 @@ try:
 except ImportError:
     pltf = platform.machine().lower()
 
-    if pltf in ARM:
-        try:
-            import scikits.umfpack
+    try:
+        import scikits.umfpack
 
-            UMFPACK = True
-        except ModuleNotFoundError:
+        UMFPACK = True
+    except ModuleNotFoundError:
+        if pltf in ARM:
             warnings.warn(UMFPACK_WARNING)
-        except ImportError as e:
-            warnings.warn(f"scikit-umfpack found but couldn't be imported. Error: {e}")
-    elif pltf in AMD_INTEL:
-        warnings.warn(PYPARDISO_WARNING)
+        elif pltf in AMD_INTEL:
+            warnings.warn(PYPARDISO_WARNING)
+        else:
+            warnings.warn("No fast sparse solver found")
+    except ImportError as e:
+        warnings.warn(f"scikit-umfpack found but couldn't be imported. Error: {e}")
 
     from scipy.sparse.linalg import factorized, spsolve
 try:

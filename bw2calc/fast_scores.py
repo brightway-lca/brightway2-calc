@@ -8,6 +8,8 @@ from .multi_lca import MultiLCA
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoSolver
+else:
+    PyPardisoSolver = None
 
 
 class FastScoresOnlyMultiLCA(MultiLCA):
@@ -119,7 +121,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         self.supply_array = np.zeros((self.technosphere_matrix.shape[0], len(self.demand_arrays)))
 
         for index, (label, arr) in enumerate(self.demand_arrays.items()):
-            self.supply_array[:index] = solver(arr)
+            self.supply_array[:, index] = solver(arr)
 
         lcia_array = np.vstack(list(self.precalculated.values()))
         scores = lcia_array @ self.supply_array
@@ -127,7 +129,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         self._set_scores(
             xarray.DataArray(
                 scores,
-                coords=[["||".join(x) for x in self.precalculated], list(self.demand_arrays)],
+                coords=[[str(x) for x in self.precalculated], list(self.demand_arrays)],
                 dims=["LCIA", "processes"],
             )
         )
@@ -154,7 +156,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         self._set_scores(
             xarray.DataArray(
                 scores,
-                coords=[["||".join(x) for x in self.precalculated], list(self.demand_arrays)],
+                coords=[[str(x) for x in self.precalculated], list(self.demand_arrays)],
                 dims=["LCIA", "processes"],
             )
         )

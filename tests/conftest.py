@@ -5,6 +5,7 @@ This module provides fixtures for handling solver availability and testing
 different solver configurations.
 """
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -233,15 +234,16 @@ def solver_config(request):
         raise ValueError(f"Unknown solver config: {config}")
 
 
-# Test data fixtures
 @pytest.fixture
-def basic_test_data():
+def fixture_dir() -> Path:
+    return Path(__file__).resolve().parent / "fixtures"
+
+
+@pytest.fixture
+def basic_test_data(fixture_dir):
     """Basic test data for FastScoresOnlyMultiLCA tests."""
-    from pathlib import Path
 
     from bw2calc.utils import get_datapackage
-
-    fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
     return {
         "dps": [
