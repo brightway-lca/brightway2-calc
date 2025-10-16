@@ -1,20 +1,24 @@
 # `bw2calc` Changelog
 
-# 2.1.1 (2025-09-16)
+## 2.2 (2025-10-17)
+
+* [#135](https://github.com/brightway-lca/brightway2-calc/pull/135): Fast scores-only multiLCA
+
+### 2.1.1 (2025-09-16)
 
 * [#132](https://github.com/brightway-lca/brightway2-calc/issues/132): `UMFPACK` converts to `CSC` sparse array on factorization and then raises an error
 * [#128](https://github.com/brightway-lca/brightway2-calc/pull/128): Recent `fsspec` emitting log messages and breaking tests
 * [#120](https://github.com/brightway-lca/brightway2-calc/pull/120): Improve `scikit-umfpack` import error handling
 
-# 2.1 (2025-06-23)
+## 2.1 (2025-06-23)
 
 * [#125](https://github.com/brightway-lca/brightway2-calc/pull/125): Remove Numpy version pin to `<2`. Thanks @michaelweinold!
 
-# 2.0.2 (2025-03-21)
+### 2.0.2 (2025-03-21)
 
 * Fix [#110](https://github.com/brightway-lca/brightway2-calc/issues/119): Method `invert_technosphere_matrix` crashes with multi LCA
 
-# 2.0.1 (2024-12-10)
+### 2.0.1 (2024-12-10)
 
 * Update `matrix_utils` dependency
 
