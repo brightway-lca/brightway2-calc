@@ -15,6 +15,8 @@ __version__ = "2.2"
 import platform
 import warnings
 
+from packaging.version import Version
+
 ARM = {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"}
 AMD_INTEL = {"ia64", "i386", "i686", "x86_64"}
 UMFPACK_WARNING = """
@@ -64,7 +66,10 @@ try:
     from bw2data import __version__ as _bw2data_version
     from bw2data import get_activity, prepare_lca_inputs
 
-    if not _bw2data_version >= (4, 0):
+    if isinstance(_bw2data_version, tuple):
+        _bw2data_version = ".".join([str(n) for n in _bw2data_version])
+
+    if not Version(_bw2data_version) >= Version("4.0"):
         raise ImportError
 except ImportError:
     prepare_lca_inputs = get_activity = None
