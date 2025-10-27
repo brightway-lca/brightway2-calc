@@ -7,6 +7,7 @@ __all__ = [
     "IterativeLCA",
     "MethodConfig",
     "MultiLCA",
+    "FastScoresOnlyMultiLCA",
 ]
 
 __version__ = "2.2"
@@ -77,6 +78,7 @@ except ImportError:
 
 from .caching_lca import CachingLCA
 from .dense_lca import DenseLCA
+from .fast_scores import FastScoresOnlyMultiLCA
 from .iterative_lca import IterativeLCA
 from .lca import LCA
 from .least_squares import LeastSquaresLCA
