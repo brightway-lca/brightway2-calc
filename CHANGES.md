@@ -1,5 +1,10 @@
 # `bw2calc` Changelog
 
+## 2.2.1 (2025-10-27)
+
+* Handle version checks for `bw2data.__version__` being a string or a tuple
+* Add `FastScoresOnlyMultiLCA` to `bw2calc` namespace
+
 ## 2.2 (2025-10-17)
 
 * [#135](https://github.com/brightway-lca/brightway2-calc/pull/135): Fast scores-only multiLCA
