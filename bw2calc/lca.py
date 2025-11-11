@@ -12,12 +12,12 @@ import pandas as pd
 from fsspec import AbstractFileSystem
 from scipy import sparse
 
-from . import PYPARDISO, __version__, prepare_lca_inputs
-from .dictionary_manager import DictionaryManager
-from .errors import OutsideTechnosphere
-from .lca_base import LCABase
-from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage, utc_now, wrap_functional_unit
+from bw2calc import PYPARDISO, __version__
+from bw2calc.dictionary_manager import DictionaryManager
+from bw2calc.errors import OutsideTechnosphere
+from bw2calc.lca_base import LCABase
+from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix
+from bw2calc.utils import consistent_global_index, get_datapackage, utc_now, wrap_functional_unit
 
 try:
     from bw2data import get_node
@@ -108,7 +108,12 @@ class LCA(LCABase):
             raise ValueError("Demand must be a dictionary")
 
         if data_objs is None:
-            self.ensure_bw2data_available()
+            try:
+                # Something breaks when this happens too early, i.e. in the file imports...
+                from bw2data import prepare_lca_inputs
+            except ImportError:
+                raise ImportError("bw2data version >= 4 not found")
+
             demand, self.packages, remapping_dicts = prepare_lca_inputs(
                 demand=demand,
                 method=method,
@@ -182,11 +187,6 @@ class LCA(LCABase):
             self.lci_calculation()
         if hasattr(self, "characterized_inventory"):
             self.lcia_calculation()
-
-    def ensure_bw2data_available(self):
-        """Raises ``ImportError`` is bw2data not available or version < 4."""
-        if prepare_lca_inputs is None:
-            raise ImportError("bw2data version >= 4 not found")
 
     def build_demand_array(self, demand: Optional[dict] = None) -> None:
         """Turn the demand dictionary into a *NumPy* array of correct size.
@@ -355,7 +355,8 @@ class LCA(LCABase):
     ) -> None:
         """Switch a method, weighting, or normalization"""
         if isinstance(obj, tuple):
-            self.ensure_bw2data_available()
+            from bw2data import prepare_lca_inputs
+
             _, data_objs, _ = prepare_lca_inputs(**{label: obj})
             setattr(self, label, obj)
         else:

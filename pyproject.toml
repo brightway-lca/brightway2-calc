@@ -42,7 +42,7 @@ tracker = "https://github.com/brightway-lca/brightway2-calc/issues"
 [project.optional-dependencies]
 testing = [
     "bw2calc",
-    "bw2data>=4.0.DEV39",
+    "bw2data>=4.5",
     "pytest",
     "pytest-cov",
     "pytest-randomly",

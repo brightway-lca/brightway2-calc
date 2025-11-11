@@ -63,17 +63,6 @@ try:
     from presamples import PackagesDataLoader
 except ImportError:
     PackagesDataLoader = None
-try:
-    from bw2data import __version__ as _bw2data_version
-    from bw2data import get_activity, prepare_lca_inputs
-
-    if isinstance(_bw2data_version, tuple):
-        _bw2data_version = ".".join([str(n) for n in _bw2data_version])
-
-    if not Version(_bw2data_version) >= Version("4.0"):
-        raise ImportError
-except ImportError:
-    prepare_lca_inputs = get_activity = None
 
 
 from .caching_lca import CachingLCA
