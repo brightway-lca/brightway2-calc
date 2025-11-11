@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## 2.2.2 (2025-11-11)
+
+* Change import detection of `bw2data` to avoid timing bug
+
 ## 2.2.1 (2025-10-27)
 
 * Handle version checks for `bw2data.__version__` being a string or a tuple
