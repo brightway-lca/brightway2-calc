@@ -419,7 +419,7 @@ class LCA(LCABase):
                 if key not in self.dicts.product and not isinstance(key, int):
                     raise KeyError(
                         f"Key '{key}' not in product dictionary; make sure to pass the integer id"
-                        + ", not a key like `('foo', 'bar')` or an `Actiivity` or `Node` object."
+                        + ", not a key like `('foo', 'bar')` or an `Activity` or `Node` object."
                     )
 
     def to_dataframe(
