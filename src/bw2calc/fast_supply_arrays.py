@@ -39,6 +39,10 @@ class FastSupplyArraysMixin:
 
     def _calculate_umfpack(self, demands: list[np.ndarray]) -> np.ndarray:
         # There is no speed up here, but it's convenient to have the same API
+        if not demands:
+            # Return empty array with correct shape when no demands provided
+            return np.zeros((self.technosphere_matrix.shape[0], 0))
+
         solver = factorized(self.technosphere_matrix.tocsc())
         supply_array = np.zeros((self.technosphere_matrix.shape[0], len(demands)))
 
@@ -48,6 +52,10 @@ class FastSupplyArraysMixin:
         return supply_array
 
     def _calculate_pardiso(self, demands: list[np.ndarray]) -> np.ndarray:
+        if not demands:
+            # Return empty array with correct shape when no demands provided
+            return np.zeros((self.technosphere_matrix.shape[0], 0))
+
         demand_array = np.vstack([arr for arr in demands]).T
         supply_arrays = []
 

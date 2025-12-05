@@ -196,7 +196,10 @@ class TestCalculateSupplyArraysPARDISO:
             demand[basic_lca.dicts.product[1]] = float(i + 1)
             demand_arrays.append(demand)
 
-        with patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver):
+        with (
+            patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+        ):
             result = basic_lca.calculate_supply_arrays(demand_arrays)
 
             # Check result shape
@@ -238,7 +241,10 @@ class TestCalculateSupplyArraysPARDISO:
             demand[basic_lca.dicts.product[1]] = float(i + 1)
             demand_arrays.append(demand)
 
-        with patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver):
+        with (
+            patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+        ):
             result = basic_lca.calculate_supply_arrays(demand_arrays)
 
             # Check result shape
@@ -250,7 +256,10 @@ class TestCalculateSupplyArraysEdgeCases:
 
     def test_empty_demand_arrays(self, basic_lca, only_pypardiso_available, mock_pypardiso_solver):
         """Test calculate_supply_arrays with empty demand_arrays list."""
-        with patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver):
+        with (
+            patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+        ):
             # Empty list should return array with shape (n_rows, 0)
             result = basic_lca.calculate_supply_arrays([])
             assert result.shape == (basic_lca.technosphere_matrix.shape[0], 0)

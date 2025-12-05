@@ -183,6 +183,17 @@ def test_build_precalculated_with_weighting(basic_test_data):
         assert key in expected_keys
 
 
+def test_no_solver_fixture(no_solvers_available):
+    with pytest.raises(ImportError):
+        import pypardiso
+
+        assert pypardiso
+    with pytest.raises(ImportError):
+        import scikits.umfpack  # noqa: F811
+
+        assert scikits.umfpack
+
+
 def test_calculate_no_solver_error(basic_test_data, no_solvers_available):
     """Test that calculate raises error when no suitable solver is available."""
     fsmlca = FastScoresOnlyMultiLCA(
