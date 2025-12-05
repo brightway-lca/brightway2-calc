@@ -1,10 +1,17 @@
 # `bw2calc` Changelog
 
-## 2.2.2 (2025-11-11)
+## 2.3 (2025-12-05)
+
+* Factored out `FastSupplyArraysMixin` to allow for its use in normal `LCA` classes
+* Move to a `src` layout
+* Move to absolute imports
+* [#141](https://github.com/brightway-lca/brightway2-calc/pull/141): Clarify error message of `LCA.check_demand` method related to `Activity` id
+
+### 2.2.2 (2025-11-11)
 
 * Change import detection of `bw2data` to avoid timing bug
 
-## 2.2.1 (2025-10-27)
+### 2.2.1 (2025-10-27)
 
 * Handle version checks for `bw2data.__version__` being a string or a tuple
 * Add `FastScoresOnlyMultiLCA` to `bw2calc` namespace
