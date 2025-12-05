@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 
-from .utils import utc_now
+from bw2calc.utils import utc_now
 
 """Adapted from json-log-formatter (https://github.com/marselester/json-log-formatter)
 

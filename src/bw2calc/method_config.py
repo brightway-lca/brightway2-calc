@@ -2,7 +2,7 @@ from typing import Optional, Sequence
 
 from pydantic import BaseModel, model_validator
 
-from .errors import InconsistentLCIA
+from bw2calc.errors import InconsistentLCIA
 
 
 class MethodConfig(BaseModel):

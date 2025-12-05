@@ -65,11 +65,11 @@ except ImportError:
     PackagesDataLoader = None
 
 
-from .caching_lca import CachingLCA
-from .dense_lca import DenseLCA
-from .fast_scores import FastScoresOnlyMultiLCA
-from .iterative_lca import IterativeLCA
-from .lca import LCA
-from .least_squares import LeastSquaresLCA
-from .method_config import MethodConfig
-from .multi_lca import MultiLCA
+from bw2calc.caching_lca import CachingLCA
+from bw2calc.dense_lca import DenseLCA
+from bw2calc.fast_scores import FastScoresOnlyMultiLCA
+from bw2calc.iterative_lca import IterativeLCA
+from bw2calc.lca import LCA
+from bw2calc.least_squares import LeastSquaresLCA
+from bw2calc.method_config import MethodConfig
+from bw2calc.multi_lca import MultiLCA

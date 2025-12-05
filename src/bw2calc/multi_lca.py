@@ -10,14 +10,14 @@ from fsspec import AbstractFileSystem
 from pydantic import BaseModel
 from scipy import sparse
 
-from . import PYPARDISO, __version__, spsolve
-from .dictionary_manager import DictionaryManager
-from .errors import OutsideTechnosphere
-from .lca import LCABase
-from .method_config import MethodConfig
-from .restricted_sparse_matrix_dict import RestrictedSparseMatrixDict
-from .single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from .utils import consistent_global_index, get_datapackage, utc_now
+from bw2calc import PYPARDISO, __version__, spsolve
+from bw2calc.dictionary_manager import DictionaryManager
+from bw2calc.errors import OutsideTechnosphere
+from bw2calc.lca_base import LCABase
+from bw2calc.method_config import MethodConfig
+from bw2calc.restricted_sparse_matrix_dict import RestrictedSparseMatrixDict
+from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix
+from bw2calc.utils import consistent_global_index, get_datapackage, utc_now
 
 logger = logging.getLogger("bw2calc")
 

@@ -1,6 +1,6 @@
 from numpy.linalg import solve
 
-from .lca import LCA
+from bw2calc.lca import LCA
 
 
 class DenseLCA(LCA):

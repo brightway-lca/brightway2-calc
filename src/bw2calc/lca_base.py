@@ -6,8 +6,8 @@ from typing import Optional, Tuple
 import matrix_utils as mu
 import numpy as np
 
-from . import PYPARDISO, factorized, spsolve
-from .errors import EmptyBiosphere, NonsquareTechnosphere
+from bw2calc import PYPARDISO, factorized, spsolve
+from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
 
 
 class LCABase(Iterator):

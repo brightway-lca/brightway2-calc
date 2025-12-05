@@ -5,7 +5,7 @@ from bw_processing import Datapackage
 from matrix_utils import MappedMatrix
 from scipy import sparse
 
-from .errors import MultipleValues
+from bw2calc.errors import MultipleValues
 
 
 class SingleValueDiagonalMatrix(MappedMatrix):

@@ -7,7 +7,7 @@ from bw_processing.io_helpers import generic_directory_filesystem
 from fsspec import AbstractFileSystem
 from fsspec.implementations.zip import ZipFileSystem
 
-from .errors import InconsistentGlobalIndex
+from bw2calc.errors import InconsistentGlobalIndex
 
 
 def get_seed(seed=None):

@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import PYPARDISO, UMFPACK, factorized
+from bw2calc import PYPARDISO, UMFPACK, factorized
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoSolver

@@ -1,7 +1,7 @@
 from scipy import sparse
 
-from .lca import LCA
-from .result_cache import ResultCache
+from bw2calc.lca import LCA
+from bw2calc.result_cache import ResultCache
 
 
 class CachingLCA(LCA):

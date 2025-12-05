@@ -3,8 +3,8 @@ import warnings
 import numpy as np
 from scipy.sparse.linalg import lsmr
 
-from .errors import EfficiencyWarning, NoSolutionFound
-from .lca import LCA
+from bw2calc.errors import EfficiencyWarning, NoSolutionFound
+from bw2calc.lca import LCA
 
 
 class LeastSquaresLCA(LCA):

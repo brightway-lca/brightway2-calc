@@ -3,10 +3,9 @@ import warnings
 import numpy as np
 import xarray
 
+from bw2calc import PYPARDISO, UMFPACK
 from bw2calc.fast_supply_arrays import FastSupplyArraysMixin
-
-from . import PYPARDISO, UMFPACK
-from .multi_lca import MultiLCA
+from bw2calc.multi_lca import MultiLCA
 
 
 class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):

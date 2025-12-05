@@ -3,8 +3,8 @@ from typing import Optional
 import numpy as np
 from scipy.sparse.linalg import cgs
 
-from . import spsolve
-from .lca import LCA
+from bw2calc import spsolve
+from bw2calc.lca import LCA
 
 
 class IterativeLCA(LCA):
