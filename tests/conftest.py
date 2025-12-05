@@ -62,10 +62,18 @@ def no_solvers_available():
             "scikits": None,
         },
     ):
-        # Also patch the bw2calc module's solver flags
+        # Patch the bw2calc module's solver flags in all places they're used
+        # Note: Only patch attributes that actually exist in each module
         with (
+            patch("bw2calc.__init__.PYPARDISO", False),
+            patch("bw2calc.__init__.UMFPACK", False),
             patch("bw2calc.fast_scores.PYPARDISO", False),
             patch("bw2calc.fast_scores.UMFPACK", False),
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", False),
+            patch("bw2calc.fast_supply_arrays.UMFPACK", False),
+            patch("bw2calc.lca_base.PYPARDISO", False),
+            patch("bw2calc.lca.PYPARDISO", False),
+            patch("bw2calc.multi_lca.PYPARDISO", False),
         ):
             yield
 
