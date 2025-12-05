@@ -18,7 +18,8 @@ def resolved(f):
 class ReversibleRemappableDictionary(Mapping):
     """A dictionary that can be easily remapped or reversed.
 
-    Perhaps  overkill, but at the time it was easier than creating many dictionaries on the LCA object itself.
+    Perhaps  overkill, but at the time it was easier than creating many dictionaries on the LCA
+    object itself.
 
     Example usage::
 

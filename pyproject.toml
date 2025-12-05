@@ -60,6 +60,7 @@ dev = [
 
 [tool.setuptools]
 include-package-data = true
+package-dir = {"" = "src"}
 packages = ["bw2calc"]
 
 [tool.setuptools.dynamic]
@@ -67,12 +68,13 @@ version = {attr = "bw2calc.__version__"}
 
 [tool.pytest.ini_options]
 addopts = "--cov bw2calc --cov-report term-missing --verbose"
+pythonpath = ["src"]
 norecursedirs = [
     "dist",
     "build",
     ".tox"
 ]
-testpaths = ["tests/*.py"]
+testpaths = ["tests"]
 
 [tool.flake8]
 # Some sane defaults for the code style checker flake8
@@ -81,8 +83,8 @@ extend_ignore = ["E203", "W503"]
 # ^  Black-compatible
 #    E203 and W503 have edge cases handled by black
 per-file-ignores = [
-    'bw2calc/__init__.py:F401',
-    'bw2calc/__init__.py:E402',
+    'src/bw2calc/__init__.py:F401',
+    'src/bw2calc/__init__.py:E402',
 ]
 exclude = [
     ".tox",
@@ -102,4 +104,4 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-skip = ["bw2calc/__init__.py"]
+skip = ["src/bw2calc/__init__.py"]

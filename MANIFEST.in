@@ -1,4 +1,4 @@
 include *.txt
 include *.md
 include README.rst
-include bw2calc/*.py
+include src/bw2calc/*.py

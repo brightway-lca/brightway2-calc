@@ -10,7 +10,7 @@ __all__ = [
     "FastScoresOnlyMultiLCA",
 ]
 
-__version__ = "2.2.2"
+__version__ = "2.3"
 
 
 import platform

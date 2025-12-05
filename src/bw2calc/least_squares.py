@@ -8,13 +8,14 @@ from .lca import LCA
 
 
 class LeastSquaresLCA(LCA):
-    """Solve overdetermined technosphere matrix with more products than activities using least-squares approximation.
+    """Solve overdetermined technosphere matrix with more products than activities using
+    least-squares approximation.
 
     See also:
 
     * `Multioutput processes in LCA <http://chris.mutel.org/multioutput.html>`_
-    * `LSMR in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsmr.html#scipy.sparse.linalg.lsmr>`_
-    * `Another least-squares algorithm in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsqr.html#scipy.sparse.linalg.lsqr>`_
+    * `LSMR in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsmr.html#scipy.sparse.linalg.lsmr>`_  # noqa: E501
+    * `Another least-squares algorithm in SciPy <http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.lsqr.html#scipy.sparse.linalg.lsqr>`_  # noqa: E501
 
     """
 
