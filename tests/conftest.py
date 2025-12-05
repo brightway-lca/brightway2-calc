@@ -63,8 +63,9 @@ def no_solvers_available():
         },
     ):
         # Also patch the bw2calc module's solver flags
-        with patch("bw2calc.fast_scores.PYPARDISO", False), patch(
-            "bw2calc.fast_scores.UMFPACK", False
+        with (
+            patch("bw2calc.fast_scores.PYPARDISO", False),
+            patch("bw2calc.fast_scores.UMFPACK", False),
         ):
             yield
 
@@ -83,9 +84,11 @@ def only_pypardiso_available():
         mock_pypardiso = Mock()
         mock_pypardiso.pardiso_wrapper = Mock()
 
-        with patch.dict("sys.modules", {"pypardiso": mock_pypardiso}), patch(
-            "bw2calc.fast_scores.PYPARDISO", True
-        ), patch("bw2calc.fast_scores.UMFPACK", False):
+        with (
+            patch.dict("sys.modules", {"pypardiso": mock_pypardiso}),
+            patch("bw2calc.fast_scores.PYPARDISO", True),
+            patch("bw2calc.fast_scores.UMFPACK", False),
+        ):
             yield
 
 
@@ -102,14 +105,16 @@ def only_umfpack_available():
         mock_scikits = Mock()
         mock_scikits.umfpack = Mock()
 
-        with patch.dict(
-            "sys.modules",
-            {
-                "scikits": mock_scikits,
-                "scikits.umfpack": mock_scikits.umfpack,
-            },
-        ), patch("bw2calc.fast_scores.PYPARDISO", False), patch(
-            "bw2calc.fast_scores.UMFPACK", True
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "scikits": mock_scikits,
+                    "scikits.umfpack": mock_scikits.umfpack,
+                },
+            ),
+            patch("bw2calc.fast_scores.PYPARDISO", False),
+            patch("bw2calc.fast_scores.UMFPACK", True),
         ):
             yield
 
@@ -125,14 +130,18 @@ def both_solvers_available():
     mock_scikits = Mock()
     mock_scikits.umfpack = Mock()
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "pypardiso": mock_pypardiso,
-            "scikits": mock_scikits,
-            "scikits.umfpack": mock_scikits.umfpack,
-        },
-    ), patch("bw2calc.fast_scores.PYPARDISO", True), patch("bw2calc.fast_scores.UMFPACK", True):
+    with (
+        patch.dict(
+            "sys.modules",
+            {
+                "pypardiso": mock_pypardiso,
+                "scikits": mock_scikits,
+                "scikits.umfpack": mock_scikits.umfpack,
+            },
+        ),
+        patch("bw2calc.fast_scores.PYPARDISO", True),
+        patch("bw2calc.fast_scores.UMFPACK", True),
+    ):
         yield
 
 

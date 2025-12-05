@@ -3,16 +3,13 @@ import warnings
 import numpy as np
 import xarray
 
-from . import PYPARDISO, UMFPACK, factorized
+from bw2calc.fast_supply_arrays import FastSupplyArraysMixin
+
+from . import PYPARDISO, UMFPACK
 from .multi_lca import MultiLCA
 
-if PYPARDISO:
-    from pypardiso.pardiso_wrapper import PyPardisoSolver
-else:
-    PyPardisoSolver = None
 
-
-class FastScoresOnlyMultiLCA(MultiLCA):
+class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
     """Use chunking and pre-calculate as much as possible to optimize speed for multiple LCA
     calculations.
 
@@ -24,15 +21,14 @@ class FastScoresOnlyMultiLCA(MultiLCA):
     """
 
     def __init__(self, *args, chunk_size: int = 50, **kwargs):
+        # Extract chunk_size before passing to super() to avoid it being consumed
+        # by MultiLCA.__init__, then manually initialize mixin attributes
         super().__init__(*args, **kwargs)
-        self.chunk_size = chunk_size
-
-        if chunk_size <= 0:
-            raise ValueError(f"Invalid chunk_size: {chunk_size}")
+        self.set_chunk_size(chunk_size)
 
         if UMFPACK:
             warnings.warn(
-                """Using UMFPACK - the speedups in `FastScoresOnlyMultiLCA` work much better when using PARDISO"""  # noqa: E501
+                """Using UMFPACK - the speedups in `FastSupplyArraysMixin` work better when using PARDISO"""  # noqa: E501
             )
 
     def lci(self) -> None:
@@ -54,20 +50,6 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         raise NotImplementedError(
             "LCI and LCIA aren't separate in `FastScoresOnlyMultiLCA`; use `next()` to calculate scores."  # noqa: E501
         )
-
-    def __next__(self) -> xarray.DataArray:
-        # The technosphere matrix will change, so remove any existing LU factorization
-        if UMFPACK:
-            if hasattr(self, "solver"):
-                delattr(self, "solver")
-        elif PYPARDISO:
-            # This is global state in the pypardiso library - use built-in reset function
-            from pypardiso.scipy_aliases import pypardiso_solver
-
-            pypardiso_solver.free_memory()
-        else:
-            raise ValueError("No suitable solver installed")
-        super().__next__()
 
     def build_precalculated(self) -> None:
         """Multiply the characterization, and normalization and weighting matrices if present, by
@@ -103,52 +85,16 @@ class FastScoresOnlyMultiLCA(MultiLCA):
         ``redo_lci`` and Monte Carlo classes.
 
         """
-        if not hasattr(self, "technosphere_matrix"):
-            self._load_datapackages()
-            self.build_precalculated()
-
-        if PYPARDISO:
-            return self._calculate_pardiso()
-        elif UMFPACK:
-            return self._calculate_umfpack()
-        else:
+        if not (PYPARDISO or UMFPACK):
             raise ValueError(
                 "`FastScoresOnlyMultiLCA` only supported with PARDISO and UMFPACK solvers"
             )
 
-    def _calculate_umfpack(self) -> xarray.DataArray:
-        solver = factorized(self.technosphere_matrix.tocsc())
-        self.supply_array = np.zeros((self.technosphere_matrix.shape[0], len(self.demand_arrays)))
+        if not hasattr(self, "technosphere_matrix"):
+            self._load_datapackages()
+            self.build_precalculated()
 
-        for index, (label, arr) in enumerate(self.demand_arrays.items()):
-            self.supply_array[:, index] = solver(arr)
-
-        lcia_array = np.vstack(list(self.precalculated.values()))
-        scores = lcia_array @ self.supply_array
-
-        self._set_scores(
-            xarray.DataArray(
-                scores,
-                coords=[[str(x) for x in self.precalculated], list(self.demand_arrays)],
-                dims=["LCIA", "processes"],
-            )
-        )
-        return self._get_scores()
-
-    def _calculate_pardiso(self) -> xarray.DataArray:
-        demand_array = np.vstack([arr for arr in self.demand_arrays.values()]).T
-        supply_arrays = []
-
-        solver = PyPardisoSolver()
-        solver.factorize(self.technosphere_matrix)
-
-        num_chunks = demand_array.shape[1] // self.chunk_size + 1
-        for demand_chunk in np.array_split(demand_array, num_chunks, axis=1):
-            b = solver._check_b(self.technosphere_matrix, demand_chunk)
-            solver.set_phase(33)
-            supply_arrays.append(solver._call_pardiso(self.technosphere_matrix, b))
-
-        self.supply_array = np.hstack(supply_arrays)
+        self.supply_array = self.calculate_supply_arrays(list(self.demand_arrays.values()))
 
         lcia_array = np.vstack(list(self.precalculated.values()))
         scores = lcia_array @ self.supply_array
@@ -160,7 +106,7 @@ class FastScoresOnlyMultiLCA(MultiLCA):
                 dims=["LCIA", "processes"],
             )
         )
-        return self._get_scores()
+        return self._scores
 
     def _get_scores(self) -> xarray.DataArray:
         if not hasattr(self, "_scores"):

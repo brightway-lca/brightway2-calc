@@ -154,26 +154,29 @@ class LCA(LCABase):
     def __next__(self) -> None:
         skip_first_iteration = getattr(self, "keep_first_iteration_flag", False)
 
-        for matrix in self.matrix_labels:
-            if not skip_first_iteration and hasattr(self, matrix):
-                obj = getattr(self, matrix)
-                next(obj)
-                message = """Iterating {matrix}. Indexers: {indexer_state}""".format(
-                    matrix=matrix,
-                    indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
-                )
-                logger.debug(
-                    message,
-                    extra={
-                        "matrix": matrix,
-                        "indexers": [(str(p), p.indexer.index) for p in obj.packages],
-                        "matrix_sum": obj.matrix.sum(),
-                        "utc": utc_now(),
-                    },
-                )
+        if not skip_first_iteration:
+            self._delete_solver_state()
 
-        if not skip_first_iteration and hasattr(self, "after_matrix_iteration"):
-            self.after_matrix_iteration()
+            for matrix in self.matrix_labels:
+                if hasattr(self, matrix):
+                    obj = getattr(self, matrix)
+                    next(obj)
+                    message = """Iterating {matrix}. Indexers: {indexer_state}""".format(
+                        matrix=matrix,
+                        indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
+                    )
+                    logger.debug(
+                        message,
+                        extra={
+                            "matrix": matrix,
+                            "indexers": [(str(p), p.indexer.index) for p in obj.packages],
+                            "matrix_sum": obj.matrix.sum(),
+                            "utc": utc_now(),
+                        },
+                    )
+
+            if hasattr(self, "after_matrix_iteration"):
+                self.after_matrix_iteration()
 
         # Avoid this conversion each time we do a calculation in the future
         # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609

@@ -351,3 +351,13 @@ class LCABase(Iterator):
         """
         warnings.warn("Please switch to `.weight`", DeprecationWarning)
         return self.weight()
+
+    def _delete_solver_state(self) -> None:
+        """Low-level function to force freeing up memory and removing any `solver` state."""
+        if hasattr(self, "solver"):
+            delattr(self, "solver")
+        if PYPARDISO:
+            # This is global state in the pypardiso library - use built-in reset function
+            from pypardiso.scipy_aliases import pypardiso_solver
+
+            pypardiso_solver.free_memory()

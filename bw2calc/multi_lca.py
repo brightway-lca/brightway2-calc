@@ -150,43 +150,46 @@ class MultiLCA(LCABase):
     def __next__(self) -> None:
         skip_first_iteration = getattr(self, "keep_first_iteration_flag", False)
 
-        for matrix in self.matrix_labels:
-            if not skip_first_iteration and hasattr(self, matrix):
-                obj = getattr(self, matrix)
-                next(obj)
-                message = """Iterating matrix {matrix}. Indexers: {indexer_state}""".format(
-                    matrix=matrix,
-                    indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
-                )
-                logger.debug(
-                    message,
-                    extra={
-                        "matrix": matrix,
-                        "indexers": [(str(p), p.indexer.index) for p in obj.packages],
-                        "matrix_sum": obj.matrix.sum(),
-                        "utc": utc_now(),
-                    },
-                )
+        if not skip_first_iteration:
+            self._delete_solver_state()
 
-        for matrix_dict in self.matrix_list_labels:
-            if not skip_first_iteration and hasattr(self, matrix_dict):
-                obj = getattr(self, matrix_dict)
-                next(obj)
-                message = """Iterating matrix dict {matrix}. Indexer: {indexer_state}""".format(
-                    matrix=matrix, indexer_state=obj.global_indexer.index
-                )
-                logger.debug(
-                    message,
-                    extra={
-                        "matrix_dict": matrix_dict,
-                        "indexer": obj.global_indexer.index,
-                        "matrix_sums": [mm.matrix.sum() for mm in obj.values()],
-                        "utc": utc_now(),
-                    },
-                )
+            for matrix in self.matrix_labels:
+                if hasattr(self, matrix):
+                    obj = getattr(self, matrix)
+                    next(obj)
+                    message = """Iterating matrix {matrix}. Indexers: {indexer_state}""".format(
+                        matrix=matrix,
+                        indexer_state=[(str(p), p.indexer.index) for p in obj.packages],
+                    )
+                    logger.debug(
+                        message,
+                        extra={
+                            "matrix": matrix,
+                            "indexers": [(str(p), p.indexer.index) for p in obj.packages],
+                            "matrix_sum": obj.matrix.sum(),
+                            "utc": utc_now(),
+                        },
+                    )
 
-        if not skip_first_iteration and hasattr(self, "after_matrix_iteration"):
-            self.after_matrix_iteration()
+            for matrix_dict in self.matrix_list_labels:
+                if hasattr(self, matrix_dict):
+                    obj = getattr(self, matrix_dict)
+                    next(obj)
+                    message = """Iterating matrix dict {matrix}. Indexer: {indexer_state}""".format(
+                        matrix=matrix, indexer_state=obj.global_indexer.index
+                    )
+                    logger.debug(
+                        message,
+                        extra={
+                            "matrix_dict": matrix_dict,
+                            "indexer": obj.global_indexer.index,
+                            "matrix_sums": [mm.matrix.sum() for mm in obj.values()],
+                            "utc": utc_now(),
+                        },
+                    )
+
+            if hasattr(self, "after_matrix_iteration"):
+                self.after_matrix_iteration()
 
         # Avoid this conversion each time we do a calculation in the future
         # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609

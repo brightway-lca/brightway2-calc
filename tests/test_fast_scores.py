@@ -207,7 +207,7 @@ def test_next_no_solver_error(basic_test_data, no_solvers_available):
     fsmlca._load_datapackages()
     fsmlca.build_precalculated()
 
-    with pytest.raises(ValueError, match="No suitable solver installed"):
+    with pytest.raises(ValueError, match="only supported with PARDISO and UMFPACK"):
         next(fsmlca)
 
 
@@ -266,9 +266,13 @@ def test_calculation_with_different_chunk_sizes(
             data_objs=basic_test_data["dps"],
             chunk_size=chunk_size,
         )
+        assert fsmlca.chunk_size == chunk_size
 
-        # Mock the PyPardisoSolver
-        with patch("bw2calc.fast_scores.PyPardisoSolver", mock_pypardiso_solver):
+        # Mock the PyPardisoSolver and PYPARDISO flag
+        with (
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+            patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+        ):
             result = fsmlca.calculate()
 
             # All should produce valid results
@@ -312,7 +316,10 @@ def test_calculation_with_normalization_and_weighting(
     )
 
     # Mock the PyPardisoSolver
-    with patch("bw2calc.fast_scores.PyPardisoSolver", mock_pypardiso_solver):
+    with (
+        patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+        patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+    ):
         result = fsmlca.calculate()
 
         # Should still work with normalization and weighting
@@ -356,8 +363,6 @@ def test_integration(basic_test_data, fixture_dir):
 
     mlca = FastScoresOnlyMultiLCA(demands=func_units, method_config=method_config, data_objs=dps)
     mlca.calculate()
-    print(mlca.scores.coords)
-    print(mlca.scores.coords["LCIA"].values)
 
     assert mlca.scores.shape == (2, 3)
     assert (
