@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest]
-        py-version: ["3.11"]
+        py-version: ["3.11", "3.14"]
 
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -61,7 +61,7 @@ jobs:
         run: |
           echo "SuiteSparse version:"
           ls /opt/homebrew/Cellar/suite-sparse/
-          pip install scikit-umfpack -Csetup-args=--native-file=$PWD/custom-config.ini
+          pip install scikit-umfpack
 
       - name: Test with pytest
         run: |
