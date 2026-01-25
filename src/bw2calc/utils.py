@@ -1,5 +1,6 @@
 import datetime
 from pathlib import Path
+from typing import Any
 
 import bw_processing as bwp
 import numpy as np
@@ -32,6 +33,12 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
             + " order for filtering for site-generic LCIA to work correctly."
         )
     return global_list[0] if global_list else None
+
+
+def convert_tuple_to_list(obj: Any) -> Any:
+    if isinstance(obj, tuple):
+        return list(obj)
+    return obj
 
 
 def wrap_functional_unit(dct):

@@ -17,7 +17,7 @@ from bw2calc.lca_base import LCABase
 from bw2calc.method_config import MethodConfig
 from bw2calc.restricted_sparse_matrix_dict import RestrictedSparseMatrixDict
 from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from bw2calc.utils import consistent_global_index, get_datapackage, utc_now
+from bw2calc.utils import consistent_global_index, convert_tuple_to_list, get_datapackage, utc_now
 
 logger = logging.getLogger("bw2calc")
 
@@ -245,12 +245,15 @@ class MultiLCA(LCABase):
     ##################
 
     def filter_package_by_identifier(
-        self, data_objs: Iterable[bwp.DatapackageBase], identifier: list[str]
+        self,
+        data_objs: Iterable[bwp.DatapackageBase],
+        identifier: Union[list[str], tuple[str, ...], str],
     ) -> list[bwp.DatapackageBase]:
         """Filter the datapackage resources in `data_objs` whose "identifier" attribute equals
         input argument `identifier`.
 
         Used in splitting up impact categories, normalization, and weighting matrices."""
+        identifier = convert_tuple_to_list(identifier)
         return [dp.filter_by_attribute("identifier", identifier) for dp in data_objs]
 
     def load_lcia_data(self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None) -> None:
@@ -267,7 +270,7 @@ class MultiLCA(LCABase):
         self.characterization_mm_dict = mu.MappedMatrixDict(
             packages={
                 ic: self.filter_package_by_identifier(
-                    data_objs=data_objs or self.packages, identifier=list(ic)
+                    data_objs=data_objs or self.packages, identifier=convert_tuple_to_list(ic)
                 )
                 for ic in self.config["impact_categories"]
             },
@@ -297,7 +300,7 @@ class MultiLCA(LCABase):
         self.normalization_mm_dict = mu.MappedMatrixDict(
             packages={
                 nrml: self.filter_package_by_identifier(
-                    data_objs=data_objs or self.packages, identifier=list(nrml)
+                    data_objs=data_objs or self.packages, identifier=convert_tuple_to_list(nrml)
                 )
                 for nrml in self.config["normalizations"]
             },
@@ -326,7 +329,7 @@ class MultiLCA(LCABase):
         self.weighting_mm_dict = mu.MappedMatrixDict(
             packages={
                 wng: self.filter_package_by_identifier(
-                    data_objs=data_objs or self.packages, identifier=list(wng)
+                    data_objs=data_objs or self.packages, identifier=convert_tuple_to_list(wng)
                 )
                 for wng in self.config["weightings"]
             },

@@ -1,6 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
 
+import bw_processing as bwp
 import numpy as np
 import pytest
 
@@ -642,3 +643,71 @@ def test_inventory_matrix_inversion(dps, config, func_units):
     result = mlca.invert_technosphere_matrix()
     assert isinstance(result, np.ndarray)
     assert result.sum()
+
+
+def test_filter_package_by_identifier_with_tuple(dps, config, func_units):
+    """Test filter_package_by_identifier with a tuple identifier (converted to list)."""
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+
+    # Filter by tuple identifier - matches ("first", "category") in multi_lca_simple_4.zip
+    filtered = mlca.filter_package_by_identifier(
+        data_objs=mlca.packages, identifier=("first", "category")
+    )
+
+    # Should return a list of filtered datapackages
+    assert isinstance(filtered, list)
+    assert len(filtered) == len(mlca.packages)
+
+    # Verify filtering found the matching resource
+    total_resources = sum(len(dp.resources) for dp in filtered)
+    assert total_resources
+
+
+def test_filter_package_by_identifier_with_string():
+    """Test filter_package_by_identifier with a string identifier."""
+    # Create a datapackage with a string identifier
+    dp = bwp.create_datapackage()
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.array([1.0, 2.0]),
+        name="test-cf",
+        identifier="my_string_identifier",
+        indices_array=np.array([(1, 0), (2, 0)], dtype=bwp.INDICES_DTYPE),
+        global_index=0,
+    )
+
+    config = {"impact_categories": [("test",)]}
+    func_units = {"a": {100: 1}}
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=[dp])
+
+    # Filter by string identifier
+    filtered = mlca.filter_package_by_identifier(
+        data_objs=mlca.packages, identifier="my_string_identifier"
+    )
+
+    # Should return a list of filtered datapackages
+    assert isinstance(filtered, list)
+    assert len(filtered) == 1
+
+    # Verify filtering found the matching resource
+    total_resources = sum(len(dp.resources) for dp in filtered)
+    assert total_resources
+
+
+def test_filter_package_by_identifier_not_found(dps, config, func_units):
+    """Test filter_package_by_identifier with an identifier that doesn't exist."""
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+
+    # Filter by an identifier that doesn't exist in any datapackage
+    filtered = mlca.filter_package_by_identifier(
+        data_objs=mlca.packages, identifier=("nonexistent", "identifier")
+    )
+
+    # Should return a list of filtered datapackages
+    assert isinstance(filtered, list)
+    assert len(filtered) == len(mlca.packages)
+
+    # Verify no resources were found
+    total_resources = sum(len(dp.resources) for dp in filtered)
+    assert not total_resources
