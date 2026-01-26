@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from pydantic import BaseModel, model_validator
 
@@ -10,22 +10,24 @@ class MethodConfig(BaseModel):
     A class that stores the logical relationships between impact categories, normalization, and
     weighting.
 
-    The basic object in all three categories is an identifying tuple, i.e. tuples of strings. These
-    tuples have no length restrictions.
+    The basic object in all three categories is an identifying tuple, i.e. tuples of strings. In
+    implementations other than `bw2data` these can also simply be strings.
 
-    `impact_categories` is a list of tuples which identify each impact category (`bw2data.Method`).
+    `impact_categories` is a list of tuples or strings which identify each impact category
+    (`bw2data.Method`).
 
     `normalizations` link normalization factors to impact categories. They are optional. If
-    provided, they take the form of a dictionary, with keys of tuples which identify each
-    normalization (`bw2data.Normalization`), and values of *lists* of impact categories tuples.
+    provided, they take the form of a dictionary, with keys of tuples or strings which identify each
+    normalization (`bw2data.Normalization`), and values of *lists* of impact categories tuples or
+    strings.
 
     If `normalizations` is defined, **all** impact categories must have a normalization.
 
     `weightings` link weighting factors to either normalizations *or* impact categories. They are
-    optional. If provided, they take the form of a dictionary, with keys of tuples which identify
-    each weighting (`bw2data.Weighting`), and values of *lists* of normalizations or impact
-    categories tuples. They keys identify the weighting data, and the values refer to either
-    impact categories or normalizations - mixing impact categories and normalizations is not
+    optional. If provided, they take the form of a dictionary, with keys of tuples or strings which
+    identify each weighting (`bw2data.Weighting`), and values of *lists* of normalizations or impact
+    categories tuples or strings. The keys identify the weighting data, and the values refer to
+    either impact categories or normalizations - mixing impact categories and normalizations is not
     allowed.
 
     If `normalizations` is defined, **all** impact categories or normalizations must have a
@@ -42,22 +44,22 @@ class MethodConfig(BaseModel):
         "impact_categories": [
             ("climate change", "100 years"),
             ("climate change", "20 years"),
-            ("eutrophication",),
+            "eutrophication",  # String accepted as-is
         ],
         "normalizations": {
             ("climate change", "global normalization"): [
                 ("climate change", "100 years"),
                 ("climate change", "20 years"),
             ],
-            ("eut european reference", "1990"): [
-                ("eutrophication",),
+            "eut european reference": [  # String key accepted as-is
+                "eutrophication",  # String value accepted as-is
             ]
         },
         "weightings": {
             ("climate change", "bad"): [
                 ("how bad?", "dead", "people")
             ],
-            ("eutrophication", "also bad"): [
+            "eutrophication": [  # String key accepted as-is
                 ("how bad?", "dead", "fish")
             ]
         }
@@ -66,9 +68,13 @@ class MethodConfig(BaseModel):
 
     """
 
-    impact_categories: Sequence[tuple[str, ...]]
-    normalizations: Optional[dict[tuple[str, ...], list[tuple[str, ...]]]] = None
-    weightings: Optional[dict[tuple[str, ...], list[tuple[str, ...]]]] = None
+    impact_categories: Sequence[Union[str, tuple[str, ...]]]
+    normalizations: Optional[
+        dict[Union[str, tuple[str, ...]], list[Union[str, tuple[str, ...]]]]
+    ] = None
+    weightings: Optional[
+        dict[Union[str, tuple[str, ...]], list[Union[str, tuple[str, ...]]]]
+    ] = None
 
     @model_validator(mode="after")
     def normalizations_reference_impact_categories(self):

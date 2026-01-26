@@ -194,3 +194,118 @@ def test_method_config_weighting_missing_normalization():
     }
     with pytest.raises(InconsistentLCIA):
         MethodConfig(**data)
+
+
+def test_method_config_string_impact_categories():
+    """Test that strings in impact_categories remain as strings."""
+    data = {
+        "impact_categories": ["a", "b"],
+    }
+    config = MethodConfig(**data)
+    assert config.impact_categories == ["a", "b"]
+
+    data = {
+        "impact_categories": [("foo", "a"), "b"],
+    }
+    config = MethodConfig(**data)
+    assert config.impact_categories == [("foo", "a"), "b"]
+
+
+def test_method_config_string_normalizations():
+    """Test that strings in normalizations keys and values remain as strings."""
+    data = {
+        "impact_categories": [("foo", "a"), ("foo", "b")],
+        "normalizations": {
+            "norm": [("foo", "a"), ("foo", "b")],
+        },
+    }
+    config = MethodConfig(**data)
+    assert "norm" in config.normalizations
+    assert config.normalizations["norm"] == [("foo", "a"), ("foo", "b")]
+
+    data = {
+        "impact_categories": ["a", "b"],
+        "normalizations": {
+            ("norm", "standard"): ["a", "b"],
+        },
+    }
+    config = MethodConfig(**data)
+    assert ("norm", "standard") in config.normalizations
+    assert config.normalizations[("norm", "standard")] == ["a", "b"]
+
+
+def test_method_config_string_weightings():
+    """Test that strings in weightings keys and values remain as strings."""
+    data = {
+        "impact_categories": [("foo", "a"), ("foo", "b")],
+        "weightings": {
+            "weighting": [("foo", "a"), ("foo", "b")],
+        },
+    }
+    config = MethodConfig(**data)
+    assert "weighting" in config.weightings
+    assert config.weightings["weighting"] == [("foo", "a"), ("foo", "b")]
+
+    data = {
+        "impact_categories": ["a", "b"],
+        "normalizations": {"norm": ["a", "b"]},
+        "weightings": {
+            "weighting": ["norm"],
+        },
+    }
+    config = MethodConfig(**data)
+    assert "weighting" in config.weightings
+    assert config.weightings["weighting"] == ["norm"]
+
+
+def test_method_config_mixed_strings_and_tuples():
+    """Test that mixing strings and tuples works correctly."""
+    data = {
+        "impact_categories": [("foo", "a"), "b"],
+        "normalizations": {
+            ("norm", "standard"): [("foo", "a"), "b"],
+            "norm2": ["b"],
+        },
+        "weightings": {
+            ("weighting", "1"): ["norm2"],
+            "weighting2": [("norm", "standard")],
+        },
+    }
+    config = MethodConfig(**data)
+    assert config.impact_categories == [("foo", "a"), "b"]
+    assert ("norm", "standard") in config.normalizations
+    assert "norm2" in config.normalizations
+    assert config.normalizations[("norm", "standard")] == [("foo", "a"), "b"]
+    assert config.normalizations["norm2"] == ["b"]
+    assert ("weighting", "1") in config.weightings
+    assert "weighting2" in config.weightings
+    assert config.weightings[("weighting", "1")] == ["norm2"]
+    assert config.weightings["weighting2"] == [("norm", "standard")]
+
+
+def test_method_config_string_validation_still_works():
+    """Test that validation errors still work correctly with strings."""
+    # Missing normalization reference
+    data = {
+        "impact_categories": ["a", "b"],
+        "normalizations": {"norm": ["a", "b", "c"]},
+    }
+    with pytest.raises(ValueError):
+        MethodConfig(**data)
+
+    # Overlapping identifiers
+    data = {
+        "impact_categories": ["a", "b"],
+        "normalizations": {"a": ["a", "b"]},
+    }
+    with pytest.raises(ValueError):
+        MethodConfig(**data)
+
+    # Missing weighting reference
+    data = {
+        "impact_categories": ["a", "b"],
+        "normalizations": {"norm": ["a", "b"]},
+        "weightings": {"weighting": ["c"]},
+    }
+    with pytest.raises(ValueError):
+        MethodConfig(**data)
