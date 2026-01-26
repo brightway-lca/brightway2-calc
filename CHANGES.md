@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+### 2.3.2 (2026-01-25)
+
+* Update `MethodConfig` for changes in 2.3.1
+
 ### 2.3.1 (2026-01-25)
 
 * Handle `str` and `list[str]` impact category identifiers
