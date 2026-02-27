@@ -1,8 +1,8 @@
 # `bw2calc` Changelog
 
-## Unreleased
+### 2.4.0 (2026-02-27)
 
-* Add `JacobiGMRESLCA`, an iterative `LCA` variant using Jacobi preconditioning with GMRES.
+* [#145](https://github.com/brightway-lca/brightway2-calc/pull/145): Add a `JacobiGMRESLCA` class to solve large technosphere matrices. Thanks @romainsacchi
 
 ### 2.3.2 (2026-01-25)
 
