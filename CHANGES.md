@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## Unreleased
+
+* Add `JacobiGMRESLCA`, an iterative `LCA` variant using Jacobi preconditioning with GMRES.
+
 ### 2.3.2 (2026-01-25)
 
 * Update `MethodConfig` for changes in 2.3.1

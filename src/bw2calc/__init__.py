@@ -2,6 +2,7 @@
 __all__ = [
     "CachingLCA",
     "DenseLCA",
+    "JacobiGMRESLCA",
     "LCA",
     "LeastSquaresLCA",
     "IterativeLCA",
@@ -69,6 +70,7 @@ from bw2calc.caching_lca import CachingLCA
 from bw2calc.dense_lca import DenseLCA
 from bw2calc.fast_scores import FastScoresOnlyMultiLCA
 from bw2calc.iterative_lca import IterativeLCA
+from bw2calc.jacobi_gmres_lca import JacobiGMRESLCA
 from bw2calc.lca import LCA
 from bw2calc.least_squares import LeastSquaresLCA
 from bw2calc.method_config import MethodConfig
