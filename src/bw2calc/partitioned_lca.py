@@ -16,6 +16,43 @@ from bw2calc.lca import LCA
 from bw2calc.utils import get_datapackage
 
 
+def _find_production_exchanges(mm: mu.MappedMatrix):
+    """Run all production-exchange heuristics and return whatever was found.
+
+    Same logic as ``bw_graph_tools.guess_production_exchanges`` but does not raise
+    ``UnclearProductionExchange`` when some columns are unresolved.  This is intentional:
+    we call this on a non-square stochastic-only matrix whose unresolved rows are exactly
+    the interface products we want to identify.
+
+    Retains the other checks from ``guess_production_exchanges``: raises ``ValueError``
+    for an empty matrix or mismatched row/column result arrays.
+
+    Returns ``(row_indices, col_indices)`` — integer arrays of matrix row/column indices
+    where production exchanges were found.  Unresolved columns are simply absent.
+    """
+    from bw_graph_tools.matrix_tools import (  # noqa: PLC0415
+        gpe_fifth_heuristic,
+        gpe_first_heuristic,
+        gpe_fourth_heuristic,
+        gpe_second_heuristic,
+        gpe_third_heuristic,
+    )
+
+    if mm.matrix.shape[0] == 0:
+        raise ValueError("Empty matrix")
+
+    row, col = gpe_first_heuristic(mm)
+    row, col = gpe_second_heuristic(mm, row, col)
+    row, col = gpe_third_heuristic(mm, row, col)
+    row, col = gpe_fourth_heuristic(mm, row, col)
+    row, col = gpe_fifth_heuristic(mm, row, col)
+
+    if row.shape != col.shape:
+        raise ValueError("Guessed row indices do not match guessed column indices.")
+
+    return row, col
+
+
 class PartitionedMonteCarloLCA(Iterator):
     """Monte Carlo LCA that pre-solves a static background system once.
 
@@ -223,17 +260,9 @@ class PartitionedMonteCarloLCA(Iterator):
             return dynamic_dp
 
         # Build stochastic technosphere (deterministic) to identify interface products.
-        # We use the individual heuristics rather than guess_production_exchanges because
-        # the stochastic-only matrix is non-square (interface product rows have no
-        # corresponding column), and guess_production_exchanges raises for non-square inputs.
-        from bw_graph_tools.matrix_tools import (  # noqa: PLC0415
-            gpe_fifth_heuristic,
-            gpe_first_heuristic,
-            gpe_fourth_heuristic,
-            gpe_second_heuristic,
-            gpe_third_heuristic,
-        )
-
+        # We use _find_production_exchanges (not guess_production_exchanges) because the
+        # stochastic-only matrix is non-square — the unresolved rows are exactly the
+        # interface products we want.
         stochastic_tech_mm = mu.MappedMatrix(
             packages=self.stochastic_packages,
             matrix="technosphere_matrix",
@@ -241,19 +270,7 @@ class PartitionedMonteCarloLCA(Iterator):
             use_distributions=False,
         )
 
-        row_existing, col_existing = gpe_first_heuristic(stochastic_tech_mm)
-        row_existing, col_existing = gpe_second_heuristic(
-            stochastic_tech_mm, row_existing, col_existing
-        )
-        row_existing, col_existing = gpe_third_heuristic(
-            stochastic_tech_mm, row_existing, col_existing
-        )
-        row_existing, col_existing = gpe_fourth_heuristic(
-            stochastic_tech_mm, row_existing, col_existing
-        )
-        row_existing, col_existing = gpe_fifth_heuristic(
-            stochastic_tech_mm, row_existing, col_existing
-        )
+        row_existing, col_existing = _find_production_exchanges(stochastic_tech_mm)
 
         all_rows = np.arange(stochastic_tech_mm.matrix.shape[0])
         interface_row_indices = np.setdiff1d(all_rows, row_existing)
