@@ -86,11 +86,13 @@ class PartitionedMonteCarloLCA(Iterator):
 
     def __init__(
         self,
-        demand: dict,
+        demand: dict[int, float],
         static_databases: list,
         data_objs: list,
         seed_override: Optional[int] = None,
     ):
+        if not all(isinstance(k, int) for k in demand):
+            raise TypeError("All demand keys must be integers (activity/product database IDs).")
         self.demand = demand
         self.static_databases = list(static_databases)
         self.seed_override = seed_override
@@ -169,18 +171,38 @@ class PartitionedMonteCarloLCA(Iterator):
     # ------------------------------------------------------------------
 
     def _classify_packages(self, packages):
+        """Classify packages into static LCI, stochastic LCI, and method buckets.
+
+        Classification happens at the resource-group level so that a single datapackage
+        containing groups for different matrices or different databases is split correctly.
+        Each resource group has a single matrix label, so we use ``dp.groups`` to iterate
+        and ``dp.exclude({"group": name})`` to produce filtered sub-packages.
+
+        Group-to-database matching uses the bw2data naming convention where a group is
+        named ``clean_datapackage_name(db_name + " " + matrix_type)`` — i.e. it starts
+        with ``clean_datapackage_name(db_name)`` followed by ``_``.  If no group-name
+        match is found, the check falls back to the package-level ``metadata["name"]``.
+        """
         static_names = {bwp.clean_datapackage_name(db) for db in self.static_databases}
 
         static, stochastic, method = [], [], []
         for dp in packages:
-            matrices = {r.get("matrix") for r in dp.resources}
-            if "characterization_matrix" in matrices:
-                method.append(dp)
-            elif matrices & {"technosphere_matrix", "biosphere_matrix"}:
-                if dp.metadata.get("name", "") in static_names:
-                    static.append(dp)
-                else:
-                    stochastic.append(dp)
+            for group_name, group_dp in dp.groups.items():
+                matrix = group_dp.resources[0].get("matrix", "")
+                filtered = dp.filter_by_attribute("group", group_name)
+
+                if matrix == "characterization_matrix":
+                    method.append(filtered)
+                elif matrix in ("technosphere_matrix", "biosphere_matrix"):
+                    # bw2data names groups as clean_datapackage_name(db + " " + matrix_type),
+                    # so a static group name starts with clean_datapackage_name(db) + "_".
+                    # Fall back to the package-level name for the one-package-per-database case.
+                    is_static = any(
+                        group_name == sn or group_name.startswith(sn + "_") for sn in static_names
+                    )
+                    if not is_static:
+                        is_static = dp.metadata.get("name", "") in static_names
+                    (static if is_static else stochastic).append(filtered)
 
         return static, stochastic, method
 
@@ -203,33 +225,14 @@ class PartitionedMonteCarloLCA(Iterator):
                         "databases."
                     )
 
-        graph = {
-            dp.metadata.get("name", ""): [
+        graph: dict[str, set] = {}
+        for dp in self.static_packages + self.stochastic_packages:
+            name = dp.metadata.get("name", "")
+            deps = {
                 bwp.clean_datapackage_name(d) for d in dp.metadata.get("database_dependencies", [])
-            ]
-            for dp in self.static_packages + self.stochastic_packages
-        }
-        self._check_for_cycles(graph)
-
-        # Check demand is not in a static database (requires bw2data)
-        try:
-            from bw2data import get_node
-
-            static_db_set = set(self.static_databases)
-            for demand_key in self.demand:
-                try:
-                    node = get_node(id=demand_key)
-                    if node["database"] in static_db_set:
-                        raise DemandInStaticDatabase(
-                            f"Demand key {demand_key} belongs to static database "
-                            f"'{node['database']}'. The functional unit must be in the "
-                            "stochastic (foreground) system."
-                        )
-                except Exception as exc:
-                    if isinstance(exc, DemandInStaticDatabase):
-                        raise
-        except ImportError:
-            pass
+            }
+            graph.setdefault(name, set()).update(deps)
+        self._check_for_cycles({k: list(v) for k, v in graph.items()})
 
     @staticmethod
     def _check_for_cycles(graph: dict) -> None:
@@ -272,6 +275,18 @@ class PartitionedMonteCarloLCA(Iterator):
 
         row_existing, col_existing = _find_production_exchanges(stochastic_tech_mm)
 
+        # Map stochastic matrix row index → product db id (used here and below)
+        stoch_product_reversed = {v: k for k, v in stochastic_tech_mm.row_mapper.to_dict().items()}
+
+        stochastic_produced_ids = {stoch_product_reversed[r] for r in row_existing}
+        for demand_key in self.demand:
+            if demand_key not in stochastic_produced_ids:
+                raise DemandInStaticDatabase(
+                    f"Demand key {demand_key} does not have a production exchange in the "
+                    "stochastic system. The functional unit must be in the stochastic "
+                    "(foreground) system, not in a static background database."
+                )
+
         all_rows = np.arange(stochastic_tech_mm.matrix.shape[0])
         interface_row_indices = np.setdiff1d(all_rows, row_existing)
 
@@ -288,9 +303,6 @@ class PartitionedMonteCarloLCA(Iterator):
         )
         static_lca.load_lci_data()
         static_lca.decompose_technosphere()
-
-        # Map stochastic matrix row index → product db id
-        stoch_product_reversed = {v: k for k, v in stochastic_tech_mm.row_mapper.to_dict().items()}
 
         # Map static product db id → static activity db id (via production exchanges)
         static_row_existing, static_col_existing = guess_production_exchanges(

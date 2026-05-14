@@ -24,6 +24,7 @@ import pytest
 from bw2calc import PartitionedMonteCarloLCA
 from bw2calc.errors import (
     CyclicDependencyGraph,
+    DemandInStaticDatabase,
     MissingDatabaseDependencies,
     StaticDependsOnStochastic,
 )
@@ -319,11 +320,12 @@ def test_package_classification():
         data_objs=[static_dp, stochastic_dp, method_dp],
     )
 
-    assert len(p_lca.static_packages) == 1
-    assert len(p_lca.stochastic_packages) == 1
+    # Each package has tech + bio groups, so 2 filtered packages per LCI package
+    assert len(p_lca.static_packages) == 2
+    assert len(p_lca.stochastic_packages) == 2
     assert len(p_lca.method_packages) == 1
-    assert p_lca.static_packages[0].metadata["name"] == "static_db"
-    assert p_lca.stochastic_packages[0].metadata["name"] == "stochastic_db"
+    assert all(dp.metadata["name"] == "static_db" for dp in p_lca.static_packages)
+    assert all(dp.metadata["name"] == "stochastic_db" for dp in p_lca.stochastic_packages)
 
 
 def test_multiple_static_databases():
@@ -347,13 +349,44 @@ def test_multiple_static_databases():
         static_databases=["static_db", "extra_static"],
         data_objs=[static_dp1, static_dp2, stochastic_dp, method_dp],
     )
-    assert len(p_lca.static_packages) == 2
-    assert len(p_lca.stochastic_packages) == 1
+    # static_db: 2 groups (tech + bio); extra_static: 1 group (tech only)
+    assert len(p_lca.static_packages) == 3
+    assert len(p_lca.stochastic_packages) == 2
 
 
 # ---------------------------------------------------------------------------
 # Validation errors
 # ---------------------------------------------------------------------------
+
+
+def test_non_integer_demand_key_raises():
+    """Raises TypeError when demand keys are not integers."""
+    static_dp = _make_static_dp()
+    stochastic_dp = _make_stochastic_dp()
+    method_dp = _make_method_dp()
+
+    with pytest.raises(TypeError, match="integers"):
+        PartitionedMonteCarloLCA(
+            demand={"P3": 1.0},
+            static_databases=["static_db"],
+            data_objs=[static_dp, stochastic_dp, method_dp],
+        )
+
+
+def test_demand_in_static_database_raises():
+    """Raises DemandInStaticDatabase when the demand key is an activity in the static system."""
+    static_dp = _make_static_dp()
+    stochastic_dp = _make_stochastic_dp()
+    method_dp = _make_method_dp()
+
+    # Activity 100 is in the static db, not the stochastic one
+    p_lca = PartitionedMonteCarloLCA(
+        demand={100: 1.0},
+        static_databases=["static_db"],
+        data_objs=[static_dp, stochastic_dp, method_dp],
+    )
+    with pytest.raises(DemandInStaticDatabase):
+        p_lca.lci()
 
 
 def test_missing_database_dependencies_raises():
@@ -444,3 +477,138 @@ def test_no_interface_products_returns_empty_dp():
     p_lca.lcia()
 
     assert np.isclose(p_lca.score, 0.5 * 2.0, rtol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Mixed-matrix datapackage tests
+# ---------------------------------------------------------------------------
+
+
+def test_mixed_lci_and_characterization_in_one_package():
+    """A single datapackage containing both static LCI groups and a characterization group."""
+    # Combine static tech + bio + characterization into one datapackage
+    combined_dp = bwp.create_datapackage(name="static_and_method")
+
+    combined_dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        name=bwp.clean_datapackage_name("static_db technosphere_matrix"),
+        indices_array=np.array([(1, 100), (2, 200), (1, 200)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([1.0, 1.0, 0.5]),
+        flip_array=np.array([False, False, True]),
+    )
+    combined_dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        name=bwp.clean_datapackage_name("static_db biosphere_matrix"),
+        indices_array=np.array([(1000, 100), (2000, 200)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([2.0, 1.0]),
+    )
+    combined_dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        name="method_group",
+        indices_array=np.array([(1000, 1000), (2000, 2000)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([2.0, 1.0]),
+    )
+    combined_dp.metadata["database_dependencies"] = []
+
+    stochastic_dp = _make_stochastic_dp()
+
+    p_lca = PartitionedMonteCarloLCA(
+        demand={3: 1.0},
+        static_databases=["static_db"],
+        data_objs=[combined_dp, stochastic_dp],
+    )
+    assert len(p_lca.static_packages) == 2  # tech + bio groups
+    assert len(p_lca.stochastic_packages) == 2  # stochastic tech + bio groups
+    assert len(p_lca.method_packages) == 1
+
+    p_lca.lci()
+    p_lca.lcia()
+    assert np.isclose(p_lca.score, 3.2, rtol=1e-6)
+
+
+def test_static_and_stochastic_groups_in_one_package():
+    """A single datapackage containing both a static and a stochastic technosphere group."""
+    combined_dp = bwp.create_datapackage(name="combined")
+
+    combined_dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        name=bwp.clean_datapackage_name("static_db technosphere_matrix"),
+        indices_array=np.array([(1, 100), (2, 200), (1, 200)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([1.0, 1.0, 0.5]),
+        flip_array=np.array([False, False, True]),
+    )
+    combined_dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        name=bwp.clean_datapackage_name("static_db biosphere_matrix"),
+        indices_array=np.array([(1000, 100), (2000, 200)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([2.0, 1.0]),
+    )
+    combined_dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        name=bwp.clean_datapackage_name("stochastic_db technosphere_matrix"),
+        indices_array=np.array([(3, 300), (2, 300)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([1.0, 1.0]),
+        flip_array=np.array([False, True]),
+    )
+    combined_dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        name=bwp.clean_datapackage_name("stochastic_db biosphere_matrix"),
+        indices_array=np.array([(1000, 300)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([0.1]),
+    )
+    combined_dp.metadata["database_dependencies"] = []
+
+    method_dp = _make_method_dp()
+
+    p_lca = PartitionedMonteCarloLCA(
+        demand={3: 1.0},
+        static_databases=["static_db"],
+        data_objs=[combined_dp, method_dp],
+    )
+    assert len(p_lca.static_packages) == 2  # static tech + bio
+    assert len(p_lca.stochastic_packages) == 2  # stochastic tech + bio
+    assert len(p_lca.method_packages) == 1
+
+    p_lca.lci()
+    p_lca.lcia()
+    assert np.isclose(p_lca.score, 3.2, rtol=1e-6)
+
+
+def test_stochastic_characterization_varies():
+    """Stochastic characterization factors produce varying scores across MC iterations."""
+    static_dp = _make_static_dp()
+    stochastic_dp = _make_stochastic_dp()
+
+    # Method with uniform distribution on CF for F1: range [1.0, 3.0], nominal 2.0
+    method_dp = bwp.create_datapackage(name="stochastic_method")
+    char_indices = np.array([(1000, 1000), (2000, 2000)], dtype=bwp.INDICES_DTYPE)
+    char_data = np.array([2.0, 1.0])
+    char_dists = np.array(
+        [
+            (4, 2.0, 0.0, np.nan, 1.0, 3.0, False),  # uniform [1.0, 3.0] for F1
+            (0, 1.0, 0.0, np.nan, np.nan, np.nan, False),  # deterministic for F2
+        ],
+        dtype=bwp.UNCERTAINTY_DTYPE,
+    )
+    method_dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        indices_array=char_indices,
+        data_array=char_data,
+        distributions_array=char_dists,
+    )
+
+    p_lca = PartitionedMonteCarloLCA(
+        demand={3: 1.0},
+        static_databases=["static_db"],
+        data_objs=[static_dp, stochastic_dp, method_dp],
+        seed_override=99,
+    )
+    p_lca.lci()
+    p_lca.lcia()
+
+    scores = [p_lca.score]
+    for _ in range(20):
+        next(p_lca)
+        scores.append(p_lca.score)
+
+    assert len(set(np.round(scores, 8))) > 1, "Scores must vary when CFs have distributions"
