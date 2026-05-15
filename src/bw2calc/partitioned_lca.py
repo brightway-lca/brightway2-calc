@@ -82,6 +82,26 @@ class PartitionedMonteCarloLCA(Iterator):
     -----
     All LCI datapackages must contain a ``database_dependencies`` key in their metadata,
     which is written by ``bw2data >= 4.7``.
+
+    Design note: composition vs. subclassing
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This class uses **composition**: it builds an internal ``._lca`` instance from the
+    stochastic packages plus the pre-solved dynamic datapackage, and delegates properties
+    to it.  An alternative would be to subclass ``LCA`` and override ``load_lci_data()``
+    to perform the same partitioning — classify packages, pre-solve the static system,
+    inject the dynamic datapackage, replace ``self.packages``, then call
+    ``super().load_lci_data()``.  That approach would give full inheritance of all current
+    and future ``LCA`` attributes without explicit delegation.
+
+    The reason composition was chosen instead:
+
+    * **Package list mutation.** The override would need to replace ``self.packages``
+      (set from ``data_objs`` in ``__init__``) with the filtered stochastic+dynamic list
+      mid-lifecycle, which is non-obvious and makes ``self.packages`` inconsistent with
+      ``self.data_objs``.
+    * **Matrix semantics.**  Whether composed or subclassed, ``technosphere_matrix`` is
+      the *reduced* aggregated-proxy matrix, not the full combined static+stochastic
+      system.  Subclassing makes this less visible rather than resolving it.
     """
 
     def __init__(
@@ -113,22 +133,22 @@ class PartitionedMonteCarloLCA(Iterator):
         """Pre-solve the static system, build the dynamic datapackage, and run the first LCI."""
         dynamic_dp = self._build_dynamic_datapackage()
 
-        self.lca = LCA(
+        self._lca = LCA(
             demand=self.demand,
             data_objs=self.stochastic_packages + self.method_packages + [dynamic_dp],
             use_distributions=True,
             seed_override=self.seed_override,
         )
-        self.lca.lci()
+        self._lca.lci()
 
     def lcia(self) -> None:
-        self.lca.lcia()
+        self._lca.lcia()
 
     def keep_first_iteration(self) -> None:
-        self.lca.keep_first_iteration()
+        self._lca.keep_first_iteration()
 
     def __next__(self) -> None:
-        next(self.lca)
+        next(self._lca)
 
     # ------------------------------------------------------------------
     # Delegated properties
@@ -136,35 +156,35 @@ class PartitionedMonteCarloLCA(Iterator):
 
     @property
     def score(self) -> float:
-        return self.lca.score
+        return self._lca.score
 
     @property
     def inventory(self):
-        return self.lca.inventory
+        return self._lca.inventory
 
     @property
     def supply_array(self):
-        return self.lca.supply_array
+        return self._lca.supply_array
 
     @property
     def characterized_inventory(self):
-        return self.lca.characterized_inventory
+        return self._lca.characterized_inventory
 
     @property
     def dicts(self):
-        return self.lca.dicts
+        return self._lca.dicts
 
     @property
     def technosphere_matrix(self):
-        return self.lca.technosphere_matrix
+        return self._lca.technosphere_matrix
 
     @property
     def biosphere_matrix(self):
-        return self.lca.biosphere_matrix
+        return self._lca.biosphere_matrix
 
     @property
     def characterization_matrix(self):
-        return self.lca.characterization_matrix
+        return self._lca.characterization_matrix
 
     # ------------------------------------------------------------------
     # Setup helpers
