@@ -364,7 +364,11 @@ class LCA(LCABase):
             setattr(self, label, obj)
         else:
             data_objs = list(obj)
-        self.packages = [pkg.exclude({"matrix": matrix}) for pkg in self.packages] + data_objs
+        # Drop packages that become empty after exclusion (e.g. a method-only zip package
+        # after switch_method) so their filesystems are released and file handles closed.
+        self.packages = [
+            p for pkg in self.packages if (p := pkg.exclude({"matrix": matrix})).resources
+        ] + data_objs
         func(data_objs=data_objs)
 
         logger.info(
