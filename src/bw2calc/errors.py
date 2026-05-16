@@ -71,3 +71,30 @@ class InconsistentLCIA(BW2CalcError):
     """Provided weighting or normalization doesn't fit the impact category"""
 
     pass
+
+
+class MissingDatabaseDependencies(BW2CalcError):
+    """A datapackage is missing the 'database_dependencies' metadata field required for
+    partitioned Monte Carlo. Reprocess the database with bw2data >= 4.7."""
+
+    pass
+
+
+class CyclicDependencyGraph(BW2CalcError):
+    """The database dependency graph contains a cycle, making partitioned Monte Carlo impossible"""
+
+    pass
+
+
+class StaticDependsOnStochastic(BW2CalcError):
+    """A database marked as static has a dependency on a database marked as stochastic.
+    Static databases must only depend on other static databases."""
+
+    pass
+
+
+class DemandInStaticDatabase(BW2CalcError):
+    """The functional unit demand points to an activity in a static database.
+    The demand must be in the stochastic (foreground) system."""
+
+    pass
