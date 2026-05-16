@@ -1,5 +1,10 @@
 # `bw2calc` Changelog
 
+## 2.5.0 (2026-05-16)
+
+* [#148](https://github.com/brightway-lca/brightway2-calc/pull/148): Add `PartitionedMonteCarloLCA`, a Monte Carlo LCA class that pre-solves a static background system once and only resamples the stochastic foreground on each iteration
+* [#150](https://github.com/brightway-lca/brightway2-calc/pull/150): Fix file handle leak in `switch_method`, `switch_normalization`, and `switch_weighting` — empty `FilteredDatapackage` objects were accumulating in `self.packages`, keeping old method filesystems (e.g. open zip files) alive across repeated calls
+
 ### 2.4.0 (2026-02-27)
 
 * [#145](https://github.com/brightway-lca/brightway2-calc/pull/145): Add a `JacobiGMRESLCA` class to solve large technosphere matrices. Thanks @romainsacchi
