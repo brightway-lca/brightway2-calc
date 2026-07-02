@@ -54,6 +54,9 @@ class JacobiGMRESLCA(LCA):
         self.use_guess = use_guess
         # Cache whether matrix structure cleanup was already done.
         self._matrix_prepared = False
+        # Prepared CSC copy used by GMRES; don't replace `technosphere_matrix`, as
+        # Monte Carlo iteration mutates the matrix held by `technosphere_mm`.
+        self._prepared_technosphere_matrix = None
         # Cache the Jacobi preconditioner to avoid rebuilding between solves.
         self._cached_preconditioner: Optional[LinearOperator] = None
         # Last successful solution vector, used as warm start when `use_guess=True`.
@@ -62,6 +65,7 @@ class JacobiGMRESLCA(LCA):
     def __next__(self) -> None:
         # Matrix values can change across iteration steps, so invalidate caches.
         self._matrix_prepared = False
+        self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         super().__next__()
 
@@ -69,6 +73,7 @@ class JacobiGMRESLCA(LCA):
         super().load_lci_data(nonsquare_ok=nonsquare_ok)
         # New matrices imply stale solver-side caches.
         self._matrix_prepared = False
+        self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         self.guess = None
 
@@ -80,10 +85,11 @@ class JacobiGMRESLCA(LCA):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
 
         # GMRES works best with canonical sparse structure.
-        self.technosphere_matrix = self.technosphere_matrix.tocsc(copy=False)
-        self.technosphere_matrix.sum_duplicates()
-        self.technosphere_matrix.eliminate_zeros()
-        self.technosphere_matrix.sort_indices()
+        matrix = self.technosphere_matrix.tocsc(copy=False)
+        matrix.sum_duplicates()
+        matrix.eliminate_zeros()
+        matrix.sort_indices()
+        self._prepared_technosphere_matrix = matrix
         self._matrix_prepared = True
 
     def _build_jacobi_preconditioner(self) -> Optional[LinearOperator]:
@@ -91,7 +97,8 @@ class JacobiGMRESLCA(LCA):
         if self._cached_preconditioner is not None:
             return self._cached_preconditioner
 
-        diagonal = self.technosphere_matrix.diagonal()
+        matrix = self._prepared_technosphere_matrix
+        diagonal = matrix.diagonal()
         # Cannot build Jacobi inverse if any diagonal entry is zero.
         if np.any(diagonal == 0):
             return None
@@ -99,9 +106,9 @@ class JacobiGMRESLCA(LCA):
         inverse_diagonal = 1.0 / diagonal
         # LinearOperator form avoids materializing a dense diagonal inverse matrix.
         self._cached_preconditioner = LinearOperator(
-            shape=self.technosphere_matrix.shape,
+            shape=matrix.shape,
             matvec=lambda x: inverse_diagonal * x,
-            dtype=self.technosphere_matrix.dtype,
+            dtype=matrix.dtype,
         )
         return self._cached_preconditioner
 
@@ -110,14 +117,15 @@ class JacobiGMRESLCA(LCA):
             demand = self.demand_array
 
         self._prepare_matrix()
+        matrix = self._prepared_technosphere_matrix
         preconditioner = self._build_jacobi_preconditioner()
         # Warm start can reduce Krylov iterations for related successive solves.
         x0 = self.guess if (self.use_guess and self.guess is not None) else None
 
         try:
             # SciPy modern API (`rtol` + `atol`).
-            solution, _ = gmres(
-                self.technosphere_matrix,
+            solution, info = gmres(
+                matrix,
                 demand,
                 x0=x0,
                 rtol=self.rtol,
@@ -128,8 +136,8 @@ class JacobiGMRESLCA(LCA):
             )
         except TypeError:
             # Backward compatibility for SciPy versions using `tol`.
-            solution, _ = gmres(
-                self.technosphere_matrix,
+            solution, info = gmres(
+                matrix,
                 demand,
                 x0=x0,
                 tol=self.rtol,
@@ -138,6 +146,9 @@ class JacobiGMRESLCA(LCA):
                 maxiter=self.maxiter,
                 M=preconditioner,
             )
+
+        if info != 0:
+            solution = super().solve_linear_system(demand)
 
         # Match return conventions used elsewhere in bw2calc.
         solution = np.asarray(solution)
