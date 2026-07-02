@@ -9,9 +9,10 @@ __all__ = [
     "MethodConfig",
     "MultiLCA",
     "FastScoresOnlyMultiLCA",
+    "PartitionedMonteCarloLCA",
 ]
 
-__version__ = "2.3.2"
+__version__ = "2.5.0"
 
 
 import platform
@@ -75,3 +76,4 @@ from bw2calc.lca import LCA
 from bw2calc.least_squares import LeastSquaresLCA
 from bw2calc.method_config import MethodConfig
 from bw2calc.multi_lca import MultiLCA
+from bw2calc.partitioned_lca import PartitionedMonteCarloLCA

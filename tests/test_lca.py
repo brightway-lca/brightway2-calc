@@ -908,6 +908,55 @@ def test_switch_method():
     assert not any(res["matrix"] == "characterization_matrix" for res in lca.packages[0].resources)
 
 
+def test_switch_method_does_not_accumulate_empty_packages():
+    """Repeated switch_method calls must not accumulate empty filtered packages.
+
+    When the method lives in its own datapackage, excluding the characterization matrix
+    leaves an empty FilteredDatapackage.  Without the fix, each switch adds one of these
+    empty packages to self.packages, keeping the old method's filesystem (and any open
+    file handles) alive indefinitely.
+    """
+    lci_dp = bwp.create_datapackage()
+    lci_dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=np.array([1, 1, 0.5]),
+        indices_array=np.array([(1, 101), (2, 102), (2, 101)], dtype=bwp.INDICES_DTYPE),
+        flip_array=np.array([0, 0, 1], dtype=bool),
+    )
+    lci_dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=np.array([1.0]),
+        indices_array=np.array([(1, 101)], dtype=bwp.INDICES_DTYPE),
+    )
+
+    def _method_dp(cf_value):
+        dp = bwp.create_datapackage()
+        dp.add_persistent_vector(
+            matrix="characterization_matrix",
+            data_array=np.array([float(cf_value)]),
+            indices_array=np.array([(1, 0)], dtype=bwp.INDICES_DTYPE),
+            global_index=0,
+        )
+        return dp
+
+    method1 = _method_dp(1.0)
+    method2 = _method_dp(2.0)
+    method3 = _method_dp(3.0)
+
+    lca = LCA({1: 1}, data_objs=[lci_dp, method1])
+    lca.lci()
+    lca.lcia()
+    assert len(lca.packages) == 2
+
+    lca.switch_method([method2])
+    # method1's package becomes empty after exclude — must be dropped
+    assert len(lca.packages) == 2
+
+    lca.switch_method([method3])
+    # must still be 2, not growing with each switch
+    assert len(lca.packages) == 2
+
+
 # switch_normalization
 
 

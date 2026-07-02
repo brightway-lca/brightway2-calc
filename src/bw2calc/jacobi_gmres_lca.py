@@ -79,7 +79,9 @@ class JacobiGMRESLCA(LCA):
 
     def _prepare_matrix(self) -> None:
         # Sparse cleanup is done once per matrix build, then reused.
-        if self._matrix_prepared:
+        if getattr(self, "_matrix_prepared", False) and getattr(
+            self, "_prepared_technosphere_matrix", None
+        ) is not None:
             return
         if not sps.isspmatrix(self.technosphere_matrix):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
@@ -97,7 +99,10 @@ class JacobiGMRESLCA(LCA):
         if self._cached_preconditioner is not None:
             return self._cached_preconditioner
 
-        matrix = self._prepared_technosphere_matrix
+        matrix = getattr(self, "_prepared_technosphere_matrix", None)
+        if matrix is None:
+            self._prepare_matrix()
+            matrix = self._prepared_technosphere_matrix
         diagonal = matrix.diagonal()
         # Cannot build Jacobi inverse if any diagonal entry is zero.
         if np.any(diagonal == 0):
