@@ -79,15 +79,19 @@ class JacobiGMRESLCA(LCA):
 
     def _prepare_matrix(self) -> None:
         # Sparse cleanup is done once per matrix build, then reused.
-        if getattr(self, "_matrix_prepared", False) and getattr(
-            self, "_prepared_technosphere_matrix", None
-        ) is not None:
+        if (
+            getattr(self, "_matrix_prepared", False)
+            and getattr(self, "_prepared_technosphere_matrix", None) is not None
+        ):
             return
         if not sps.isspmatrix(self.technosphere_matrix):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
 
-        # GMRES works best with canonical sparse structure.
-        matrix = self.technosphere_matrix.tocsc(copy=False)
+        # GMRES works best with canonical sparse structure. Always copy: with
+        # `copy=False`, a `technosphere_matrix` which is already CSC would be returned
+        # as-is, and `eliminate_zeros()` would then strip structural zeros from the
+        # matrix owned by `technosphere_mm`, which needs them to update in place.
+        matrix = self.technosphere_matrix.tocsc(copy=True)
         matrix.sum_duplicates()
         matrix.eliminate_zeros()
         matrix.sort_indices()
