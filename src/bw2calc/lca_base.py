@@ -16,6 +16,22 @@ logger = logging.getLogger("bw2calc")
 class LCABase(Iterator):
     """Base class for single and multi LCA classes"""
 
+    # Whether this object has solved anything via pypardiso's module-level solver.
+    # `_delete_solver_state` uses this so that classes which never touch Pardiso don't
+    # reset it. See https://github.com/brightway-lca/brightway2-calc/issues/158
+    _used_pypardiso = False
+
+    def _spsolve(self, matrix, rhs):
+        """Solve ``matrix @ x = rhs``, recording whether pypardiso was used.
+
+        All Pardiso solves in an LCA class should go through here rather than calling
+        the module-level ``spsolve`` directly, so that ``_delete_solver_state`` knows
+        whether there is any Pardiso state belonging to this object.
+        """
+        if PYPARDISO:
+            self._used_pypardiso = True
+        return spsolve(matrix, rhs)
+
     def keep_first_iteration(self):
         """Set a flag to use the current values as first element when
         iterating.
@@ -155,7 +171,7 @@ class LCABase(Iterator):
         if hasattr(self, "solver"):
             return self.solver(demand)
         else:
-            return spsolve(self.technosphere_matrix, demand)
+            return self._spsolve(self.technosphere_matrix, demand)
 
     def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
@@ -257,7 +273,7 @@ class LCABase(Iterator):
                 "Performance is much better with pypardiso (not available on MacOS ARM machines)"
             )
 
-        self.inverted_technosphere_matrix = spsolve(
+        self.inverted_technosphere_matrix = self._spsolve(
             self.technosphere_matrix, np.eye(*self.technosphere_matrix.shape)
         )
         return self.inverted_technosphere_matrix
@@ -356,10 +372,18 @@ class LCABase(Iterator):
         return self.weight()
 
     def _delete_solver_state(self) -> None:
-        """Low-level function to force freeing up memory and removing any `solver` state."""
+        """Low-level function to force freeing up memory and removing any `solver` state.
+
+        .. warning:: ``pypardiso_solver`` is a single module-level object shared by
+        everything in the process, so resetting it also discards the stored
+        factorization of any other live LCA object. We only reset when this object has
+        actually solved something with Pardiso, but we can't limit the reset to this
+        object's own state.
+
+        """
         if hasattr(self, "solver"):
             delattr(self, "solver")
-        if PYPARDISO:
+        if PYPARDISO and self._used_pypardiso:
             # This is global state in the pypardiso library - use built-in reset function
             from pypardiso.pardiso_wrapper import PyPardisoError
             from pypardiso.scipy_aliases import pypardiso_solver
@@ -367,14 +391,11 @@ class LCABase(Iterator):
             try:
                 pypardiso_solver.free_memory()
             except PyPardisoError as exc:
-                # `PYPARDISO` only tells us that pypardiso can be imported, not that this
-                # calculation ever used it. Iterative subclasses like `JacobiGMRESLCA` never
-                # call `spsolve`, so there is no factorization to release, and recent MKL
-                # versions raise instead of ignoring the request. `free_memory()` drops its
-                # stored factorization before making the call which fails, so the Python-side
-                # cleanup still happens; releasing MKL's internal memory is best-effort.
-                # `PyPardisoSolver.solve` sets the phase itself, so the phase left dangling
-                # by the failed call doesn't affect later solves.
+                # `free_memory()` drops its stored factorization before making the call
+                # which fails, so the Python-side cleanup still happens; releasing MKL's
+                # internal memory is best-effort. `PyPardisoSolver.solve` sets the phase
+                # itself, so the phase left dangling by the failed call doesn't affect
+                # later solves.
                 # See https://github.com/brightway-lca/brightway2-calc/issues/157
                 #
                 # Logged rather than ignored: this also swallows genuine Pardiso failures,
@@ -384,3 +405,5 @@ class LCABase(Iterator):
                     exc,
                     extra={"error": str(exc)},
                 )
+            # Whatever happened, this object no longer has a factorization to release.
+            self._used_pypardiso = False

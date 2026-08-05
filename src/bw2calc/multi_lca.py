@@ -10,7 +10,7 @@ from fsspec import AbstractFileSystem
 from pydantic import BaseModel
 from scipy import sparse
 
-from bw2calc import PYPARDISO, __version__, spsolve
+from bw2calc import PYPARDISO, __version__
 from bw2calc.dictionary_manager import DictionaryManager
 from bw2calc.errors import OutsideTechnosphere
 from bw2calc.lca_base import LCABase
@@ -370,7 +370,8 @@ class MultiLCA(LCABase):
         self.supply_arrays = {
             name: arr
             for name, arr in zip(
-                self.demands, spsolve(self.technosphere_matrix, demand_matrix).reshape(count, -1).T
+                self.demands,
+                self._spsolve(self.technosphere_matrix, demand_matrix).reshape(count, -1).T,
             )
         }
         # Turn 1-d array into diagonal matrix

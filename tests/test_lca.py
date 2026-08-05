@@ -10,6 +10,7 @@ import bw_processing as bwp
 import numpy as np
 import pytest
 
+from bw2calc import JacobiGMRESLCA
 from bw2calc.errors import (
     EmptyBiosphere,
     InconsistentGlobalIndex,
@@ -261,6 +262,7 @@ def test_delete_solver_state_tolerates_uninitialized_pypardiso():
     """
     lca = LCA.__new__(LCA)
     lca.solver = object()
+    lca._used_pypardiso = True
 
     with patched_pypardiso(FakePyPardisoError("error code -1")) as solver:
         lca._delete_solver_state()
@@ -273,10 +275,57 @@ def test_delete_solver_state_tolerates_uninitialized_pypardiso():
 def test_delete_solver_state_propagates_other_errors():
     """Only `PyPardisoError` is best-effort; anything else is a real failure."""
     lca = LCA.__new__(LCA)
+    lca._used_pypardiso = True
 
     with patched_pypardiso(ValueError("something else")):
         with pytest.raises(ValueError):
             lca._delete_solver_state()
+
+
+def test_delete_solver_state_skips_unused_pypardiso():
+    """Don't reset global Pardiso state which this object never created.
+
+    See https://github.com/brightway-lca/brightway2-calc/issues/158
+    """
+    lca = LCA.__new__(LCA)
+    assert not lca._used_pypardiso
+
+    with patched_pypardiso(FakePyPardisoError("error code -1")) as solver:
+        lca._delete_solver_state()
+
+    assert not solver.free_memory.called
+
+
+def test_delete_solver_state_resets_use_flag():
+    """After releasing the factorization there is nothing left to release."""
+    lca = LCA.__new__(LCA)
+    lca._used_pypardiso = True
+
+    with patched_pypardiso(None) as solver:
+        lca._delete_solver_state()
+        assert solver.free_memory.call_count == 1
+        assert not lca._used_pypardiso
+
+        lca._delete_solver_state()
+        assert solver.free_memory.call_count == 1
+
+
+def test_spsolve_records_pypardiso_use():
+    """A real solve must mark the object as owning Pardiso state."""
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    assert lca._used_pypardiso is PYPARDISO
+
+
+def test_jacobi_gmres_does_not_claim_pypardiso_use():
+    """GMRES never calls `spsolve`, so it owns no Pardiso state to reset."""
+    packages = [fixture_dir / "basic_fixture.zip"]
+    jacobi = JacobiGMRESLCA({1: 1}, data_objs=packages)
+    jacobi.lci()
+
+    assert not jacobi._used_pypardiso
 
 
 # build_demand_array

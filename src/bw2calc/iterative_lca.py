@@ -3,7 +3,6 @@ from typing import Optional
 import numpy as np
 from scipy.sparse.linalg import cgs
 
-from bw2calc import spsolve
 from bw2calc.lca import LCA
 
 
@@ -22,7 +21,7 @@ class IterativeLCA(LCA):
         if demand is None:
             demand = self.demand_array
         if not self.iter_solver or self.guess is None:
-            self.guess = spsolve(self.technosphere_matrix, demand)
+            self.guess = self._spsolve(self.technosphere_matrix, demand)
             if not self.guess.shape:
                 self.guess = self.guess.reshape((1,))
             return self.guess
@@ -35,5 +34,5 @@ class IterativeLCA(LCA):
                 maxiter=1000,
             )
             if status != 0:
-                return spsolve(self.technosphere_matrix, demand)
+                return self._spsolve(self.technosphere_matrix, demand)
             return solution
