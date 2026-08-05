@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import numpy as np
@@ -5,6 +6,8 @@ import scipy.sparse as sps
 from scipy.sparse.linalg import LinearOperator, gmres
 
 from bw2calc.lca import LCA
+
+logger = logging.getLogger("bw2calc")
 
 
 class JacobiGMRESLCA(LCA):
@@ -157,6 +160,13 @@ class JacobiGMRESLCA(LCA):
             )
 
         if info != 0:
+            # A silent fallback would look like a working but inexplicably slow
+            # `JacobiGMRESLCA`, so make it visible that GMRES isn't being used.
+            logger.debug(
+                "GMRES did not converge (info=%s); falling back to the direct solver",
+                info,
+                extra={"info": info, "rtol": self.rtol, "maxiter": self.maxiter},
+            )
             solution = super().solve_linear_system(demand)
 
         # Match return conventions used elsewhere in bw2calc.
