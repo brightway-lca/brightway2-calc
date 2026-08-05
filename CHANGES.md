@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## Unreleased
+
+* Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
+
 ## 2.5.0 (2026-05-16)
 
 * [#148](https://github.com/brightway-lca/brightway2-calc/pull/148): Add `PartitionedMonteCarloLCA`, a Monte Carlo LCA class that pre-solves a static background system once and only resamples the stochastic foreground on each iteration

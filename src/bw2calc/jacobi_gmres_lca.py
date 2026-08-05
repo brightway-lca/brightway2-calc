@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import numpy as np
@@ -5,6 +6,8 @@ import scipy.sparse as sps
 from scipy.sparse.linalg import LinearOperator, gmres
 
 from bw2calc.lca import LCA
+
+logger = logging.getLogger("bw2calc")
 
 
 class JacobiGMRESLCA(LCA):
@@ -52,8 +55,10 @@ class JacobiGMRESLCA(LCA):
         self.maxiter = maxiter
         # When enabled, reuse the previous solution as GMRES initial guess (x0).
         self.use_guess = use_guess
-        # Cache whether matrix structure cleanup was already done.
-        self._matrix_prepared = False
+        # Prepared CSC copy used by GMRES; don't replace `technosphere_matrix`, as
+        # Monte Carlo iteration mutates the matrix held by `technosphere_mm`. `None`
+        # means "not prepared yet".
+        self._prepared_technosphere_matrix = None
         # Cache the Jacobi preconditioner to avoid rebuilding between solves.
         self._cached_preconditioner: Optional[LinearOperator] = None
         # Last successful solution vector, used as warm start when `use_guess=True`.
@@ -61,37 +66,42 @@ class JacobiGMRESLCA(LCA):
 
     def __next__(self) -> None:
         # Matrix values can change across iteration steps, so invalidate caches.
-        self._matrix_prepared = False
+        self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         super().__next__()
 
     def load_lci_data(self, nonsquare_ok=False) -> None:
         super().load_lci_data(nonsquare_ok=nonsquare_ok)
         # New matrices imply stale solver-side caches.
-        self._matrix_prepared = False
+        self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         self.guess = None
 
     def _prepare_matrix(self) -> None:
         # Sparse cleanup is done once per matrix build, then reused.
-        if self._matrix_prepared:
+        if self._prepared_technosphere_matrix is not None:
             return
         if not sps.isspmatrix(self.technosphere_matrix):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
 
-        # GMRES works best with canonical sparse structure.
-        self.technosphere_matrix = self.technosphere_matrix.tocsc(copy=False)
-        self.technosphere_matrix.sum_duplicates()
-        self.technosphere_matrix.eliminate_zeros()
-        self.technosphere_matrix.sort_indices()
-        self._matrix_prepared = True
+        # GMRES works best with canonical sparse structure. Always copy: with
+        # `copy=False`, a `technosphere_matrix` which is already CSC would be returned
+        # as-is, and `eliminate_zeros()` would then strip structural zeros from the
+        # matrix owned by `technosphere_mm`, which needs them to update in place.
+        matrix = self.technosphere_matrix.tocsc(copy=True)
+        matrix.sum_duplicates()
+        matrix.eliminate_zeros()
+        matrix.sort_indices()
+        self._prepared_technosphere_matrix = matrix
 
     def _build_jacobi_preconditioner(self) -> Optional[LinearOperator]:
         # Reuse preconditioner when solving multiple demands on same matrix.
         if self._cached_preconditioner is not None:
             return self._cached_preconditioner
 
-        diagonal = self.technosphere_matrix.diagonal()
+        self._prepare_matrix()
+        matrix = self._prepared_technosphere_matrix
+        diagonal = matrix.diagonal()
         # Cannot build Jacobi inverse if any diagonal entry is zero.
         if np.any(diagonal == 0):
             return None
@@ -99,9 +109,9 @@ class JacobiGMRESLCA(LCA):
         inverse_diagonal = 1.0 / diagonal
         # LinearOperator form avoids materializing a dense diagonal inverse matrix.
         self._cached_preconditioner = LinearOperator(
-            shape=self.technosphere_matrix.shape,
+            shape=matrix.shape,
             matvec=lambda x: inverse_diagonal * x,
-            dtype=self.technosphere_matrix.dtype,
+            dtype=matrix.dtype,
         )
         return self._cached_preconditioner
 
@@ -110,14 +120,15 @@ class JacobiGMRESLCA(LCA):
             demand = self.demand_array
 
         self._prepare_matrix()
+        matrix = self._prepared_technosphere_matrix
         preconditioner = self._build_jacobi_preconditioner()
         # Warm start can reduce Krylov iterations for related successive solves.
         x0 = self.guess if (self.use_guess and self.guess is not None) else None
 
         try:
             # SciPy modern API (`rtol` + `atol`).
-            solution, _ = gmres(
-                self.technosphere_matrix,
+            solution, info = gmres(
+                matrix,
                 demand,
                 x0=x0,
                 rtol=self.rtol,
@@ -128,8 +139,8 @@ class JacobiGMRESLCA(LCA):
             )
         except TypeError:
             # Backward compatibility for SciPy versions using `tol`.
-            solution, _ = gmres(
-                self.technosphere_matrix,
+            solution, info = gmres(
+                matrix,
                 demand,
                 x0=x0,
                 tol=self.rtol,
@@ -138,6 +149,16 @@ class JacobiGMRESLCA(LCA):
                 maxiter=self.maxiter,
                 M=preconditioner,
             )
+
+        if info != 0:
+            # A silent fallback would look like a working but inexplicably slow
+            # `JacobiGMRESLCA`, so make it visible that GMRES isn't being used.
+            logger.debug(
+                "GMRES did not converge (info=%s); falling back to the direct solver",
+                info,
+                extra={"info": info, "rtol": self.rtol, "maxiter": self.maxiter},
+            )
+            solution = super().solve_linear_system(demand)
 
         # Match return conventions used elsewhere in bw2calc.
         solution = np.asarray(solution)
