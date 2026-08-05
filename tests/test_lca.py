@@ -214,6 +214,71 @@ def test_next_monte_carlo_all_matrices_change():
         assert x != y
 
 
+# _delete_solver_state
+
+
+class FakePyPardisoError(Exception):
+    """Stands in for `pypardiso.pardiso_wrapper.PyPardisoError`."""
+
+
+@contextmanager
+def patched_pypardiso(free_memory_error):
+    """Install a fake `pypardiso` whose `free_memory()` raises `free_memory_error`.
+
+    Real modules rather than `Mock`s, because `_delete_solver_state` does
+    `from pypardiso.pardiso_wrapper import PyPardisoError`. The `conftest.py`
+    fixtures patch the solver flags used by `fast_scores`, not by `lca_base`.
+    """
+    solver = Mock()
+    solver.free_memory.side_effect = free_memory_error
+
+    wrapper = ModuleType("pypardiso.pardiso_wrapper")
+    wrapper.PyPardisoError = FakePyPardisoError
+    aliases = ModuleType("pypardiso.scipy_aliases")
+    aliases.pypardiso_solver = solver
+    root = ModuleType("pypardiso")
+    root.pardiso_wrapper = wrapper
+    root.scipy_aliases = aliases
+
+    with (
+        patch.dict(
+            "sys.modules",
+            {
+                "pypardiso": root,
+                "pypardiso.pardiso_wrapper": wrapper,
+                "pypardiso.scipy_aliases": aliases,
+            },
+        ),
+        patch("bw2calc.lca_base.PYPARDISO", True),
+    ):
+        yield solver
+
+
+def test_delete_solver_state_tolerates_uninitialized_pypardiso():
+    """`free_memory()` raises on recent MKL builds when nothing was ever factorized.
+
+    See https://github.com/brightway-lca/brightway2-calc/issues/157
+    """
+    lca = LCA.__new__(LCA)
+    lca.solver = object()
+
+    with patched_pypardiso(FakePyPardisoError("error code -1")) as solver:
+        lca._delete_solver_state()
+
+    assert solver.free_memory.called
+    # The rest of the cleanup must still happen.
+    assert not hasattr(lca, "solver")
+
+
+def test_delete_solver_state_propagates_other_errors():
+    """Only `PyPardisoError` is best-effort; anything else is a real failure."""
+    lca = LCA.__new__(LCA)
+
+    with patched_pypardiso(ValueError("something else")):
+        with pytest.raises(ValueError):
+            lca._delete_solver_state()
+
+
 # build_demand_array
 
 
@@ -1773,65 +1838,3 @@ def test_logging_next(caplog):
 #         lca.lcia()
 
 #         self.assertTrue(np.allclose(42, lca.score))
-
-
-class FakePyPardisoError(Exception):
-    """Stands in for `pypardiso.pardiso_wrapper.PyPardisoError`."""
-
-
-@contextmanager
-def patched_pypardiso(free_memory_error):
-    """Install a fake `pypardiso` whose `free_memory()` raises `free_memory_error`.
-
-    Real modules rather than `Mock`s, because `_delete_solver_state` does
-    `from pypardiso.pardiso_wrapper import PyPardisoError`. The `conftest.py`
-    fixtures patch the solver flags used by `fast_scores`, not by `lca_base`.
-    """
-    solver = Mock()
-    solver.free_memory.side_effect = free_memory_error
-
-    wrapper = ModuleType("pypardiso.pardiso_wrapper")
-    wrapper.PyPardisoError = FakePyPardisoError
-    aliases = ModuleType("pypardiso.scipy_aliases")
-    aliases.pypardiso_solver = solver
-    root = ModuleType("pypardiso")
-    root.pardiso_wrapper = wrapper
-    root.scipy_aliases = aliases
-
-    with (
-        patch.dict(
-            "sys.modules",
-            {
-                "pypardiso": root,
-                "pypardiso.pardiso_wrapper": wrapper,
-                "pypardiso.scipy_aliases": aliases,
-            },
-        ),
-        patch("bw2calc.lca_base.PYPARDISO", True),
-    ):
-        yield solver
-
-
-def test_delete_solver_state_tolerates_uninitialized_pypardiso():
-    """`free_memory()` raises on recent MKL builds when nothing was ever factorized.
-
-    See https://github.com/brightway-lca/brightway2-calc/issues/157
-    """
-    lca = LCA.__new__(LCA)
-    lca.solver = object()
-
-    with patched_pypardiso(FakePyPardisoError("error code -1")) as solver:
-        lca._delete_solver_state()
-
-    assert solver.free_memory.called
-    # The rest of the cleanup must still happen.
-    assert not hasattr(lca, "solver")
-
-
-def test_delete_solver_state_propagates_other_errors():
-    """Only `PyPardisoError` is best-effort; anything else is a real failure."""
-    lca = LCA.__new__(LCA)
-
-    with patched_pypardiso(ValueError("something else")):
-        with pytest.raises(ValueError):
-            lca._delete_solver_state()
