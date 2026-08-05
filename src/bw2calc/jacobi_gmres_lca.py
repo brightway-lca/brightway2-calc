@@ -55,10 +55,9 @@ class JacobiGMRESLCA(LCA):
         self.maxiter = maxiter
         # When enabled, reuse the previous solution as GMRES initial guess (x0).
         self.use_guess = use_guess
-        # Cache whether matrix structure cleanup was already done.
-        self._matrix_prepared = False
         # Prepared CSC copy used by GMRES; don't replace `technosphere_matrix`, as
-        # Monte Carlo iteration mutates the matrix held by `technosphere_mm`.
+        # Monte Carlo iteration mutates the matrix held by `technosphere_mm`. `None`
+        # means "not prepared yet".
         self._prepared_technosphere_matrix = None
         # Cache the Jacobi preconditioner to avoid rebuilding between solves.
         self._cached_preconditioner: Optional[LinearOperator] = None
@@ -67,7 +66,6 @@ class JacobiGMRESLCA(LCA):
 
     def __next__(self) -> None:
         # Matrix values can change across iteration steps, so invalidate caches.
-        self._matrix_prepared = False
         self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         super().__next__()
@@ -75,17 +73,13 @@ class JacobiGMRESLCA(LCA):
     def load_lci_data(self, nonsquare_ok=False) -> None:
         super().load_lci_data(nonsquare_ok=nonsquare_ok)
         # New matrices imply stale solver-side caches.
-        self._matrix_prepared = False
         self._prepared_technosphere_matrix = None
         self._cached_preconditioner = None
         self.guess = None
 
     def _prepare_matrix(self) -> None:
         # Sparse cleanup is done once per matrix build, then reused.
-        if (
-            getattr(self, "_matrix_prepared", False)
-            and getattr(self, "_prepared_technosphere_matrix", None) is not None
-        ):
+        if self._prepared_technosphere_matrix is not None:
             return
         if not sps.isspmatrix(self.technosphere_matrix):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
@@ -99,17 +93,14 @@ class JacobiGMRESLCA(LCA):
         matrix.eliminate_zeros()
         matrix.sort_indices()
         self._prepared_technosphere_matrix = matrix
-        self._matrix_prepared = True
 
     def _build_jacobi_preconditioner(self) -> Optional[LinearOperator]:
         # Reuse preconditioner when solving multiple demands on same matrix.
         if self._cached_preconditioner is not None:
             return self._cached_preconditioner
 
-        matrix = getattr(self, "_prepared_technosphere_matrix", None)
-        if matrix is None:
-            self._prepare_matrix()
-            matrix = self._prepared_technosphere_matrix
+        self._prepare_matrix()
+        matrix = self._prepared_technosphere_matrix
         diagonal = matrix.diagonal()
         # Cannot build Jacobi inverse if any diagonal entry is zero.
         if np.any(diagonal == 0):

@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import scipy.sparse as sps
 
-from bw2calc import JacobiGMRESLCA, LCA
+from bw2calc import LCA, JacobiGMRESLCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
@@ -23,7 +23,6 @@ def test_jacobi_gmres_lci_matches_lca_basic_fixture():
 def test_jacobi_gmres_returns_no_preconditioner_for_zero_diagonal():
     jacobi = JacobiGMRESLCA.__new__(JacobiGMRESLCA)
     jacobi.technosphere_matrix = sps.csc_matrix([[0.0, 1.0], [1.0, 2.0]])
-    jacobi._matrix_prepared = False
     jacobi._prepared_technosphere_matrix = None
     jacobi._cached_preconditioner = None
 
@@ -48,7 +47,6 @@ def test_jacobi_gmres_uses_previous_solution_as_guess(monkeypatch):
     jacobi.restart = 50
     jacobi.maxiter = 300
     jacobi.use_guess = True
-    jacobi._matrix_prepared = False
     jacobi._prepared_technosphere_matrix = None
     jacobi._cached_preconditioner = None
     jacobi.guess = None
