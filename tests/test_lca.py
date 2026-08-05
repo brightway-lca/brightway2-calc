@@ -11,6 +11,7 @@ import bw_processing as bwp
 import numpy as np
 import pytest
 
+from bw2calc import JacobiGMRESLCA
 from bw2calc.errors import (
     EmptyBiosphere,
     InconsistentGlobalIndex,
@@ -388,6 +389,51 @@ def test_pypardiso_factorization_not_shared_between_lca_objects():
     supply_array = first.supply_array.copy()
     first.lci()
     assert np.allclose(first.supply_array, supply_array)
+
+
+def test_delete_solver_state_releases_only_once():
+    """After releasing the factorization there is nothing left to release until the next solve.
+
+    See https://github.com/brightway-lca/brightway2-calc/issues/158
+    """
+    lca = LCA.__new__(LCA)
+
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+        solver = lca._pardiso_solver
+
+        lca._delete_solver_state()
+        assert solver.free_memory.call_count == 1
+        assert not lca._used_pypardiso
+
+        lca._delete_solver_state()
+        assert solver.free_memory.call_count == 1
+
+        lca._spsolve(object(), object())
+        lca._delete_solver_state()
+        assert solver.free_memory.call_count == 2
+        # Still the same solver: only its factorization was released
+        assert lca._pardiso_solver is solver
+
+
+def test_spsolve_records_pypardiso_use():
+    """A real solve must give the object Pardiso state to release."""
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    lca.lci()
+
+    assert lca._used_pypardiso is PYPARDISO
+    assert (lca._pardiso_solver is not None) is PYPARDISO
+
+
+def test_jacobi_gmres_does_not_claim_pypardiso_use():
+    """GMRES never calls `spsolve`, so it owns no Pardiso state to reset."""
+    packages = [fixture_dir / "basic_fixture.zip"]
+    jacobi = JacobiGMRESLCA({1: 1}, data_objs=packages)
+    jacobi.lci()
+
+    assert not jacobi._used_pypardiso
+    assert jacobi._pardiso_solver is None
 
 
 # build_demand_array
