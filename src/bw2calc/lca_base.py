@@ -1,3 +1,4 @@
+import logging
 import warnings
 from collections.abc import Iterator
 from functools import partial
@@ -8,6 +9,8 @@ import numpy as np
 
 from bw2calc import PYPARDISO, factorized, spsolve
 from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
+
+logger = logging.getLogger("bw2calc")
 
 
 class LCABase(Iterator):
@@ -358,6 +361,26 @@ class LCABase(Iterator):
             delattr(self, "solver")
         if PYPARDISO:
             # This is global state in the pypardiso library - use built-in reset function
+            from pypardiso.pardiso_wrapper import PyPardisoError
             from pypardiso.scipy_aliases import pypardiso_solver
 
-            pypardiso_solver.free_memory()
+            try:
+                pypardiso_solver.free_memory()
+            except PyPardisoError as exc:
+                # `PYPARDISO` only tells us that pypardiso can be imported, not that this
+                # calculation ever used it. Iterative subclasses like `JacobiGMRESLCA` never
+                # call `spsolve`, so there is no factorization to release, and recent MKL
+                # versions raise instead of ignoring the request. `free_memory()` drops its
+                # stored factorization before making the call which fails, so the Python-side
+                # cleanup still happens; releasing MKL's internal memory is best-effort.
+                # `PyPardisoSolver.solve` sets the phase itself, so the phase left dangling
+                # by the failed call doesn't affect later solves.
+                # See https://github.com/brightway-lca/brightway2-calc/issues/157
+                #
+                # Logged rather than ignored: this also swallows genuine Pardiso failures,
+                # which would otherwise show up only as unexplained memory growth.
+                logger.debug(
+                    "Could not reset pypardiso solver state: %s",
+                    exc,
+                    extra={"error": str(exc)},
+                )

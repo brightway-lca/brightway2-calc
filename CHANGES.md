@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
+* [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
 
 ## 2.5.0 (2026-05-16)
 
