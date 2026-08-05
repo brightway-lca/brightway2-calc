@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
+* [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't propagate `PyPardisoError` from `_delete_solver_state`. Iterating an LCA class which never calls `spsolve` (such as `JacobiGMRESLCA`) asked Pardiso to release a factorization which was never created; MKL 2026.1.0 raises error code -1 instead of ignoring this. Thanks @KarinTreyer
 
 ## 2.5.0 (2026-05-16)
 

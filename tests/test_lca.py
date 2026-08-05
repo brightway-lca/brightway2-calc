@@ -2,6 +2,8 @@ import json
 import logging
 from collections.abc import Mapping
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import Mock, patch
 
 import bw_processing as bwp
 import numpy as np
@@ -1770,3 +1772,41 @@ def test_logging_next(caplog):
 #         lca.lcia()
 
 #         self.assertTrue(np.allclose(42, lca.score))
+
+
+def test_delete_solver_state_tolerates_uninitialized_pypardiso():
+    """`free_memory()` raises on recent MKL builds when nothing was ever factorized.
+
+    See https://github.com/brightway-lca/brightway2-calc/issues/157
+    """
+
+    class FakePyPardisoError(Exception):
+        pass
+
+    solver = Mock()
+    solver.free_memory.side_effect = FakePyPardisoError("error code -1")
+
+    wrapper = ModuleType("pypardiso.pardiso_wrapper")
+    wrapper.PyPardisoError = FakePyPardisoError
+    aliases = ModuleType("pypardiso.scipy_aliases")
+    aliases.pypardiso_solver = solver
+    root = ModuleType("pypardiso")
+    root.pardiso_wrapper = wrapper
+    root.scipy_aliases = aliases
+
+    lca = LCA.__new__(LCA)
+
+    with (
+        patch.dict(
+            "sys.modules",
+            {
+                "pypardiso": root,
+                "pypardiso.pardiso_wrapper": wrapper,
+                "pypardiso.scipy_aliases": aliases,
+            },
+        ),
+        patch("bw2calc.lca_base.PYPARDISO", True),
+    ):
+        lca._delete_solver_state()
+
+    assert solver.free_memory.called

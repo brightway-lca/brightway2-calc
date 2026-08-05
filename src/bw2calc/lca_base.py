@@ -358,6 +358,17 @@ class LCABase(Iterator):
             delattr(self, "solver")
         if PYPARDISO:
             # This is global state in the pypardiso library - use built-in reset function
+            from pypardiso.pardiso_wrapper import PyPardisoError
             from pypardiso.scipy_aliases import pypardiso_solver
 
-            pypardiso_solver.free_memory()
+            try:
+                pypardiso_solver.free_memory()
+            except PyPardisoError:
+                # `PYPARDISO` only tells us that pypardiso can be imported, not that this
+                # calculation ever used it. Iterative subclasses like `JacobiGMRESLCA` never
+                # call `spsolve`, so there is no factorization to release, and recent MKL
+                # versions raise instead of ignoring the request. `free_memory()` drops its
+                # stored factorization before making the call which fails, so the Python-side
+                # cleanup still happens; releasing MKL's internal memory is best-effort.
+                # See https://github.com/brightway-lca/brightway2-calc/issues/157
+                pass
