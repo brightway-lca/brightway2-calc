@@ -3,8 +3,9 @@ from pathlib import Path
 import bw_processing as bwp
 import numpy as np
 import scipy.sparse as sps
+from scipy.sparse.linalg import gmres
 
-from bw2calc import LCA, IterativeLCA, JacobiGMRESLCA
+from bw2calc import LCA, JacobiGMRESLCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
@@ -32,36 +33,38 @@ def test_jacobi_gmres_returns_no_preconditioner_for_zero_diagonal():
     assert preconditioner is None
 
 
-def test_jacobi_gmres_uses_previous_solution_as_guess(monkeypatch):
+def test_jacobi_gmres_uses_previous_solution_as_guess():
     calls = []
-    matrix = np.array([[4.0, 1.0], [1.0, 3.0]])
-    demand = np.array([1.0, 2.0])
-    exact = np.linalg.solve(matrix, demand)
 
-    def fake_gmres(matrix, demand, **kwargs):
+    def recording_gmres(matrix, demand, **kwargs):
         calls.append(kwargs.get("x0"))
-        return exact.copy(), 0
+        return gmres(matrix, demand, **kwargs)
 
-    monkeypatch.setattr("bw2calc.jacobi_gmres_lca.gmres", fake_gmres)
-
-    jacobi = JacobiGMRESLCA.__new__(JacobiGMRESLCA)
-    IterativeLCA._clear_matrix_caches(jacobi)
-    jacobi.technosphere_matrix = sps.csr_matrix(matrix)
-    jacobi.iter_solver = fake_gmres
-    jacobi.rtol = 1e-8
-    jacobi.atol = 0.0
-    jacobi.restart = 50
-    jacobi.maxiter = 300
-    jacobi.use_guess = True
-    jacobi.direct_first_solve = False
-    jacobi.residual_factor = 10.0
-    jacobi.guess = None
-
-    jacobi.solve_linear_system(demand)
-    jacobi.solve_linear_system(demand)
+    jacobi = JacobiGMRESLCA(
+        {1: 1},
+        data_objs=[fixture_dir / "basic_fixture.zip"],
+        iter_solver=recording_gmres,
+    )
+    jacobi.lci()
+    first = jacobi.supply_array.copy()
+    jacobi.lci_calculation()
 
     assert calls[0] is None
-    assert np.allclose(calls[1], exact)
+    assert np.allclose(calls[1], first)
+
+
+def test_jacobi_gmres_first_solve_is_iterative_by_default():
+    jacobi = JacobiGMRESLCA({3: 1}, data_objs=[fixture_dir / "mc_basic.zip"])
+    jacobi.lci()
+    assert jacobi.solver_stats == {"iterative": 1}
+
+
+def test_jacobi_gmres_direct_first_solve_builds_reference():
+    jacobi = JacobiGMRESLCA(
+        {3: 1}, data_objs=[fixture_dir / "mc_basic.zip"], direct_first_solve=True
+    )
+    jacobi.lci()
+    assert jacobi.solver_stats == {"reference": 1}
 
 
 def test_jacobi_gmres_keeps_monte_carlo_technosphere_current():

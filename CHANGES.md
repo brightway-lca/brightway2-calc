@@ -3,7 +3,12 @@
 ## Unreleased
 
 * [#161](https://github.com/brightway-lca/brightway2-calc/pull/161): Merge `JacobiGMRESLCA` into `IterativeLCA`: `IterativeLCA` is now the general iterative solver class (configurable solver, `rtol`, `atol`, `maxiter`, warm starts, preconditioner hook, Monte Carlo safe matrix handling), and `JacobiGMRESLCA` is a subclass which uses GMRES with a Jacobi preconditioner.
-* `IterativeLCA` now uses BiCGSTAB with a Jacobi preconditioner by default instead of CGS, and checks the residual of every iterative solution, falling back to the direct solver if the solver fails or the solution is wrong.
+* `IterativeLCA` now uses BiCGSTAB with a Jacobi preconditioner by default instead of CGS.
+* `IterativeLCA` keeps the factorization from its first direct solve as a reference factorization. While the technosphere matrix is unchanged, e.g. for a new demand, it solves directly with it, as fast as `LCA`.
+* `IterativeLCA` checks every iterative solution by estimating its forward error with the reference factorization (`max_error`, default 1e-6). A residual check alone accepted solutions 20% off for ill-conditioned demands with strong waste or recycling loops, and rejected correct solutions for some construction demands.
+* If the iterative solver fails, `IterativeLCA` first tries `fallback_solver` (BiCGSTAB) preconditioned with the reference factorization, and only then the direct solver. Each iterative stage has a time limit (`time_limit`, by default the time of the first direct solve), and is skipped after `max_consecutive_failures` failures in a row. `solver_stats` counts the solves done by each stage.
+* `JacobiGMRESLCA` keeps `direct_first_solve=False` by default, so it has no reference factorization and checks solutions only by their residual, which can accept wrong solutions for ill-conditioned systems. Pass `direct_first_solve=True` for the forward error check and the fallback stage.
+* `IterativeLCA` limits OpenBLAS to one thread during iterative solves. With pypardiso and no thread limit, OpenBLAS threads competed with Pardiso's MKL threads and made BiCGSTAB 5-10x slower. Adds a dependency on `threadpoolctl`.
 * Fix `IterativeLCA` failing on its second solve with SciPy >= 1.14, which removed `atol="legacy"`.
 * `IterativeLCA` now updates its initial guess after every solve, not just after the first direct solve.
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
