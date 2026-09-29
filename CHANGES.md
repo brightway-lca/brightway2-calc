@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* [#161](https://github.com/brightway-lca/brightway2-calc/pull/161): Merge `JacobiGMRESLCA` into `IterativeLCA`: `IterativeLCA` is now the general iterative solver class (configurable solver, `rtol`, `atol`, `maxiter`, warm starts, preconditioner hook, Monte Carlo safe matrix handling), and `JacobiGMRESLCA` is a subclass which uses GMRES with a Jacobi preconditioner.
+* `IterativeLCA` now uses BiCGSTAB with a Jacobi preconditioner by default instead of CGS, and checks the residual of every iterative solution, falling back to the direct solver if the solver fails or the solution is wrong.
+* Fix `IterativeLCA` failing on its second solve with SciPy >= 1.14, which removed `atol="legacy"`.
+* `IterativeLCA` now updates its initial guess after every solve, not just after the first direct solve.
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
 * [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
 

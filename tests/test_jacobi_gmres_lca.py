@@ -4,7 +4,7 @@ import bw_processing as bwp
 import numpy as np
 import scipy.sparse as sps
 
-from bw2calc import LCA, JacobiGMRESLCA
+from bw2calc import LCA, IterativeLCA, JacobiGMRESLCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 
@@ -27,37 +27,41 @@ def test_jacobi_gmres_returns_no_preconditioner_for_zero_diagonal():
     jacobi._prepared_technosphere_matrix = None
     jacobi._cached_preconditioner = None
 
-    preconditioner = jacobi._build_jacobi_preconditioner()
+    preconditioner = jacobi.build_preconditioner()
 
     assert preconditioner is None
 
 
 def test_jacobi_gmres_uses_previous_solution_as_guess(monkeypatch):
     calls = []
+    matrix = np.array([[4.0, 1.0], [1.0, 3.0]])
+    demand = np.array([1.0, 2.0])
+    exact = np.linalg.solve(matrix, demand)
 
     def fake_gmres(matrix, demand, **kwargs):
         calls.append(kwargs.get("x0"))
-        return np.array([0.2, 0.6]), 0
+        return exact.copy(), 0
 
     monkeypatch.setattr("bw2calc.jacobi_gmres_lca.gmres", fake_gmres)
 
     jacobi = JacobiGMRESLCA.__new__(JacobiGMRESLCA)
-    jacobi.technosphere_matrix = sps.csr_matrix([[4.0, 1.0], [1.0, 3.0]])
+    IterativeLCA._clear_matrix_caches(jacobi)
+    jacobi.technosphere_matrix = sps.csr_matrix(matrix)
+    jacobi.iter_solver = fake_gmres
     jacobi.rtol = 1e-8
     jacobi.atol = 0.0
     jacobi.restart = 50
     jacobi.maxiter = 300
     jacobi.use_guess = True
-    jacobi._prepared_technosphere_matrix = None
-    jacobi._cached_preconditioner = None
+    jacobi.direct_first_solve = False
+    jacobi.residual_factor = 10.0
     jacobi.guess = None
 
-    demand = np.array([1.0, 2.0])
     jacobi.solve_linear_system(demand)
     jacobi.solve_linear_system(demand)
 
     assert calls[0] is None
-    assert np.allclose(calls[1], np.array([0.2, 0.6]))
+    assert np.allclose(calls[1], exact)
 
 
 def test_jacobi_gmres_keeps_monte_carlo_technosphere_current():
