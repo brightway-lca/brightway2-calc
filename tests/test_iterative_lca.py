@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import bicgstab, cgs
 
-from bw2calc import LCA, IterativeLCA
+from bw2calc import LCA, PYPARDISO, IterativeLCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 basic = [fixture_dir / "basic_fixture.zip"]
@@ -339,6 +339,28 @@ def test_iterative_uses_direct_solver_when_all_stages_fail():
 
     assert np.allclose(lca.supply_array, reference.supply_array)
     assert lca.solver_stats == {"reference": 1, "direct": 1}
+
+
+@pytest.mark.skipif(not PYPARDISO, reason="needs pypardiso")
+def test_iterative_direct_fallback_releases_global_factorization():
+    from pypardiso.scipy_aliases import pypardiso_solver
+
+    def failing(matrix, demand, **kwargs):
+        return np.zeros_like(demand), 1
+
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    reference = LCA({3: 1}, **kwargs)
+    lca = IterativeLCA({3: 1}, iter_solver=failing, fallback_solver=failing, **kwargs)
+    reference.lci()
+    lca.lci()
+    next(reference)
+    next(lca)
+
+    assert lca.solver_stats == {"reference": 1, "direct": 1}
+    assert pypardiso_solver.factorized_A.nnz == 0
+    # The reference factorization is separate, and still works.
+    b = np.array([1.0, 2.0])
+    assert np.allclose(lca._reference_matrix @ lca._reference_solve(b), b)
 
 
 def test_iterative_reference_survives_monte_carlo_iteration():

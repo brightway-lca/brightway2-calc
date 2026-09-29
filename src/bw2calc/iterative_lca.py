@@ -15,6 +15,7 @@ from bw2calc.lca import LCA
 if PYPARDISO:
     from pypardiso import PyPardisoSolver
     from pypardiso.pardiso_wrapper import PyPardisoError
+    from pypardiso.scipy_aliases import pypardiso_solver
 
 logger = logging.getLogger("bw2calc")
 
@@ -137,6 +138,8 @@ class IterativeLCA(LCA):
     With pypardiso, the reference factorization has its own ``PyPardisoSolver``, separate
     from the global one used by ``spsolve``, so direct solves don't replace it. Its memory
     is released when new matrices are loaded, or when the object is garbage collected.
+    The factorization a direct fallback leaves in the global solver is released right
+    after the solve, so that only the reference factorization stays in memory.
 
     Correctness checks
     ------------------
@@ -498,7 +501,15 @@ class IterativeLCA(LCA):
                 )
 
         self.solver_stats["direct"] += 1
-        return self._direct_solve(demand)
+        solution = self._direct_solve(demand)
+        if PYPARDISO and self._reference_solve is not None:
+            # The direct solve left a factorization of this matrix in pypardiso's global
+            # solver, next to the reference factorization. It is almost never reused:
+            # solves on the reference matrix use the reference factorization, and Monte
+            # Carlo moves on to a new matrix. `LCA.__next__` only frees its LU factors,
+            # so release all of it now; about 100 MB for ecoinvent.
+            _free_pardiso(pypardiso_solver)
+        return solution
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> np.ndarray:
         if demand is None:
@@ -558,9 +569,9 @@ class _TimeLimitExceeded(Exception):
 
 
 def _free_pardiso(solver) -> None:
-    """Release the memory Pardiso holds for ``solver``."""
+    """Release all the memory Pardiso holds for ``solver``."""
     try:
         solver.free_memory(everything=True)
     except PyPardisoError:
         # Best effort, like `LCA._delete_solver_state`.
-        logger.debug("Couldn't release Pardiso memory of the reference factorization")
+        logger.debug("Couldn't release Pardiso memory")
