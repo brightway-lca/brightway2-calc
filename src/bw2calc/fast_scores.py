@@ -64,7 +64,25 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         }
 
     def after_matrix_iteration(self) -> None:
-        # `precalculated` is derived from matrices which were just resampled
+        """Rebuild ``precalculated`` after the matrices have been resampled.
+
+        ``precalculated`` is a cache of the characterized (and normalized and weighted) biosphere
+        rows, built by ``build_precalculated`` from the biosphere, characterization, normalization,
+        and weighting matrices. ``calculate`` only builds it when the matrices are first loaded,
+        and afterwards computes scores as ``precalculated @ supply_array`` without looking at
+        those matrices again.
+
+        During Monte Carlo, ``MultiLCA.__next__`` draws new values for every matrix and then calls
+        this hook, if defined, before running the calculation. Without rebuilding here, the cache
+        would still hold the values from the first iteration, and only the technosphere
+        uncertainty (which enters via ``supply_array``) would be reflected in the scores.
+
+        The rebuild is unconditional instead of checking which matrices are stochastic, as its
+        cost is small compared to refactorizing the technosphere matrix in the same iteration.
+
+        """
+        # `next()` can be called before the first `calculate()`; in that case nothing was
+        # resampled, and `calculate()` will load the matrices and build `precalculated` itself.
         if hasattr(self, "characterization_matrices"):
             self.build_precalculated()
 
