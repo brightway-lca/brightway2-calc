@@ -277,6 +277,7 @@ def test_calculation_with_different_chunk_sizes(
             method_config=basic_test_data["config"],
             data_objs=basic_test_data["dps"],
             chunk_size=chunk_size,
+            direction="forward",
         )
         assert fsmlca.chunk_size == chunk_size
 
@@ -324,7 +325,10 @@ def test_calculation_with_normalization_and_weighting(
     }
 
     fsmlca = FastScoresOnlyMultiLCA(
-        demands=basic_test_data["demands"], method_config=config_with_all, data_objs=dps_with_all
+        demands=basic_test_data["demands"],
+        method_config=config_with_all,
+        data_objs=dps_with_all,
+        direction="forward",
     )
 
     # Mock the PyPardisoSolver

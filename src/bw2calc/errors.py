@@ -98,3 +98,9 @@ class DemandInStaticDatabase(BW2CalcError):
     The demand must be in the stochastic (foreground) system."""
 
     pass
+
+
+class InaccurateSolution(BW2CalcError):
+    """The solution of a linear system doesn't satisfy that system within the given tolerance"""
+
+    pass
