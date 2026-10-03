@@ -1,3 +1,4 @@
+import warnings
 from unittest.mock import patch
 
 import numpy as np
@@ -126,24 +127,26 @@ def test_product_scores_match_unit_demands(data_fixture, request):
 @needs_solver
 def test_auto_direction(basic_test_data):
     # Three demands, two impact categories
-    lca = fast_scores(basic_test_data)
+    lca = fast_scores(basic_test_data, direction="auto")
     assert lca.direction == "auto"
     assert hasattr(lca, "product_scores")
     assert not hasattr(lca, "supply_array")
 
-    lca = fast_scores(basic_test_data, demands={"γ": {100: 1}, "ε": {103: 2}})
+    lca = fast_scores(basic_test_data, demands={"γ": {100: 1}, "ε": {103: 2}}, direction="auto")
     assert hasattr(lca, "supply_array")
     assert not hasattr(lca, "product_scores")
 
 
 @needs_solver
 def test_auto_direction_uses_forward_when_stochastic(basic_test_data):
-    lca = fast_scores(basic_test_data, use_distributions=True)
+    lca = fast_scores(basic_test_data, use_distributions=True, direction="auto")
     assert hasattr(lca, "supply_array")
     assert not hasattr(lca, "product_scores")
 
     lca = fast_scores(
-        basic_test_data, selective_use={"characterization_matrix": {"use_arrays": True}}
+        basic_test_data,
+        selective_use={"characterization_matrix": {"use_arrays": True}},
+        direction="auto",
     )
     assert hasattr(lca, "supply_array")
     assert not hasattr(lca, "product_scores")
@@ -318,7 +321,7 @@ def test_direction_setter_validates(basic_test_data):
     )
     with pytest.raises(NotImplementedError, match="adjoint"):
         stochastic.direction = "adjoint"
-    assert stochastic.direction == "auto"
+    assert stochastic.direction == "forward"
 
 
 @needs_solver
@@ -419,3 +422,49 @@ def test_relative_residual_input_types():
     assert np.allclose(relative_residual(matrix, [[1.0], [1.0]], [[2.0], [4.0]]), 0)
     assert np.allclose(relative_residual(matrix, [1.0, 1.0], sparse.csr_matrix([[2.0], [4.0]])), 0)
     assert np.isnan(relative_residual(matrix, [np.nan, 1.0], [2.0, 4.0])[0])
+
+
+@needs_solver
+def test_default_direction_is_forward_with_future_warning(basic_test_data):
+    # Three demands, two impact categories: "auto" would use adjoint
+    with pytest.warns(FutureWarning, match='change from "forward" to "auto"'):
+        lca = fast_scores(basic_test_data)
+    assert lca.direction == "forward"
+    assert hasattr(lca, "supply_array")
+    assert not hasattr(lca, "product_scores")
+
+    # Only once per instance
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        lca.calculate()
+
+
+@needs_solver
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"direction": "forward"},
+        {"direction": "auto"},
+        {"direction": "adjoint"},
+        # "auto" would also use forward for these
+        {"demands": {"γ": {100: 1}, "ε": {103: 2}}},
+        {"use_distributions": True},
+    ],
+)
+def test_no_future_warning_when_default_makes_no_difference(basic_test_data, kwargs):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        fast_scores(basic_test_data, **kwargs)
+
+
+@needs_solver
+def test_no_future_warning_after_setting_direction(basic_test_data):
+    lca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    lca.direction = "forward"
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        lca.calculate()
