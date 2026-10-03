@@ -53,7 +53,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
     def build_precalculated(self) -> None:
         """Multiply the characterization, and normalization and weighting matrices if present, by
         the biosphere matrix. When done outside the calculation loop, this only needs to be done
-        once."""
+        once for static calculations, but must be repeated when the matrices are resampled."""
         self.precalculated = self.characterization_matrices @ self.biosphere_matrix
         if hasattr(self, "normalization_matrices"):
             self.precalculated = self.normalization_matrices @ self.precalculated
@@ -62,6 +62,11 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         self.precalculated = {
             key: np.asarray(matrix.sum(axis=0)) for key, matrix in self.precalculated.items()
         }
+
+    def after_matrix_iteration(self) -> None:
+        # `precalculated` is derived from matrices which were just resampled
+        if hasattr(self, "characterization_matrices"):
+            self.build_precalculated()
 
     def _calculation(self) -> xarray.DataArray:
         # Calls lci_calculation() and lcia_calculation in parent class, but we don't have

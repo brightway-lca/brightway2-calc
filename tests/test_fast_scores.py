@@ -8,6 +8,7 @@ import xarray
 
 from bw2calc.fast_scores import PYPARDISO, FastScoresOnlyMultiLCA
 from bw2calc.method_config import MethodConfig
+from bw2calc.multi_lca import MultiLCA
 from bw2calc.utils import get_datapackage
 
 try:
@@ -381,3 +382,62 @@ def test_integration(basic_test_data, fixture_dir):
         == 3 * (3 * 10 + 1 * 10) * 84
     )
     assert mlca.scores.loc["(('w', '1'), ('n', '1'), ('first', 'category'))", "γ"] == 3 * 42
+
+
+@pytest.mark.skipif((not PYPARDISO and not UMFPACK), reason="Fast sparse solvers not installed")
+@pytest.mark.parametrize(
+    "selective_use",
+    [
+        None,
+        {"biosphere_matrix": {"use_distributions": True}},
+        {"characterization_matrix": {"use_distributions": True}},
+        {"normalization_matrix": {"use_distributions": True}},
+        {"weighting_matrix": {"use_distributions": True}},
+    ],
+)
+def test_monte_carlo_matches_multi_lca(basic_test_data, fixture_dir, selective_use):
+    """Resampled biosphere and LCIA matrices must be reflected in the scores (#164)."""
+    method_config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+    dps = basic_test_data["dps"] + [
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    ]
+    kwargs = {
+        "demands": basic_test_data["demands"],
+        "method_config": method_config,
+        "data_objs": dps,
+        "use_distributions": selective_use is None,
+        "selective_use": selective_use,
+        "seed_override": 42,
+    }
+
+    fsmlca = FastScoresOnlyMultiLCA(**kwargs)
+    fsmlca.calculate()
+
+    mlca = MultiLCA(**kwargs)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    results = []
+    for _ in range(5):
+        for (*lcia_key, fu), expected in mlca.scores.items():
+            assert np.allclose(fsmlca.scores.loc[str(tuple(lcia_key)), fu], expected)
+        results.append(fsmlca.scores.values.copy())
+        next(fsmlca)
+        next(mlca)
+
+    assert not any(np.allclose(results[0], other) for other in results[1:])
