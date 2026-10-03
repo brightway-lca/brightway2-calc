@@ -1,3 +1,4 @@
+import inspect
 import logging
 import time
 import weakref
@@ -94,8 +95,8 @@ class IterativeLCA(LCA):
 
     Full Monte Carlo iterations (median of 50) on an AMD Ryzen 9 5950X (16 cores),
     pypardiso 0.4.7, same demand and method as above, with the solving strategy and
-    checks below (``JacobiGMRESLCA`` with ``direct_first_solve=True``). "4 threads" is ``MKL_NUM_THREADS=OMP_NUM_THREADS=4``; "no limit" lets
-    MKL use 16 threads:
+    checks below (``JacobiGMRESLCA`` with ``direct_first_solve=True``). "4 threads" is
+    ``MKL_NUM_THREADS=OMP_NUM_THREADS=4``; "no limit" lets MKL use 16 threads:
 
     ==========  ==========  ===================  ================  ==================
     ecoinvent   Threads     ``LCA`` (pypardiso)  ``IterativeLCA``  ``JacobiGMRESLCA``
@@ -254,6 +255,8 @@ class IterativeLCA(LCA):
         # `technosphere_matrix`, as Monte Carlo iteration mutates the matrix held by
         # `technosphere_mm`. `None` means "not prepared yet".
         self._prepared_technosphere_matrix = None
+        # Copy of `technosphere_matrix` the prepared matrix was built from.
+        self._prepared_source = None
         # Cache the preconditioner to avoid rebuilding between solves.
         self._cached_preconditioner: Optional[LinearOperator] = None
         # Last solution vector, used as warm start when `use_guess=True`.
@@ -277,6 +280,7 @@ class IterativeLCA(LCA):
 
     def _clear_matrix_caches(self) -> None:
         self._prepared_technosphere_matrix = None
+        self._prepared_source = None
         self._cached_preconditioner = None
 
     def _clear_reference(self) -> None:
@@ -291,22 +295,31 @@ class IterativeLCA(LCA):
         self._consecutive_failures = {stage: 0 for stage in self.STAGES}
 
     def _prepare_matrix(self) -> None:
-        # Sparse cleanup is done once per matrix build, then reused.
-        if self._prepared_technosphere_matrix is not None:
-            return
+        # Sparse cleanup is done once per matrix, then reused.
         if not sps.issparse(self.technosphere_matrix):
             raise TypeError("technosphere_matrix must be a SciPy sparse matrix")
+        source = self.technosphere_matrix.tocsr()
+        # `technosphere_matrix` can also be replaced or edited in place between solves,
+        # without `__next__` or `load_lci_data`. A stale copy would solve the old system,
+        # and pass the solution checks too, as they use the same copy.
+        if self._prepared_technosphere_matrix is not None and _csr_equal(
+            source, self._prepared_source
+        ):
+            return
 
         # Iterative solvers work best with canonical sparse structure. CSR is fine for
         # the matrix-vector products they need, and is what `LCA` builds. Always copy:
         # with `copy=False`, a `technosphere_matrix` which is already CSR would be
         # returned as-is, and `eliminate_zeros()` would then strip structural zeros from
         # the matrix owned by `technosphere_mm`, which needs them to update in place.
-        matrix = self.technosphere_matrix.tocsr(copy=True)
+        matrix = source.copy()
         matrix.sum_duplicates()
         matrix.eliminate_zeros()
         matrix.sort_indices()
+        # Keep an unmodified copy to detect changes; in-place edits would change `source`.
+        self._prepared_source = source.copy()
         self._prepared_technosphere_matrix = matrix
+        self._cached_preconditioner = None
 
     def build_preconditioner(self) -> Optional[LinearOperator]:
         """Return a preconditioner ``M`` approximating ``A^-1``, or ``None`` for no
@@ -370,13 +383,7 @@ class IterativeLCA(LCA):
         reference = self._reference_matrix
         if reference is None:
             return False
-        matrix = self.technosphere_matrix.tocsr()
-        return (
-            matrix.shape == reference.shape
-            and np.array_equal(matrix.indptr, reference.indptr)
-            and np.array_equal(matrix.indices, reference.indices)
-            and np.array_equal(matrix.data, reference.data)
-        )
+        return _csr_equal(self.technosphere_matrix.tocsr(), reference)
 
     def _reference_preconditioner(self) -> LinearOperator:
         return LinearOperator(
@@ -394,12 +401,8 @@ class IterativeLCA(LCA):
         return self.time_limit
 
     def _call_solver(self, solver, matrix, demand, kwargs):
-        try:
-            # SciPy modern API (`rtol` + `atol`).
-            return solver(matrix, demand, rtol=self.rtol, **kwargs)
-        except TypeError:
-            # Backward compatibility for SciPy versions using `tol`.
-            return solver(matrix, demand, tol=self.rtol, **kwargs)
+        kwargs = {**kwargs, _tolerance_keyword(solver): self.rtol}
+        return solver(matrix, demand, **kwargs)
 
     def estimate_error(self, matrix, demand, solution) -> float:
         """Estimate the relative forward error ``||x - A^-1 b|| / ||x||`` of ``solution``
@@ -562,6 +565,32 @@ def _single_threaded_openblas():
         # Created on first use, when NumPy and SciPy have loaded their BLAS libraries.
         _openblas_controller = ThreadpoolController().select(internal_api="openblas")
     return _openblas_controller.limit(limits=1)
+
+
+def _tolerance_keyword(solver) -> str:
+    """Return the name of the relative tolerance argument of ``solver``.
+
+    SciPy added ``rtol`` in 1.12 and removed ``tol`` in 1.14. Retrying with ``tol`` after
+    a ``TypeError`` would also hide ``TypeError`` raised inside the solver, behind an
+    error about ``tol``, so check the signature instead."""
+    try:
+        parameters = inspect.signature(solver).parameters
+    except (TypeError, ValueError):
+        # No signature available, e.g. for some builtins; assume the modern API.
+        return "rtol"
+    if "rtol" not in parameters and "tol" in parameters:
+        return "tol"
+    return "rtol"
+
+
+def _csr_equal(a, b) -> bool:
+    """Check that two CSR matrices have the same structure and values."""
+    return (
+        a.shape == b.shape
+        and np.array_equal(a.indptr, b.indptr)
+        and np.array_equal(a.indices, b.indices)
+        and np.array_equal(a.data, b.data)
+    )
 
 
 class _TimeLimitExceeded(Exception):
