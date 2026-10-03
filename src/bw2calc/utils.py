@@ -80,3 +80,21 @@ def utc_now() -> datetime.datetime:
         return datetime.datetime.now(datetime.UTC)
     else:
         return datetime.datetime.utcnow()
+
+
+def relative_residual(matrix: Any, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+    """Relative residual ``||matrix @ solution - rhs|| / ||rhs||`` for each column of ``rhs``.
+
+    Direct solvers don't always fail loudly on a singular or badly conditioned matrix; they can
+    return numbers which look fine but don't solve the system. The residual costs one sparse
+    matrix multiplication, so it is cheap insurance against silently wrong results.
+
+    Columns of ``rhs`` which are all zero use the absolute residual instead, as there is nothing
+    to be relative to.
+
+    Returns a 1-d array with one value per column of ``rhs``."""
+    rhs = np.asarray(rhs).reshape(rhs.shape[0], -1)
+    solution = np.asarray(solution).reshape(rhs.shape)
+    residual = np.linalg.norm(matrix @ solution - rhs, axis=0)
+    scale = np.linalg.norm(rhs, axis=0)
+    return np.divide(residual, scale, out=residual.copy(), where=scale > 0)

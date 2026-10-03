@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [#162](https://github.com/brightway-lca/brightway2-calc/issues/162): Add an adjoint (transposed) solve to `FastScoresOnlyMultiLCA`. It solves `A^T Y = B^T C` once per impact category instead of once per demand, and also returns `product_scores`, the score of one unit of every product. A new `direction` argument (`"auto"`, `"forward"`, or `"adjoint"`) picks the method; `"auto"` uses adjoint when there are more demands than impact categories. Note that `supply_array` isn't calculated in adjoint mode. Adjoint solves are checked with a relative residual and raise `InaccurateSolution` above `residual_tolerance`. Monte Carlo isn't supported in adjoint mode yet. Thanks @lbougan and João Gonçalves
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
 * [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
 
