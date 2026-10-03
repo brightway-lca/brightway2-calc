@@ -3,17 +3,18 @@ from typing import Optional
 
 import numpy as np
 import xarray
+from scipy import sparse
 
 from bw2calc import PYPARDISO, UMFPACK, factorized
 from bw2calc.errors import InaccurateSolution
 from bw2calc.fast_supply_arrays import FastSupplyArraysMixin
 from bw2calc.multi_lca import MultiLCA
-from bw2calc.utils import relative_residual
+from bw2calc.utils import as_columns, relative_residual
 
 if PYPARDISO:
-    from pypardiso.pardiso_wrapper import PyPardisoSolver
+    from pypardiso.pardiso_wrapper import PyPardisoError, PyPardisoSolver
 else:
-    PyPardisoSolver = None
+    PyPardisoError, PyPardisoSolver = None, None
 
 DIRECTIONS = ("auto", "forward", "adjoint")
 STOCHASTIC_MATRICES = (
@@ -45,8 +46,8 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
       more demands than impact categories, e.g. scoring every product in a database.
 
     The adjoint direction also stores ``product_scores``, the score of one unit of every product
-    in the technosphere matrix. It doesn't calculate supply arrays, so ``supply_array`` isn't
-    available.
+    in the technosphere matrix, labelled with the integer product ids of the datapackages. It
+    doesn't calculate supply arrays, so ``supply_array`` isn't available.
 
     Parameters
     ----------
@@ -76,12 +77,6 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         super().__init__(*args, **kwargs)
         self.set_chunk_size(chunk_size)
 
-        if direction not in DIRECTIONS:
-            raise ValueError(f"Invalid direction: {direction}; must be one of {DIRECTIONS}")
-        if direction == "adjoint" and self._is_stochastic():
-            raise NotImplementedError(
-                "The adjoint direction doesn't support `use_arrays` or `use_distributions` yet"
-            )
         self.direction = direction
         self.residual_tolerance = residual_tolerance
 
@@ -89,6 +84,20 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
             warnings.warn(
                 """Using UMFPACK - the speedups in `FastSupplyArraysMixin` work better when using PARDISO"""  # noqa: E501
             )
+
+    @property
+    def direction(self) -> str:
+        return self._direction
+
+    @direction.setter
+    def direction(self, value: str) -> None:
+        if value not in DIRECTIONS:
+            raise ValueError(f"Invalid direction: {value}; must be one of {DIRECTIONS}")
+        if value == "adjoint" and self._is_stochastic():
+            raise NotImplementedError(
+                "The adjoint direction doesn't support `use_arrays` or `use_distributions` yet"
+            )
+        self._direction = value
 
     def lci(self) -> None:
         raise NotImplementedError(
@@ -153,6 +162,11 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
             self._load_datapackages()
             self.build_precalculated()
 
+        # Don't leave results from an earlier calculation if this one fails or changes direction
+        for attr in ("_scores", "supply_array", "product_scores"):
+            if hasattr(self, attr):
+                delattr(self, attr)
+
         lcia_array = np.vstack(list(self.precalculated.values()))
 
         if self._use_adjoint():
@@ -189,8 +203,9 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
 
         if self.residual_tolerance is not None:
             residuals = relative_residual(transposed, product_scores, rhs)
-            if residuals.max(initial=0) > self.residual_tolerance:
-                worst = int(residuals.argmax())
+            # Negated so that NaN residuals, e.g. from a singular matrix, also fail
+            if not np.all(residuals <= self.residual_tolerance):
+                worst = int(np.where(np.isfinite(residuals), residuals, np.inf).argmax())
                 raise InaccurateSolution(
                     f"Adjoint solve for {list(self.precalculated)[worst]} has a relative residual "
                     f"of {residuals[worst]:.3e}, above the tolerance of "
@@ -198,11 +213,9 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
                     "or badly conditioned."
                 )
 
-        # Don't leave stale results from an earlier forward calculation
-        if hasattr(self, "supply_array"):
-            delattr(self, "supply_array")
-
-        reversed_product = self.dicts.product.reversed
+        # Use the integer ids even if `dicts.product` was remapped; `(database, code)` tuples
+        # can't be used as coordinates
+        reversed_product = {index: key for key, index in self.dicts.product.original.items()}
         self.product_scores = xarray.DataArray(
             product_scores.T,
             coords=[
@@ -214,20 +227,28 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
 
         if not self.demand_arrays:
             return np.zeros((lcia_array.shape[0], 0))
-        demand_matrix = np.vstack(list(self.demand_arrays.values()))
+        # Sparse, as a dense `[demands, products]` copy is huge when scoring every product
+        demand_matrix = sparse.vstack(
+            [sparse.csr_matrix(arr) for arr in self.demand_arrays.values()], format="csr"
+        )
         return (demand_matrix @ product_scores).T
 
     def solve_adjoint(self, rhs: np.ndarray) -> np.ndarray:
         """Solve the transposed technosphere system ``A^T Y = rhs``.
 
-        ``rhs`` has dimensions ``[activities, columns]``; returns an array with dimensions
-        ``[products, columns]``.
+        ``rhs`` has dimensions ``[activities, columns]``, or is 1-d for a single column; returns
+        an array with dimensions ``[products, columns]``.
 
         Uses its own PARDISO solver instance rather than the global one used by ``spsolve``, so
         the factorization of the transposed matrix doesn't replace the factorization of the
         technosphere matrix itself."""
-        rhs = np.asarray(rhs).reshape(rhs.shape[0], -1)
         transposed = self.technosphere_matrix.T
+        rhs = as_columns(rhs)
+        if rhs.shape[0] != transposed.shape[0]:
+            raise ValueError(
+                f"`rhs` has {rhs.shape[0]} rows, but the technosphere matrix has "
+                f"{transposed.shape[0]} activities"
+            )
 
         if rhs.shape[1] == 0:
             return np.zeros((transposed.shape[1], 0))
@@ -235,12 +256,16 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         if PYPARDISO:
             matrix = transposed.tocsr()
             solver = PyPardisoSolver()
-            # `solve` on its own does the analysis and factorization phases each time
-            solver.factorize(matrix)
             try:
+                # `solve` on its own does the analysis and factorization phases each time
+                solver.factorize(matrix)
                 solution = solver.solve(matrix, rhs)
             finally:
-                solver.free_memory(everything=True)
+                try:
+                    solver.free_memory(everything=True)
+                except PyPardisoError:
+                    # Nothing to release if factorization failed; don't hide the original error
+                    pass
         elif UMFPACK:
             solve = factorized(transposed.tocsc())
             solution = np.column_stack([solve(column) for column in rhs.T])

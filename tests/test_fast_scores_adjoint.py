@@ -262,3 +262,160 @@ def test_relative_residual():
     single = relative_residual(matrix, np.array([1.0, 2]), np.array([2.0, 4]))
     assert single.shape == (1,)
     assert np.isclose(single[0], 4 / np.sqrt(20))
+
+
+def adjoint_lca(data, **kwargs):
+    return FastScoresOnlyMultiLCA(
+        demands=data["demands"],
+        method_config=data["config"],
+        data_objs=data["dps"],
+        direction="adjoint",
+        **kwargs,
+    )
+
+
+@needs_solver
+def test_residual_check_raises_on_nan(basic_test_data):
+    lca = adjoint_lca(basic_test_data)
+    original = FastScoresOnlyMultiLCA.solve_adjoint
+
+    def with_nan(self, rhs):
+        solution = original(self, rhs)
+        solution[0, 0] = np.nan
+        return solution
+
+    with patch.object(FastScoresOnlyMultiLCA, "solve_adjoint", with_nan):
+        with pytest.raises(InaccurateSolution, match=r"\('first', 'category'\).*nan"):
+            lca.calculate()
+
+
+@needs_solver
+def test_residual_check_raises_on_singular_technosphere(basic_test_data):
+    lca = fast_scores(basic_test_data, direction="adjoint")
+    singular = lca.technosphere_matrix.tolil()
+    singular[1, :] = singular[0, :]
+    lca.technosphere_matrix = singular.tocsr()
+    # Solvers can also raise their own errors, but they must never return scores
+    with pytest.raises(Exception):
+        with np.errstate(all="ignore"):
+            lca.calculate()
+    assert not hasattr(lca, "product_scores")
+    with pytest.raises(ValueError, match="Scores not calculated yet"):
+        lca.scores
+
+
+def test_direction_setter_validates(basic_test_data):
+    lca = adjoint_lca(basic_test_data)
+    with pytest.raises(ValueError, match="Invalid direction"):
+        lca.direction = "adjont"
+    assert lca.direction == "adjoint"
+
+    stochastic = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+        use_distributions=True,
+    )
+    with pytest.raises(NotImplementedError, match="adjoint"):
+        stochastic.direction = "adjoint"
+    assert stochastic.direction == "auto"
+
+
+@needs_solver
+def test_forward_removes_stale_product_scores(basic_test_data):
+    lca = fast_scores(basic_test_data, direction="adjoint")
+    assert hasattr(lca, "product_scores")
+    lca.direction = "forward"
+    lca.calculate()
+    assert not hasattr(lca, "product_scores")
+    assert hasattr(lca, "supply_array")
+
+
+@needs_solver
+def test_failed_calculation_removes_earlier_results(basic_test_data):
+    lca = fast_scores(basic_test_data, direction="adjoint")
+    original = FastScoresOnlyMultiLCA.solve_adjoint
+
+    def wrong(self, rhs):
+        return original(self, rhs) * 1.01
+
+    with patch.object(FastScoresOnlyMultiLCA, "solve_adjoint", wrong):
+        with pytest.raises(InaccurateSolution):
+            lca.calculate()
+
+    assert not hasattr(lca, "product_scores")
+    with pytest.raises(ValueError, match="Scores not calculated yet"):
+        lca.scores
+
+
+@needs_solver
+def test_product_scores_with_remapped_product_dict(basic_test_data):
+    lca = fast_scores(basic_test_data, direction="adjoint")
+    expected = lca.product_scores.copy()
+    lca.dicts.product.remap({key: ("db", str(key)) for key in list(lca.dicts.product)})
+    lca.calculate()
+    assert list(lca.product_scores.coords["products"].values) == list(
+        expected.coords["products"].values
+    )
+    assert np.allclose(lca.product_scores.values, expected.values)
+
+
+@needs_solver
+def test_many_demands_match_forward(basic_test_data):
+    rng = np.random.default_rng(42)
+    demands = {
+        str(i): {int(p): float(a) for p, a in zip(range(100, 106), rng.normal(size=6)) if a > 0}
+        for i in range(40)
+    }
+    adjoint = fast_scores(basic_test_data, demands=demands, direction="adjoint")
+    forward = fast_scores(basic_test_data, demands=demands, direction="forward")
+    assert adjoint.scores.shape == (2, 40)
+    assert np.allclose(adjoint.scores.values, forward.scores.values)
+
+
+@needs_solver
+def test_solve_adjoint_input_types(basic_test_data):
+    lca = fast_scores(basic_test_data, direction="adjoint")
+    rhs = np.arange(12, dtype=float).reshape(6, 2)
+    expected = lca.solve_adjoint(rhs)
+
+    assert np.allclose(lca.solve_adjoint(rhs.tolist()), expected)
+    assert np.allclose(lca.solve_adjoint(sparse.csr_matrix(rhs)), expected)
+    assert np.allclose(lca.solve_adjoint(rhs[:, 0].tolist()), expected[:, :1])
+    assert lca.solve_adjoint(np.zeros((6, 0))).shape == (6, 0)
+
+    with pytest.raises(ValueError, match="5 rows"):
+        lca.solve_adjoint(np.ones((5, 2)))
+
+
+def test_solve_adjoint_pardiso_error_not_masked(basic_test_data):
+    class FakePardisoError(Exception):
+        pass
+
+    class FailingSolver:
+        freed = False
+
+        def factorize(self, matrix):
+            raise FakePardisoError("factorization failed")
+
+        def free_memory(self, everything=False):
+            FailingSolver.freed = True
+            raise FakePardisoError("nothing to free")
+
+    lca = adjoint_lca(basic_test_data)
+    lca.technosphere_matrix = sparse.identity(3, format="csr")
+    with (
+        patch("bw2calc.fast_scores.PYPARDISO", True),
+        patch("bw2calc.fast_scores.PyPardisoSolver", FailingSolver),
+        patch("bw2calc.fast_scores.PyPardisoError", FakePardisoError),
+    ):
+        with pytest.raises(FakePardisoError, match="factorization failed"):
+            lca.solve_adjoint(np.ones((3, 2)))
+    assert FailingSolver.freed
+
+
+def test_relative_residual_input_types():
+    matrix = sparse.csr_matrix(np.array([[2.0, 0], [0, 4]]))
+    assert np.allclose(relative_residual(matrix, [[1.0], [1.0]], [[2.0], [4.0]]), 0)
+    assert np.allclose(relative_residual(matrix, [1.0, 1.0], sparse.csr_matrix([[2.0], [4.0]])), 0)
+    assert np.isnan(relative_residual(matrix, [np.nan, 1.0], [2.0, 4.0])[0])
