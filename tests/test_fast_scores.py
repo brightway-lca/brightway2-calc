@@ -8,6 +8,7 @@ import xarray
 
 from bw2calc.fast_scores import PYPARDISO, FastScoresOnlyMultiLCA
 from bw2calc.method_config import MethodConfig
+from bw2calc.multi_lca import MultiLCA
 from bw2calc.utils import get_datapackage
 
 try:
@@ -381,3 +382,177 @@ def test_integration(basic_test_data, fixture_dir):
         == 3 * (3 * 10 + 1 * 10) * 84
     )
     assert mlca.scores.loc["(('w', '1'), ('n', '1'), ('first', 'category'))", "γ"] == 3 * 42
+
+
+def test_after_matrix_iteration_before_matrices_loaded(basic_test_data):
+    """Nothing to rebuild if the matrices haven't been loaded yet."""
+    fsmlca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    with patch.object(fsmlca, "build_precalculated") as build:
+        fsmlca.after_matrix_iteration()
+    build.assert_not_called()
+    assert not hasattr(fsmlca, "precalculated")
+
+
+def test_after_matrix_iteration_rebuilds_precalculated(basic_test_data):
+    """`after_matrix_iteration` replaces `precalculated` with values from the current matrices."""
+    fsmlca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+        use_distributions=True,
+        seed_override=42,
+    )
+    fsmlca._load_datapackages()
+    fsmlca.build_precalculated()
+    stale = dict(fsmlca.precalculated)
+
+    # Resample one of the matrices `precalculated` is derived from; the cache is now out of date
+    next(fsmlca.biosphere_mm)
+    expected = {
+        key: np.asarray((matrix @ fsmlca.biosphere_matrix).sum(axis=0))
+        for key, matrix in fsmlca.characterization_matrices.items()
+    }
+    assert all(fsmlca.precalculated[key] is stale[key] for key in stale)
+    assert not any(np.allclose(stale[key], expected[key]) for key in stale)
+
+    fsmlca.after_matrix_iteration()
+
+    assert set(fsmlca.precalculated) == set(expected)
+    for key, row in expected.items():
+        assert np.allclose(fsmlca.precalculated[key], row)
+
+
+def test_next_calls_after_matrix_iteration(basic_test_data):
+    """`next()` resamples the matrices, then calls `after_matrix_iteration`, which calls
+    `build_precalculated`, all before the scores are calculated."""
+    fsmlca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+        use_distributions=True,
+        seed_override=42,
+    )
+    fsmlca._load_datapackages()
+    fsmlca.build_precalculated()
+
+    calls = []
+    biosphere_sums = {}
+    original_hook = fsmlca.after_matrix_iteration
+    original_build = fsmlca.build_precalculated
+
+    def hook():
+        calls.append("after_matrix_iteration")
+        biosphere_sums["in hook"] = fsmlca.biosphere_matrix.sum()
+        original_hook()
+
+    def build():
+        calls.append("build_precalculated")
+        original_build()
+
+    def calculate():
+        calls.append("calculate")
+
+    biosphere_sums["before"] = fsmlca.biosphere_matrix.sum()
+
+    # Stub out `calculate` so this doesn't depend on which solvers are installed
+    with (
+        patch.object(fsmlca, "after_matrix_iteration", hook),
+        patch.object(fsmlca, "build_precalculated", build),
+        patch.object(fsmlca, "calculate", calculate),
+    ):
+        next(fsmlca)
+        assert calls == ["after_matrix_iteration", "build_precalculated", "calculate"]
+        # The hook ran after the matrices were resampled
+        assert biosphere_sums["in hook"] != biosphere_sums["before"]
+        assert biosphere_sums["in hook"] == fsmlca.biosphere_matrix.sum()
+
+        next(fsmlca)
+        assert calls == ["after_matrix_iteration", "build_precalculated", "calculate"] * 2
+
+
+def test_next_keep_first_iteration_skips_after_matrix_iteration(basic_test_data):
+    """With `keep_first_iteration_flag` the matrices aren't resampled, so no rebuild is needed."""
+    fsmlca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+        use_distributions=True,
+        seed_override=42,
+    )
+    fsmlca._load_datapackages()
+    fsmlca.build_precalculated()
+    fsmlca.keep_first_iteration_flag = True
+
+    with (
+        patch.object(fsmlca, "after_matrix_iteration") as hook,
+        patch.object(fsmlca, "build_precalculated") as build,
+        patch.object(fsmlca, "calculate") as calculate,
+    ):
+        next(fsmlca)
+
+    hook.assert_not_called()
+    build.assert_not_called()
+    calculate.assert_called_once()
+
+
+@pytest.mark.skipif((not PYPARDISO and not UMFPACK), reason="Fast sparse solvers not installed")
+@pytest.mark.parametrize(
+    "selective_use",
+    [
+        None,
+        {"biosphere_matrix": {"use_distributions": True}},
+        {"characterization_matrix": {"use_distributions": True}},
+        {"normalization_matrix": {"use_distributions": True}},
+        {"weighting_matrix": {"use_distributions": True}},
+    ],
+)
+def test_monte_carlo_matches_multi_lca(basic_test_data, fixture_dir, selective_use):
+    """Resampled biosphere and LCIA matrices must be reflected in the scores (#164)."""
+    method_config = {
+        "impact_categories": [
+            ("first", "category"),
+            ("second", "category"),
+        ],
+        "normalizations": {
+            ("n", "1"): [
+                ("first", "category"),
+                ("second", "category"),
+            ]
+        },
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+    dps = basic_test_data["dps"] + [
+        get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"),
+        get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
+    ]
+    kwargs = {
+        "demands": basic_test_data["demands"],
+        "method_config": method_config,
+        "data_objs": dps,
+        "use_distributions": selective_use is None,
+        "selective_use": selective_use,
+        "seed_override": 42,
+    }
+
+    fsmlca = FastScoresOnlyMultiLCA(**kwargs)
+    fsmlca.calculate()
+
+    mlca = MultiLCA(**kwargs)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+
+    results = []
+    for _ in range(5):
+        for (*lcia_key, fu), expected in mlca.scores.items():
+            assert np.allclose(fsmlca.scores.loc[str(tuple(lcia_key)), fu], expected)
+        results.append(fsmlca.scores.values.copy())
+        next(fsmlca)
+        next(mlca)
+
+    assert not any(np.allclose(results[0], other) for other in results[1:])
