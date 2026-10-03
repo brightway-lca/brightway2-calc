@@ -17,6 +17,10 @@ else:
     PyPardisoError, PyPardisoSolver = None, None
 
 DIRECTIONS = ("auto", "forward", "adjoint")
+DEFAULT_DIRECTION_WARNING = """The default `direction` of `FastScoresOnlyMultiLCA` will change from "forward" to "auto" in a future release.
+This calculation has more demands ({demands}) than impact category combinations ({categories}), so "auto" would use the faster adjoint direction.
+The scores are the same, but the adjoint direction doesn't calculate `supply_array`.
+Pass `direction="forward"` to keep the current behaviour, or `direction="auto"` to get the speedup now."""  # noqa: E501
 STOCHASTIC_MATRICES = (
     "technosphere_matrix",
     "biosphere_matrix",
@@ -53,9 +57,11 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
     ----------
     chunk_size : int
         Number of demands to solve at once in the forward direction with PARDISO.
-    direction : str
+    direction : str, optional
         One of ``"auto"``, ``"forward"``, or ``"adjoint"``. ``"auto"`` uses the adjoint direction
-        when there are more demands than impact category combinations. The adjoint direction
+        when there are more demands than impact category combinations. The default is currently
+        ``"forward"``, but will change to ``"auto"`` in a future release; a ``FutureWarning`` is
+        raised if this would change the direction of a calculation. The adjoint direction
         doesn't yet support Monte Carlo or other iterated calculations (``use_arrays`` or
         ``use_distributions``); ``"auto"`` will use the forward direction in this case.
     residual_tolerance : float, optional
@@ -68,7 +74,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         self,
         *args,
         chunk_size: int = 50,
-        direction: str = "auto",
+        direction: Optional[str] = None,
         residual_tolerance: Optional[float] = 1e-8,
         **kwargs,
     ):
@@ -77,7 +83,8 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         super().__init__(*args, **kwargs)
         self.set_chunk_size(chunk_size)
 
-        self.direction = direction
+        self.direction = "forward" if direction is None else direction
+        self._default_direction = direction is None
         self.residual_tolerance = residual_tolerance
 
         if UMFPACK:
@@ -98,6 +105,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
                 "The adjoint direction doesn't support `use_arrays` or `use_distributions` yet"
             )
         self._direction = value
+        self._default_direction = False
 
     def lci(self) -> None:
         raise NotImplementedError(
@@ -169,6 +177,16 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
 
         lcia_array = np.vstack(list(self.precalculated.values()))
 
+        if self._default_direction and self._auto_is_adjoint():
+            warnings.warn(
+                DEFAULT_DIRECTION_WARNING.format(
+                    demands=len(self.demand_arrays), categories=len(self.precalculated)
+                ),
+                FutureWarning,
+            )
+            # Once per instance is enough
+            self._default_direction = False
+
         if self._use_adjoint():
             scores = self._calculate_adjoint(lcia_array)
         else:
@@ -188,9 +206,12 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         """Will matrix values change between iterations?"""
         return any(any(self.check_selective_use(label)) for label in STOCHASTIC_MATRICES)
 
+    def _auto_is_adjoint(self) -> bool:
+        return not self._is_stochastic() and len(self.demand_arrays) > len(self.precalculated)
+
     def _use_adjoint(self) -> bool:
         if self.direction == "auto":
-            return not self._is_stochastic() and len(self.demand_arrays) > len(self.precalculated)
+            return self._auto_is_adjoint()
         return self.direction == "adjoint"
 
     def _calculate_adjoint(self, lcia_array: np.ndarray) -> np.ndarray:
