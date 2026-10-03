@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import bicgstab, cgs
 
-from bw2calc import LCA, PYPARDISO, IterativeLCA
+from bw2calc import LCA, PYPARDISO, IterativeLCA, JacobiGMRESLCA
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 basic = [fixture_dir / "basic_fixture.zip"]
@@ -399,3 +399,50 @@ def test_iterative_releases_reference_on_new_matrices():
 
     assert lca._reference_solve is None
     assert finalizer is None or not finalizer.alive
+
+
+@pytest.mark.parametrize("cls", [IterativeLCA, JacobiGMRESLCA])
+@pytest.mark.parametrize("in_place", [False, True])
+def test_iterative_solves_edited_technosphere_matrix(cls, in_place):
+    """Replacing or editing `technosphere_matrix` between solves, without `__next__` or
+    `load_lci_data`, must not solve the previous matrix."""
+    lca = cls({3: 1}, data_objs=mc_basic)
+    lca.lci()
+
+    for _ in range(2):
+        if in_place:
+            data = lca.technosphere_matrix.data
+            data[data < 0] *= 2
+        else:
+            matrix = lca.technosphere_matrix.copy()
+            matrix.data[matrix.data < 0] *= 2
+            lca.technosphere_matrix = matrix
+        lca.lci_calculation()
+
+        expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+        assert np.allclose(lca.supply_array, expected)
+
+
+def test_iterative_solver_type_error_is_not_hidden():
+    def solver(matrix, demand, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M=None):
+        raise TypeError("bug inside the solver")
+
+    lca = IterativeLCA({1: 1}, data_objs=basic, iter_solver=solver, direct_first_solve=False)
+    with pytest.raises(TypeError, match="bug inside the solver"):
+        lca.lci()
+
+
+def test_iterative_passes_tol_to_solvers_without_rtol():
+    calls = []
+
+    def solver(matrix, demand, x0=None, tol=1e-5, atol=0.0, maxiter=None, M=None):
+        calls.append(tol)
+        return np.linalg.solve(matrix.toarray(), demand), 0
+
+    lca = IterativeLCA(
+        {1: 1}, data_objs=basic, iter_solver=solver, direct_first_solve=False, rtol=1e-9
+    )
+    lca.lci()
+
+    assert calls == [1e-9]
+    assert lca.solver_stats == {"iterative": 1}

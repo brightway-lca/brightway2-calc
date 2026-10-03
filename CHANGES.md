@@ -11,6 +11,8 @@
 * `IterativeLCA` limits OpenBLAS to one thread during iterative solves. With pypardiso and no thread limit, OpenBLAS threads competed with Pardiso's MKL threads and made BiCGSTAB 5-10x slower. Adds a dependency on `threadpoolctl`.
 * Fix `IterativeLCA` failing on its second solve with SciPy >= 1.14, which removed `atol="legacy"`.
 * `IterativeLCA` now updates its initial guess after every solve, not just after the first direct solve.
+* Fix `IterativeLCA` and `JacobiGMRESLCA` silently solving the previous technosphere matrix when `technosphere_matrix` was replaced or edited in place between solves without `__next__` or `load_lci_data`.
+* `IterativeLCA` no longer retries a solver with `tol` after any `TypeError`, which hid errors raised inside the solver; it now picks `rtol` or `tol` from the solver's signature.
 * [#164](https://github.com/brightway-lca/brightway2-calc/issues/164): Fix `FastScoresOnlyMultiLCA` Monte Carlo iterations reusing the characterized biosphere rows from the first iteration, which ignored uncertainty in the biosphere, characterization, normalization, and weighting matrices
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
 * [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
