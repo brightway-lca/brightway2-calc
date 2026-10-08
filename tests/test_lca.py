@@ -1886,3 +1886,12 @@ def test_lca_normalized_and_weighted_scores_follow_new_demand():
     lca.lcia(demand={2: 1})
     assert lca.characterized_inventory.sum() == 2 * 10
     assert lca.score == 2 * 10 * 4 * 8
+
+    # Weighting first, then normalizing, must weight the normalized inventory.
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    lca.weight()
+    assert lca.score == (1 + 10) * 8
+    lca.normalize()
+    assert lca.score == (1 * 10 + 10 * 4) * 8
