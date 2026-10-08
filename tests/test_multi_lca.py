@@ -222,6 +222,29 @@ def test_normalization_with_weighting(dps, func_units):
         assert np.allclose(mat.sum(), expected * 42)
 
 
+def test_normalize_and_weight_reuse_loaded_data(dps, func_units):
+    config = {
+        "impact_categories": [("first", "category"), ("second", "category")],
+        "normalizations": {("n", "1"): [("first", "category"), ("second", "category")]},
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+    dps.append(get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"))
+    dps.append(get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"))
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.normalize()
+    mlca.weight()
+    normalization, weighting = mlca.normalization_mm_dict, mlca.weighting_mm_dict
+
+    # Reloading would reset the Monte Carlo draw of these matrices.
+    mlca.normalize()
+    mlca.weight()
+    assert mlca.normalization_mm_dict is normalization
+    assert mlca.weighting_mm_dict is weighting
+
+
 def test_normalization_without_weighting(dps, func_units):
     config = {
         "impact_categories": [

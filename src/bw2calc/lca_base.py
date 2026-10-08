@@ -225,7 +225,7 @@ class LCABase(Iterator):
             hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
         ):
             raise ValueError("Must do lcia first")
-        if not hasattr(self, "normalization_matrix"):
+        if not (hasattr(self, "normalization_matrix") or hasattr(self, "normalization_matrices")):
             self.load_normalization_data()
         self.normalization_calculation()
 
@@ -237,7 +237,7 @@ class LCABase(Iterator):
             hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
         ):
             raise ValueError("Must do lcia first")
-        if not hasattr(self, "weighting_value"):
+        if not (hasattr(self, "weighting_matrix") or hasattr(self, "weighting_matrices")):
             self.load_weighting_data()
         self.weighting_calculation()
 

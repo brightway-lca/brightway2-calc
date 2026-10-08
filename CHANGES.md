@@ -3,6 +3,9 @@
 ## Unreleased
 
 * [#164](https://github.com/brightway-lca/brightway2-calc/issues/164): Fix `FastScoresOnlyMultiLCA` Monte Carlo iterations reusing the characterized biosphere rows from the first iteration, which ignored uncertainty in the biosphere, characterization, normalization, and weighting matrices
+* Fix `LCA.to_dataframe(cutoff_mode="fraction")` keeping every row when the score is negative
+* Fix `weight()` (and `normalize()` on `MultiLCA`) reloading its data on every call, which reset the Monte Carlo draw of the weighting or normalization matrix
+* `switch_method`, `switch_normalization` and `switch_weighting` now require their argument instead of defaulting to a type object
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
 * [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
 
