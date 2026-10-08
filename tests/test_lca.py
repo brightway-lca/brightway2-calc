@@ -804,6 +804,46 @@ def test_lca_with_weighting():
     assert lca.weighting_matrix.sum() == 8
 
 
+def test_weight_keeps_weighting_data_across_iterations():
+    dp = bwp.create_datapackage(sequential=True)
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=np.array([1]),
+        name="technosphere",
+        indices_array=np.array([(1, 101)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=np.array([1]),
+        name="biosphere",
+        indices_array=np.array([(201, 101)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.array([1]),
+        name="characterization",
+        indices_array=np.array([(201, 0)], dtype=bwp.INDICES_DTYPE),
+        global_index=0,
+    )
+    dp.add_persistent_array(
+        matrix="weighting_matrix",
+        data_array=np.array([[1, 2, 3]]),
+        name="wm",
+        indices_array=np.array([(0, 0)], dtype=bwp.INDICES_DTYPE),
+    )
+
+    lca = LCA({1: 1}, data_objs=[dp], use_arrays=True)
+    lca.lci()
+    lca.lcia()
+    lca.weight()
+    assert lca.score == 1
+
+    # weight() must use the weighting column that next() moved to, not reload from column 0.
+    next(lca)
+    lca.weight()
+    assert lca.score == 2
+
+
 def test_lca_with_weighting_deprecation():
     dp = bwp.create_datapackage()
 
