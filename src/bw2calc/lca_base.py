@@ -228,6 +228,9 @@ class LCABase(Iterator):
         if not hasattr(self, "normalization_matrix"):
             self.load_normalization_data()
         self.normalization_calculation()
+        # Weighting reads the normalized inventory, so an earlier weight() result is now stale.
+        if hasattr(self, "weighted_inventory"):
+            self.weighting_calculation()
 
     def weight(self) -> None:
         """Multiply characterized inventory by weighting value.
