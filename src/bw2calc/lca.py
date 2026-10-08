@@ -309,6 +309,11 @@ class LCA(LCABase):
 
         """
         self.characterized_inventory = self.characterization_matrix @ self.inventory
+        # `score` reads these first, so they must not keep values from the old inventory.
+        if hasattr(self, "normalized_inventory"):
+            self.normalization_calculation()
+        if hasattr(self, "weighted_inventory"):
+            self.weighting_calculation()
 
     def normalization_calculation(self) -> None:
         """The actual normalization calculation.
