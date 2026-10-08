@@ -1838,3 +1838,60 @@ def test_logging_next(caplog):
 #         lca.lcia()
 
 #         self.assertTrue(np.allclose(42, lca.score))
+
+
+def test_lca_normalized_and_weighted_scores_follow_new_demand():
+    dp = bwp.create_datapackage()
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=np.array([1, 1, 0.5]),
+        name="technosphere",
+        indices_array=np.array([(1, 101), (2, 102), (2, 101)], dtype=bwp.INDICES_DTYPE),
+        flip_array=np.array([0, 0, 1], dtype=bool),
+    )
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=np.array([1, 2]),
+        name="biosphere",
+        indices_array=np.array([(201, 101), (202, 102)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.array([1, 10]),
+        name="first-characterization",
+        indices_array=np.array([(201, 0), (202, 0)], dtype=bwp.INDICES_DTYPE),
+        global_index=0,
+    )
+    dp.add_persistent_vector(
+        matrix="normalization_matrix",
+        data_array=np.array([10, 4]),
+        name="nm",
+        indices_array=np.array([(201, 0), (202, 0)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="weighting_matrix",
+        data_array=np.array([8]),
+        name="wm",
+        indices_array=np.array([(0, 0)], dtype=bwp.INDICES_DTYPE),
+    )
+
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    lca.normalize()
+    lca.weight()
+    assert lca.score == (1 * 10 + 10 * 4) * 8
+
+    # Product 2 alone runs only activity 102, which emits 2 of flow 202.
+    lca.lcia(demand={2: 1})
+    assert lca.characterized_inventory.sum() == 2 * 10
+    assert lca.score == 2 * 10 * 4 * 8
+
+    # Weighting first, then normalizing, must weight the normalized inventory.
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    lca.weight()
+    assert lca.score == (1 + 10) * 8
+    lca.normalize()
+    assert lca.score == (1 * 10 + 10 * 4) * 8
