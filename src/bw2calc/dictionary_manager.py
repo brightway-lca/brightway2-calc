@@ -78,6 +78,9 @@ class ReversibleRemappableDictionary(Mapping):
 
         ``mapping`` doesn't need to cover every key in the original.
 
+        Can only be called once; call ``unmap`` before remapping again, so that ``original`` is
+        always the dict before any remapping.
+
         Example usage:
 
         {1: 2}.remap({1: "foo"} >> {"foo": 2}
@@ -85,6 +88,8 @@ class ReversibleRemappableDictionary(Mapping):
         """
         if not isinstance(mapping, Mapping):
             raise ValueError
+        if hasattr(self, "_original"):
+            raise ValueError("Dictionary already remapped; call `unmap` before remapping again")
         if hasattr(self, "_reversed"):
             delattr(self, "_reversed")
         self._original = self._dict.copy()

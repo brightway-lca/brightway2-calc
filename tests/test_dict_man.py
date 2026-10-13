@@ -73,8 +73,19 @@ def test_rrd_reversed_create_on_demand():
 def test_rrd_remapping_multiple():
     r = RRD({1: 2})
     r.remap({1: "foo"})
-    r.remap({"foo": "bar"})
+    with pytest.raises(ValueError):
+        r.remap({"foo": "bar"})
+    assert r["foo"] == 2
+    assert r.original == {1: 2}
+
+
+def test_rrd_remapping_after_unmap():
+    r = RRD({1: 2})
+    r.remap({1: "foo"})
+    r.unmap()
+    r.remap({1: "bar"})
     assert r["bar"] == 2
+    assert r.original == {1: 2}
 
 
 def test_rrd_remapping():
@@ -96,13 +107,6 @@ def test_rrd_remapping_sets_original():
     r.remap({1: "foo"})
     assert r.original == {1: 2}
     assert hasattr(r, "_original")
-
-
-def test_rrd_remapping_multiple_original():
-    r = RRD({1: 2})
-    r.remap({1: "foo"})
-    r.remap({"foo": "bar"})
-    assert r.original == {"foo": 2}
 
 
 def test_rrd_str():
