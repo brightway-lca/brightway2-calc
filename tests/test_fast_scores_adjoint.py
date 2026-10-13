@@ -324,6 +324,22 @@ def test_direction_setter_validates(basic_test_data):
     assert stochastic.direction == "forward"
 
 
+@pytest.mark.parametrize(
+    "attr, value",
+    [
+        ("use_distributions", True),
+        ("use_arrays", True),
+        ("selective_use", {"technosphere_matrix": {"use_distributions": True}}),
+    ],
+)
+@needs_solver
+def test_adjoint_stochastic_set_after_construction(basic_test_data, attr, value):
+    lca = adjoint_lca(basic_test_data)
+    setattr(lca, attr, value)
+    with pytest.raises(NotImplementedError, match="adjoint"):
+        next(lca)
+
+
 @needs_solver
 def test_forward_removes_stale_product_scores(basic_test_data):
     lca = fast_scores(basic_test_data, direction="adjoint")

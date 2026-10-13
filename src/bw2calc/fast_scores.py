@@ -100,10 +100,8 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
     def direction(self, value: str) -> None:
         if value not in DIRECTIONS:
             raise ValueError(f"Invalid direction: {value}; must be one of {DIRECTIONS}")
-        if value == "adjoint" and self._is_stochastic():
-            raise NotImplementedError(
-                "The adjoint direction doesn't support `use_arrays` or `use_distributions` yet"
-            )
+        if value == "adjoint":
+            self._check_adjoint_supported()
         self._direction = value
         self._default_direction = False
 
@@ -193,6 +191,11 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
             self._load_datapackages()
             self.build_precalculated()
 
+        # The setter checks this too, but `use_arrays`, `use_distributions`, or `selective_use`
+        # can be changed after the direction is set
+        if self.direction == "adjoint":
+            self._check_adjoint_supported()
+
         # Don't leave results from an earlier calculation if this one fails or changes direction
         for attr in ("_scores", "supply_array", "product_scores"):
             if hasattr(self, attr):
@@ -231,6 +234,12 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
 
     def _auto_is_adjoint(self) -> bool:
         return not self._is_stochastic() and len(self.demand_arrays) > len(self.precalculated)
+
+    def _check_adjoint_supported(self) -> None:
+        if self._is_stochastic():
+            raise NotImplementedError(
+                "The adjoint direction doesn't support `use_arrays` or `use_distributions` yet"
+            )
 
     def _use_adjoint(self) -> bool:
         if self.direction == "auto":
