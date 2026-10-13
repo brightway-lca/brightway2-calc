@@ -401,6 +401,26 @@ def test_after_matrix_iteration_before_matrices_loaded(basic_test_data):
     assert not hasattr(fsmlca, "precalculated")
 
 
+@pytest.mark.skipif(not (PYPARDISO or UMFPACK), reason="Fast sparse solvers not installed")
+def test_next_before_calculate(basic_test_data):
+    """`next()` loads the data if `calculate()` hasn't been called yet."""
+    fsmlca = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    with patch("bw2calc.multi_lca.PYPARDISO", True):
+        next(fsmlca)
+
+    expected = FastScoresOnlyMultiLCA(
+        demands=basic_test_data["demands"],
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    expected.calculate()
+    xarray.testing.assert_allclose(fsmlca.scores, expected.scores)
+
+
 def test_after_matrix_iteration_rebuilds_precalculated(basic_test_data):
     """`after_matrix_iteration` replaces `precalculated` with values from the current matrices."""
     fsmlca = FastScoresOnlyMultiLCA(

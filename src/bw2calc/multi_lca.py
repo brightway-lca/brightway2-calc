@@ -193,7 +193,8 @@ class MultiLCA(LCABase):
 
         # Avoid this conversion each time we do a calculation in the future
         # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
-        if PYPARDISO:
+        # Nothing to convert if `next()` is called before the matrices are loaded
+        if PYPARDISO and hasattr(self, "technosphere_matrix"):
             self.technosphere_matrix = self.technosphere_matrix.tocsr()
 
         if skip_first_iteration:

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
+from unittest.mock import patch
 
 import bw_processing as bwp
 import numpy as np
@@ -126,6 +127,14 @@ def test_inventory_matrix_construction(dps, config, func_units):
 
     assert mlca.scores[(("second", "category"), "ζ")] == 3 * (3 * 10 + 1 * 10)
     assert mlca.scores[(("first", "category"), "γ")] == 8 + 3
+
+
+def test_next_before_lci(dps, config, func_units):
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    with patch("bw2calc.multi_lca.PYPARDISO", True):
+        next(mlca)
+    assert not hasattr(mlca, "technosphere_matrix")
+    assert not hasattr(mlca, "inventories")
 
 
 def test_single_demand(dps, config):
