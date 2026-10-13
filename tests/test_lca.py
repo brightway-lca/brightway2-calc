@@ -140,6 +140,15 @@ def test_data_array_keep_first():
         assert lca.biosphere_matrix.sum() == x
 
 
+def test_next_before_lci():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    lca = LCA({1: 1}, data_objs=packages)
+    with patch("bw2calc.lca.PYPARDISO", True):
+        next(lca)
+    assert not hasattr(lca, "technosphere_matrix")
+    assert not hasattr(lca, "inventory")
+
+
 def test_next_only_vectors():
     packages = [fixture_dir / "basic_fixture.zip"]
     lca = LCA({1: 1}, data_objs=packages)
