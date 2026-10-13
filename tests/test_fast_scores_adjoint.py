@@ -335,6 +335,7 @@ def test_direction_setter_validates(basic_test_data):
 @needs_solver
 def test_adjoint_stochastic_set_after_construction(basic_test_data, attr, value):
     lca = adjoint_lca(basic_test_data)
+    lca.calculate()
     setattr(lca, attr, value)
     with pytest.raises(NotImplementedError, match="adjoint"):
         next(lca)
