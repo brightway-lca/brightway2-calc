@@ -269,11 +269,20 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
             dims=["LCIA", "products"],
         )
 
-        if not self.demand_arrays:
+        if not self.demands:
             return np.zeros((lcia_array.shape[0], 0))
-        # Sparse, as a dense `[demands, products]` copy is huge when scoring every product
-        demand_matrix = sparse.vstack(
-            [sparse.csr_matrix(arr) for arr in self.demand_arrays.values()], format="csr"
+        # Built directly from `self.demands`, as wrapping each dense demand array is slow, and a
+        # dense `[demands, products]` copy is huge when scoring every product. Demands use integer
+        # ids, so don't use `dicts.product`, which could have been remapped.
+        product_dict = self.technosphere_mm.row_mapper.to_dict()
+        rows, cols, values = [], [], []
+        for row, demand in enumerate(self.demands.values()):
+            for product_id, amount in demand.items():
+                rows.append(row)
+                cols.append(product_dict[product_id])
+                values.append(amount)
+        demand_matrix = sparse.csr_matrix(
+            (values, (rows, cols)), shape=(len(self.demands), product_scores.shape[0])
         )
         return (demand_matrix @ product_scores).T
 
