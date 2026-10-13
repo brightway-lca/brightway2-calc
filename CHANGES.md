@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [#170](https://github.com/brightway-lca/brightway2-calc/issues/170): `ReversibleRemappableDictionary.remap()` now raises if the dictionary was already remapped; call `unmap()` first. Remapping twice overwrote `original`, so the starting keys were lost
 * [#164](https://github.com/brightway-lca/brightway2-calc/issues/164): Fix `FastScoresOnlyMultiLCA` Monte Carlo iterations reusing the characterized biosphere rows from the first iteration, which ignored uncertainty in the biosphere, characterization, normalization, and weighting matrices
 * Fix `JacobiGMRESLCA` Monte Carlo iterations to solve against the current sampled technosphere matrix and fall back to the direct solver if GMRES doesn't converge.
 * [#157](https://github.com/brightway-lca/brightway2-calc/issues/157): Don't raise when resetting Pardiso state for a calculation which never used Pardiso, such as `JacobiGMRESLCA`. Thanks @KarinTreyer
