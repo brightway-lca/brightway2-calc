@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from scipy import sparse
 
 from bw2calc import PYPARDISO, UMFPACK
 from bw2calc.fast_supply_arrays import FastSupplyArraysMixin
@@ -276,3 +277,44 @@ class TestCalculateSupplyArraysEdgeCases:
         # Check result shape
         assert result.shape == (basic_lca.technosphere_matrix.shape[0], 1)
         assert result.shape[0] == basic_lca.technosphere_matrix.shape[0]
+
+
+class TestCalculateSupplyArraysSparse:
+    """Test calculate_supply_arrays with a sparse ``[demands, products]`` matrix."""
+
+    @pytest.mark.skipif(not (PYPARDISO or UMFPACK), reason="Fast sparse solvers not installed")
+    @pytest.mark.parametrize("chunk_size", [1, 2, 50])
+    def test_sparse_matches_list(self, basic_lca, chunk_size):
+        basic_lca.set_chunk_size(chunk_size)
+        demand_arrays = []
+        for i in range(3):
+            demand = np.zeros(len(basic_lca.dicts.product))
+            demand[basic_lca.dicts.product[1]] = float(i + 1)
+            demand_arrays.append(demand)
+
+        expected = basic_lca.calculate_supply_arrays(demand_arrays)
+        result = basic_lca.calculate_supply_arrays(sparse.csr_matrix(np.vstack(demand_arrays)))
+
+        assert result.shape == (basic_lca.technosphere_matrix.shape[0], 3)
+        np.testing.assert_array_almost_equal(result, expected)
+
+    @pytest.mark.skipif(not (PYPARDISO or UMFPACK), reason="Fast sparse solvers not installed")
+    def test_sparse_empty(self, basic_lca):
+        result = basic_lca.calculate_supply_arrays(
+            sparse.csr_matrix((0, len(basic_lca.dicts.product)))
+        )
+        assert result.shape == (basic_lca.technosphere_matrix.shape[0], 0)
+
+    def test_sparse_pardiso_chunking(
+        self, basic_lca, only_pypardiso_available, mock_pypardiso_solver
+    ):
+        basic_lca.set_chunk_size(2)
+        demands = sparse.csr_matrix(np.ones((5, len(basic_lca.dicts.product))))
+
+        with (
+            patch("bw2calc.fast_supply_arrays.PyPardisoSolver", mock_pypardiso_solver),
+            patch("bw2calc.fast_supply_arrays.PYPARDISO", True),
+        ):
+            result = basic_lca.calculate_supply_arrays(demands)
+
+        assert result.shape == (basic_lca.technosphere_matrix.shape[0], 5)

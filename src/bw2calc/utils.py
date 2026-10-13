@@ -7,6 +7,7 @@ import numpy as np
 from bw_processing.io_helpers import generic_directory_filesystem
 from fsspec import AbstractFileSystem
 from fsspec.implementations.zip import ZipFileSystem
+from scipy import sparse
 
 from bw2calc.errors import InconsistentGlobalIndex
 
@@ -80,3 +81,33 @@ def utc_now() -> datetime.datetime:
         return datetime.datetime.now(datetime.UTC)
     else:
         return datetime.datetime.utcnow()
+
+
+def as_columns(array: Any) -> np.ndarray:
+    """Convert ``array`` to a dense 2-d array, treating 1-d input as a single column.
+
+    Accepts lists, NumPy arrays, and SciPy sparse matrices."""
+    if sparse.issparse(array):
+        array = array.toarray()
+    array = np.asarray(array, dtype=float)
+    if array.ndim > 2:
+        raise ValueError(f"Expected 1-d or 2-d array, got {array.ndim} dimensions")
+    return array.reshape(array.shape[0], -1) if array.ndim else array.reshape(1, 1)
+
+
+def relative_residual(matrix: Any, solution: Any, rhs: Any) -> np.ndarray:
+    """Relative residual ``||matrix @ solution - rhs|| / ||rhs||`` for each column of ``rhs``.
+
+    Direct solvers don't always fail loudly on a singular or badly conditioned matrix; they can
+    return numbers which look fine but don't solve the system. The residual costs one sparse
+    matrix multiplication, so it is cheap insurance against silently wrong results.
+
+    Columns of ``rhs`` which are all zero use the absolute residual instead, as there is nothing
+    to be relative to.
+
+    Returns a 1-d array with one value per column of ``rhs``."""
+    rhs = as_columns(rhs)
+    solution = as_columns(solution)
+    residual = np.linalg.norm(matrix @ solution - rhs, axis=0)
+    scale = np.linalg.norm(rhs, axis=0)
+    return np.divide(residual, scale, out=residual.copy(), where=scale > 0)

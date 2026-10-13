@@ -1,4 +1,7 @@
+from typing import Iterator, Union
+
 import numpy as np
+from scipy import sparse
 
 from bw2calc import PYPARDISO, UMFPACK, factorized
 
@@ -21,51 +24,71 @@ class FastSupplyArraysMixin:
 
         self.chunk_size = chunk_size
 
-    def calculate_supply_arrays(self, demand_arrays: list[np.ndarray]) -> np.ndarray:
+    def calculate_supply_arrays(
+        self, demands: Union[list[np.ndarray], sparse.spmatrix, sparse.sparray]
+    ) -> np.ndarray:
         """Calculate multiple supply arrays in a single calculation.
 
         Much faster than individual calculations, especially when using PARDISO.
 
+        ``demands`` is either a list of 1-d demand arrays, or a sparse matrix with dimensions
+        ``[demands, products]``. A sparse matrix is only made dense one chunk of ``chunk_size``
+        demands at a time.
+
         Returns a numpy array with dimensions `[process scaling amounts, demands]`. `demands` are
-        given in the same order as `demand_arrays`."""
+        given in the same order as in `demands`."""
         if PYPARDISO:
-            return self._calculate_pardiso(demand_arrays)
+            return self._calculate_pardiso(demands)
         elif UMFPACK:
-            return self._calculate_umfpack(demand_arrays)
+            return self._calculate_umfpack(demands)
         else:
             raise ValueError(
                 "`FastSupplyArraysMixin` only supported with PARDISO and UMFPACK solvers"
             )
 
-    def _calculate_umfpack(self, demands: list[np.ndarray]) -> np.ndarray:
+    def _demand_chunks(self, demands, chunk_size: int) -> Iterator[np.ndarray]:
+        """Yield dense demand arrays with dimensions ``[products, chunk_size]``."""
+        if sparse.issparse(demands):
+            demands = sparse.csr_matrix(demands)
+            for start in range(0, demands.shape[0], chunk_size):
+                yield demands[start : start + chunk_size].toarray().T
+        else:
+            for start in range(0, len(demands), chunk_size):
+                yield np.vstack(demands[start : start + chunk_size]).T
+
+    def _calculate_umfpack(self, demands) -> np.ndarray:
         # There is no speed up here, but it's convenient to have the same API
-        if not demands:
+        supply_array = np.zeros((self.technosphere_matrix.shape[0], demands_count(demands)))
+        if not supply_array.shape[1]:
             # Return empty array with correct shape when no demands provided
-            return np.zeros((self.technosphere_matrix.shape[0], 0))
+            return supply_array
 
         solver = factorized(self.technosphere_matrix.tocsc())
-        supply_array = np.zeros((self.technosphere_matrix.shape[0], len(demands)))
-
-        for index, arr in enumerate(demands):
-            supply_array[:, index] = solver(arr)
+        index = 0
+        for chunk in self._demand_chunks(demands, self.chunk_size):
+            for arr in chunk.T:
+                supply_array[:, index] = solver(arr)
+                index += 1
 
         return supply_array
 
-    def _calculate_pardiso(self, demands: list[np.ndarray]) -> np.ndarray:
-        if not demands:
+    def _calculate_pardiso(self, demands) -> np.ndarray:
+        if not demands_count(demands):
             # Return empty array with correct shape when no demands provided
             return np.zeros((self.technosphere_matrix.shape[0], 0))
 
-        demand_array = np.vstack([arr for arr in demands]).T
         supply_arrays = []
 
         solver = PyPardisoSolver()
         solver.factorize(self.technosphere_matrix)
 
-        num_chunks = demand_array.shape[1] // self.chunk_size + 1
-        for demand_chunk in np.array_split(demand_array, num_chunks, axis=1):
+        for demand_chunk in self._demand_chunks(demands, self.chunk_size):
             b = solver._check_b(self.technosphere_matrix, demand_chunk)
             solver.set_phase(33)
             supply_arrays.append(solver._call_pardiso(self.technosphere_matrix, b))
 
         return np.hstack(supply_arrays)
+
+
+def demands_count(demands) -> int:
+    return demands.shape[0] if sparse.issparse(demands) else len(demands)
