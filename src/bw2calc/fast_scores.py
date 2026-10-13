@@ -166,6 +166,34 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         # these as separate methods, so need to override to change behaviour.
         return self.calculate()
 
+    def build_demand_array(self, demands: Optional[dict] = None) -> None:
+        """Build ``demand_matrix``, a sparse matrix with dimensions ``[demands, products]``.
+
+        Unlike ``MultiLCA``, doesn't build a dense array for each demand, as these take a lot of
+        memory when there are many demands, e.g. when scoring every product in a database. The
+        forward direction makes them dense one chunk at a time, and the adjoint direction doesn't
+        need them at all."""
+        demands = self.demands if demands is None else demands
+        self.demand_keys = list(demands)
+
+        rows, cols, values = [], [], []
+        for row, demand in enumerate(demands.values()):
+            for product_id, amount in demand.items():
+                rows.append(row)
+                cols.append(self.product_index(product_id))
+                values.append(amount)
+        self.demand_matrix = sparse.csr_matrix(
+            (values, (rows, cols)), shape=(len(self.demand_keys), len(self.dicts.product))
+        )
+
+    @property
+    def demand_arrays(self) -> dict:
+        """Dense demand arrays, as in ``MultiLCA``. Built on request from ``demand_matrix``."""
+        return {
+            key: self.demand_matrix[index].toarray().ravel()
+            for index, key in enumerate(self.demand_keys)
+        }
+
     def _load_datapackages(self) -> None:
         self.load_lci_data()
         self.build_demand_array()
@@ -206,7 +234,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         if self._default_direction and self._auto_is_adjoint():
             warnings.warn(
                 DEFAULT_DIRECTION_WARNING.format(
-                    demands=len(self.demand_arrays), categories=len(self.precalculated)
+                    demands=len(self.demand_keys), categories=len(self.precalculated)
                 ),
                 FutureWarning,
             )
@@ -216,13 +244,13 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         if self._use_adjoint():
             scores = self._calculate_adjoint(lcia_array)
         else:
-            self.supply_array = self.calculate_supply_arrays(list(self.demand_arrays.values()))
+            self.supply_array = self.calculate_supply_arrays(self.demand_matrix)
             scores = lcia_array @ self.supply_array
 
         self._set_scores(
             xarray.DataArray(
                 scores,
-                coords=[[str(x) for x in self.precalculated], list(self.demand_arrays)],
+                coords=[[str(x) for x in self.precalculated], self.demand_keys],
                 dims=["LCIA", "processes"],
             )
         )
@@ -233,7 +261,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
         return any(any(self.check_selective_use(label)) for label in STOCHASTIC_MATRICES)
 
     def _auto_is_adjoint(self) -> bool:
-        return not self._is_stochastic() and len(self.demand_arrays) > len(self.precalculated)
+        return not self._is_stochastic() and len(self.demand_keys) > len(self.precalculated)
 
     def _check_adjoint_supported(self) -> None:
         if self._is_stochastic():
@@ -278,22 +306,7 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
             dims=["LCIA", "products"],
         )
 
-        if not self.demands:
-            return np.zeros((lcia_array.shape[0], 0))
-        # Built directly from `self.demands`, as wrapping each dense demand array is slow, and a
-        # dense `[demands, products]` copy is huge when scoring every product. Demands use integer
-        # ids, so don't use `dicts.product`, which could have been remapped.
-        product_dict = self.technosphere_mm.row_mapper.to_dict()
-        rows, cols, values = [], [], []
-        for row, demand in enumerate(self.demands.values()):
-            for product_id, amount in demand.items():
-                rows.append(row)
-                cols.append(product_dict[product_id])
-                values.append(amount)
-        demand_matrix = sparse.csr_matrix(
-            (values, (rows, cols)), shape=(len(self.demands), product_scores.shape[0])
-        )
-        return (demand_matrix @ product_scores).T
+        return np.asarray(self.demand_matrix @ product_scores).T
 
     def solve_adjoint(self, rhs: np.ndarray) -> np.ndarray:
         """Solve the transposed technosphere system ``A^T Y = rhs``.

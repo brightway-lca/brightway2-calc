@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from bw2calc.errors import InaccurateSolution
+from bw2calc.errors import InaccurateSolution, OutsideTechnosphere
 from bw2calc.fast_scores import PYPARDISO, UMFPACK, FastScoresOnlyMultiLCA
 from bw2calc.multi_lca import MultiLCA
 from bw2calc.utils import get_datapackage, relative_residual
@@ -484,3 +484,37 @@ def test_no_future_warning_after_setting_direction(basic_test_data):
     with warnings.catch_warnings():
         warnings.simplefilter("error", FutureWarning)
         lca.calculate()
+
+
+def test_demand_matrix_matches_multi_lca_demand_arrays(basic_test_data):
+    demands = {"γ": {100: 1, 103: 2}, "ε": {103: 2}}
+    lca = FastScoresOnlyMultiLCA(
+        demands=demands,
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    lca._load_datapackages()
+
+    expected = MultiLCA(
+        demands=demands,
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    expected.lci()
+
+    assert sparse.issparse(lca.demand_matrix)
+    assert lca.demand_matrix.shape == (2, len(lca.dicts.product))
+    assert lca.demand_keys == ["γ", "ε"]
+    assert list(lca.demand_arrays) == list(expected.demand_arrays)
+    for key, arr in expected.demand_arrays.items():
+        assert np.array_equal(lca.demand_arrays[key], arr)
+
+
+def test_demand_matrix_outside_technosphere(basic_test_data):
+    lca = FastScoresOnlyMultiLCA(
+        demands={"γ": {999: 1}},
+        method_config=basic_test_data["config"],
+        data_objs=basic_test_data["dps"],
+    )
+    with pytest.raises(OutsideTechnosphere):
+        lca._load_datapackages()
