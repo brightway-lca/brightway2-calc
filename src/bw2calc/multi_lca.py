@@ -193,7 +193,8 @@ class MultiLCA(LCABase):
 
         # Avoid this conversion each time we do a calculation in the future
         # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
-        if PYPARDISO:
+        # Nothing to convert if `next()` is called before the matrices are loaded
+        if PYPARDISO and hasattr(self, "technosphere_matrix"):
             self.technosphere_matrix = self.technosphere_matrix.tocsr()
 
         if skip_first_iteration:
@@ -225,20 +226,24 @@ class MultiLCA(LCABase):
             array = np.zeros(len(self.dicts.product))
 
             for process_id, process_amount in value.items():
-                try:
-                    array[self.dicts.product[process_id]] = process_amount
-                except KeyError as exc:
-                    if process_id in self.dicts.activity:
-                        raise ValueError(
-                            f"LCA can only be performed on products, not processes ({process_id} "
-                            + "is a process id)"
-                        ) from exc
-                    else:
-                        raise OutsideTechnosphere(
-                            f"Can't find key {process_id} in product dictionary"
-                        ) from exc
+                array[self.product_index(process_id)] = process_amount
 
             self.demand_arrays[key] = array
+
+    def product_index(self, product_id: int) -> int:
+        """Matrix row index of the product ``product_id``."""
+        try:
+            return self.dicts.product[product_id]
+        except KeyError as exc:
+            if product_id in self.dicts.activity:
+                raise ValueError(
+                    f"LCA can only be performed on products, not processes ({product_id} "
+                    + "is a process id)"
+                ) from exc
+            else:
+                raise OutsideTechnosphere(
+                    f"Can't find key {product_id} in product dictionary"
+                ) from exc
 
     ##################
     # Data retrieval #

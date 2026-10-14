@@ -180,7 +180,8 @@ class LCA(LCABase):
 
         # Avoid this conversion each time we do a calculation in the future
         # See https://github.com/haasad/PyPardiso/issues/75#issuecomment-2186825609
-        if PYPARDISO:
+        # Nothing to convert if `next()` is called before the matrices are loaded
+        if PYPARDISO and hasattr(self, "technosphere_matrix"):
             self.technosphere_matrix = self.technosphere_matrix.tocsr()
 
         if skip_first_iteration:
@@ -309,6 +310,11 @@ class LCA(LCABase):
 
         """
         self.characterized_inventory = self.characterization_matrix @ self.inventory
+        # `score` reads these first, so they must not keep values from the old inventory.
+        if hasattr(self, "normalized_inventory"):
+            self.normalization_calculation()
+        if hasattr(self, "weighted_inventory"):
+            self.weighting_calculation()
 
     def normalization_calculation(self) -> None:
         """The actual normalization calculation.
