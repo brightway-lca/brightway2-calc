@@ -342,9 +342,7 @@ def test_iterative_uses_direct_solver_when_all_stages_fail():
 
 
 @pytest.mark.skipif(not PYPARDISO, reason="needs pypardiso")
-def test_iterative_direct_fallback_releases_global_factorization():
-    from pypardiso.scipy_aliases import pypardiso_solver
-
+def test_iterative_direct_fallback_releases_its_factorization():
     def failing(matrix, demand, **kwargs):
         return np.zeros_like(demand), 1
 
@@ -357,14 +355,16 @@ def test_iterative_direct_fallback_releases_global_factorization():
     next(lca)
 
     assert lca.solver_stats == {"reference": 1, "direct": 1}
-    assert pypardiso_solver.factorized_A.nnz == 0
+    assert lca._pardiso_solver.factorized_A.nnz == 0
+    # So `__next__` doesn't release it a second time.
+    assert not lca._used_pypardiso
     # The reference factorization is separate, and still works.
     b = np.array([1.0, 2.0])
     assert np.allclose(lca._reference_matrix @ lca._reference_solve(b), b)
 
 
 def test_iterative_reference_survives_monte_carlo_iteration():
-    """`LCA.__next__` frees pypardiso's global factorization; `IterativeLCA` mustn't."""
+    """`LCA.__next__` frees the object's direct solver factorization, but not the reference."""
     kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
     lca = IterativeLCA({3: 1}, **kwargs)
     lca.lci()
@@ -377,8 +377,8 @@ def test_iterative_reference_survives_monte_carlo_iteration():
 
 
 def test_iterative_reference_factorization_survives_other_direct_solves():
-    """The reference must not share pypardiso's global solver, which `spsolve` uses and
-    `LCA.__next__` resets."""
+    """The reference must not share the object's solver for direct solves, which
+    `LCA.__next__` resets, or be affected by other objects' solves."""
     kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
     lca = IterativeLCA({3: 1}, **kwargs)
     other = LCA({3: 1}, **kwargs)

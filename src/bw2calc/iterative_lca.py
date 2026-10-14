@@ -12,11 +12,10 @@ from threadpoolctl import ThreadpoolController
 
 from bw2calc import PYPARDISO, factorized
 from bw2calc.lca import LCA
+from bw2calc.lca_base import _release_pardiso_solver
 
 if PYPARDISO:
     from pypardiso import PyPardisoSolver
-    from pypardiso.pardiso_wrapper import PyPardisoError
-    from pypardiso.scipy_aliases import pypardiso_solver
 
 logger = logging.getLogger("bw2calc")
 
@@ -137,10 +136,11 @@ class IterativeLCA(LCA):
     are loaded. ``solver_stats`` counts how many solves each stage did.
 
     With pypardiso, the reference factorization has its own ``PyPardisoSolver``, separate
-    from the global one used by ``spsolve``, so direct solves don't replace it. Its memory
-    is released when new matrices are loaded, or when the object is garbage collected.
-    The factorization a direct fallback leaves in the global solver is released right
-    after the solve, so that only the reference factorization stays in memory.
+    from the object's solver for direct solves, so direct solves don't replace it. Its
+    memory is released when new matrices are loaded, or when the object is garbage
+    collected. The factorization a direct fallback leaves in the object's solver is
+    released right after the solve, so that only the reference factorization stays in
+    memory.
 
     Correctness checks
     ------------------
@@ -358,12 +358,12 @@ class IterativeLCA(LCA):
         start = time.perf_counter()
         matrix = self.technosphere_matrix.tocsr(copy=True)
         if PYPARDISO:
-            # Use a separate solver instead of pypardiso's global one, which `spsolve`
-            # uses and `LCA.__next__` resets, so the reference factorization survives
+            # Use a separate solver instead of the object's own one, which direct solves
+            # use and `LCA.__next__` resets, so the reference factorization survives
             # direct solves, and the time measured is always a real factorization.
             solver = PyPardisoSolver()
             solver.factorize(matrix)
-            self._reference_finalizer = weakref.finalize(self, _free_pardiso, solver)
+            self._reference_finalizer = weakref.finalize(self, _release_pardiso_solver, solver)
             self._reference_finalizer.atexit = False
 
             def solve(b):
@@ -505,13 +505,15 @@ class IterativeLCA(LCA):
 
         self.solver_stats["direct"] += 1
         solution = self._direct_solve(demand)
-        if PYPARDISO and self._reference_solve is not None:
-            # The direct solve left a factorization of this matrix in pypardiso's global
+        if self._pardiso_solver is not None and self._reference_solve is not None:
+            # The direct solve left a factorization of this matrix in the object's own
             # solver, next to the reference factorization. It is almost never reused:
             # solves on the reference matrix use the reference factorization, and Monte
             # Carlo moves on to a new matrix. `LCA.__next__` only frees its LU factors,
             # so release all of it now; about 100 MB for ecoinvent.
-            _free_pardiso(pypardiso_solver)
+            _release_pardiso_solver(self._pardiso_solver)
+            # Nothing left for `_delete_solver_state` to release.
+            self._used_pypardiso = False
         return solution
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> np.ndarray:
@@ -595,12 +597,3 @@ def _csr_equal(a, b) -> bool:
 
 class _TimeLimitExceeded(Exception):
     """Raised from a solver callback to stop an iterative stage."""
-
-
-def _free_pardiso(solver) -> None:
-    """Release all the memory Pardiso holds for ``solver``."""
-    try:
-        solver.free_memory(everything=True)
-    except PyPardisoError:
-        # Best effort, like `LCA._delete_solver_state`.
-        logger.debug("Couldn't release Pardiso memory")
