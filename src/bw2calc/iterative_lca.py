@@ -432,7 +432,9 @@ class IterativeLCA(LCA):
         return residual <= self.residual_factor * threshold
 
     def _direct_solve(self, demand: np.ndarray) -> np.ndarray:
-        return super().solve_linear_system(demand)
+        # Not `LCA.solve_linear_system`, which uses `self.solver` from
+        # `lci(factorize=True)` if it exists, even if the matrix has been edited since.
+        return self._spsolve(self.technosphere_matrix, demand)
 
     def _run_stage(self, stage: str, matrix, demand, x0) -> Optional[np.ndarray]:
         """Run one iterative stage, and return its solution, or ``None`` on failure."""

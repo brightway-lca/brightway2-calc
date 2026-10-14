@@ -474,6 +474,36 @@ def test_iterative_solves_edited_technosphere_matrix(cls, in_place):
         assert np.allclose(lca.supply_array, expected)
 
 
+@pytest.mark.skipif(PYPARDISO, reason="`decompose_technosphere` is a no-op with pypardiso")
+@pytest.mark.parametrize("direct_first_solve", [True, False])
+def test_iterative_direct_fallback_ignores_stale_factorization(direct_first_solve):
+    """`lci(factorize=True)` stores `self.solver`, which `LCA.solve_linear_system` uses
+    even after the technosphere matrix was edited."""
+
+    def failing(matrix, demand, **kwargs):
+        return np.zeros_like(demand), 1
+
+    lca = IterativeLCA(
+        {3: 1},
+        data_objs=mc_basic,
+        iter_solver=failing,
+        fallback_solver=failing,
+        direct_first_solve=direct_first_solve,
+    )
+    lca.lci(factorize=True)
+    assert hasattr(lca, "solver")
+
+    direct_solves = lca.solver_stats["direct"]
+
+    data = lca.technosphere_matrix.data
+    data[data < 0] *= 2
+    lca.lci_calculation()
+
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(lca.supply_array, expected)
+    assert lca.solver_stats["direct"] == direct_solves + 1
+
+
 def test_iterative_solver_type_error_is_not_hidden():
     def solver(matrix, demand, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M=None):
         raise TypeError("bug inside the solver")
