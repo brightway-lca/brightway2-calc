@@ -12,9 +12,23 @@ from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
 
 logger = logging.getLogger("bw2calc")
 
+# ``LCA`` attribute name -> the ``MultiLCA`` attribute holding the same data
+PLURAL_ATTRIBUTES = {
+    "inventory": "inventories",
+    "characterization_matrix": "characterization_matrices",
+    "characterized_inventory": "characterized_inventories",
+    "normalization_matrix": "normalization_matrices",
+    "weighting_matrix": "weighting_matrices",
+    "weighted_inventory": "weighted_inventories",
+}
+
 
 class LCABase(Iterator):
     """Base class for single and multi LCA classes"""
+
+    def _has(self, name: str) -> bool:
+        """Check for an ``LCA`` attribute or its ``MultiLCA`` equivalent."""
+        return hasattr(self, name) or hasattr(self, PLURAL_ATTRIBUTES[name])
 
     def keep_first_iteration(self):
         """Set a flag to use the current values as first element when
@@ -203,13 +217,11 @@ class LCABase(Iterator):
         Doesn't return anything, but creates ``self.characterized_inventory``.
 
         """
-        assert hasattr(self, "inventory") or hasattr(self, "inventories"), "Must do lci first"
+        assert self._has("inventory"), "Must do lci first"
         if not self.dicts.biosphere:
             raise EmptyBiosphere
 
-        if not (
-            hasattr(self, "characterization_matrix") or hasattr(self, "characterization_matrices")
-        ):
+        if not self._has("characterization_matrix"):
             self.load_lcia_data()
         if demand is not None:
             self.check_demand(demand)
@@ -220,27 +232,31 @@ class LCABase(Iterator):
     def normalize(self) -> None:
         """
         Multiply characterized inventory by flow-specific normalization factors.
+
+        The normalization data is loaded on the first call only, so that later calls keep the
+        current Monte Carlo draw. To load different data, use ``LCA.switch_normalization``, or
+        create a new ``MultiLCA``.
         """
-        if not (
-            hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
-        ):
+        if not self._has("characterized_inventory"):
             raise ValueError("Must do lcia first")
-        if not hasattr(self, "normalization_matrix"):
+        if not self._has("normalization_matrix"):
             self.load_normalization_data()
         self.normalization_calculation()
         # Weighting reads the normalized inventory, so an earlier weight() result is now stale.
-        if hasattr(self, "weighted_inventory"):
+        if self._has("weighted_inventory"):
             self.weighting_calculation()
 
     def weight(self) -> None:
         """Multiply characterized inventory by weighting value.
 
-        Can be done with or without normalization."""
-        if not (
-            hasattr(self, "characterized_inventory") or hasattr(self, "characterized_inventories")
-        ):
+        Can be done with or without normalization.
+
+        The weighting data is loaded on the first call only, so that later calls keep the
+        current Monte Carlo draw. To load different data, use ``LCA.switch_weighting``, or
+        create a new ``MultiLCA``."""
+        if not self._has("characterized_inventory"):
             raise ValueError("Must do lcia first")
-        if not hasattr(self, "weighting_value"):
+        if not self._has("weighting_matrix"):
             self.load_weighting_data()
         self.weighting_calculation()
 

@@ -12,6 +12,8 @@ except ImportError:
 import json
 from pathlib import Path
 
+import bw_processing as bwp
+import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -369,3 +371,49 @@ def test_to_dataframe_annotated(basic_example):
         ]
     )
     frames(expected, df)
+
+
+def _three_process_lca(characterization_factors):
+    """One unit of each of three processes, each emitting one unit of its own flow."""
+    dp = bwp.create_datapackage()
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        data_array=np.array([1.0, 1, 1]),
+        name="t",
+        indices_array=np.array([(1, 101), (2, 102), (3, 103)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        data_array=np.array([1.0, 1, 1]),
+        name="b",
+        indices_array=np.array([(201, 101), (202, 102), (203, 103)], dtype=bwp.INDICES_DTYPE),
+    )
+    dp.add_persistent_vector(
+        matrix="characterization_matrix",
+        data_array=np.array(characterization_factors, dtype=float),
+        name="c",
+        indices_array=np.array([(201, 0), (202, 0), (203, 0)], dtype=bwp.INDICES_DTYPE),
+        global_index=0,
+    )
+    lca = bc.LCA({1: 1, 2: 1, 3: 1}, data_objs=[dp])
+    lca.lci()
+    lca.lcia()
+    return lca
+
+
+def test_to_dataframe_fraction_cutoff_negative_score():
+    lca = _three_process_lca([-10, -10, 1])
+    assert lca.score == -19
+
+    # Threshold is 0.4 * 21; with the signed total it would be negative and keep every row
+    df = lca.to_dataframe(cutoff=0.4, cutoff_mode="fraction", annotate=False)
+    assert sorted(df["amount"]) == [-10, -10]
+
+
+def test_to_dataframe_fraction_cutoff_cancelling_values():
+    lca = _three_process_lca([-10, 10, 1])
+    assert lca.score == 1
+
+    # Threshold is 0.4 * 21; with the signed total it would be 0.4 and keep every row
+    df = lca.to_dataframe(cutoff=0.4, cutoff_mode="fraction", annotate=False)
+    assert sorted(df["amount"]) == [-10, 10]

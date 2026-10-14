@@ -386,7 +386,7 @@ class LCA(LCABase):
         )
 
     def switch_method(
-        self, method=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
+        self, method: Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
     ) -> None:
         """Load a new method and replace ``.characterization_mm`` and ``.characterization_matrix``.
 
@@ -399,7 +399,7 @@ class LCA(LCABase):
         )
 
     def switch_normalization(
-        self, normalization=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
+        self, normalization: Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
     ) -> None:
         """Load a new normalization and replace ``.normalization_mm`` and ``.normalization_matrix``.
 
@@ -412,7 +412,7 @@ class LCA(LCABase):
         )
 
     def switch_weighting(
-        self, weighting=Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
+        self, weighting: Union[tuple, Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]]
     ) -> None:
         """Load a new weighting and replace ``.weighting_mm`` and ``.weighting_matrix``.
 
@@ -472,7 +472,9 @@ class LCA(LCABase):
         ``cutoff`` are taken.
 
         If ``cutoff_mode`` is ``fraction``, then only values whose absolute value is greater than
-        ``cutoff * total_score`` are taken. ``cutoff`` must be between 0 and 1.
+        ``cutoff`` times the sum of the absolute values in the matrix are taken. ``cutoff`` must be
+        between 0 and 1. Using absolute values keeps the threshold meaningful when positive and
+        negative values cancel out.
 
         The returned DataFrame will have the following columns:
 
@@ -547,7 +549,9 @@ class LCA(LCABase):
             if cutoff_mode == "fraction":
                 if not (0 < cutoff < 1):
                     raise ValueError("fraction `cutoff` value must be between 0 and 1")
-                total = matrix.data.sum()
+                # Sum of absolute values: a signed sum can be negative or close to zero, which
+                # would let every value pass the cutoff
+                total = np.abs(matrix.data).sum()
                 mask = np.abs(matrix.data) > (total * cutoff)
                 matrix.data = matrix.data[mask]
                 matrix.row = matrix.row[mask]
