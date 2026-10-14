@@ -18,6 +18,33 @@ def test_iterative_default_solver_is_bicgstab():
     assert lca.iter_solver is bicgstab
 
 
+@pytest.mark.parametrize("iter_solver", [None, False])
+def test_iterative_without_solver_solves_directly(iter_solver):
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    reference = LCA({3: 1}, **kwargs)
+    lca = IterativeLCA({3: 1}, iter_solver=iter_solver, **kwargs)
+    reference.lci()
+    lca.lci()
+    for _ in range(3):
+        next(reference)
+        next(lca)
+        assert np.allclose(lca.supply_array, reference.supply_array)
+
+    assert lca.solver_stats == {"reference": 1, "direct": 3}
+
+
+def test_iterative_without_fallback_solver_skips_fallback_stage():
+    def failing(matrix, demand, **kwargs):
+        return np.zeros_like(demand), 1
+
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    lca = IterativeLCA({3: 1}, iter_solver=failing, fallback_solver=None, **kwargs)
+    lca.lci()
+    next(lca)
+
+    assert lca.solver_stats == {"reference": 1, "direct": 1}
+
+
 def test_iterative_lci_matches_lca():
     reference = LCA({1: 1}, data_objs=basic)
     reference.lci()

@@ -184,8 +184,9 @@ class IterativeLCA(LCA):
     :param data_objs: Datapackages passed through to :class:`bw2calc.lca.LCA`.
     :type data_objs: iterable
     :param iter_solver: Iterative solver function. Defaults to
-        :func:`scipy.sparse.linalg.bicgstab`.
-    :type iter_solver: callable
+        :func:`scipy.sparse.linalg.bicgstab`. ``None`` or ``False`` turns off iterative
+        solving: changed matrices are always solved directly.
+    :type iter_solver: callable or None
     :param rtol: Relative tolerance for convergence.
     :type rtol: float
     :param atol: Absolute tolerance floor for convergence.
@@ -211,8 +212,8 @@ class IterativeLCA(LCA):
     :type time_limit: float, str, or None
     :param fallback_solver: Iterative solver preconditioned with the reference
         factorization, used when ``iter_solver`` fails. Defaults to
-        :func:`scipy.sparse.linalg.bicgstab`.
-    :type fallback_solver: callable
+        :func:`scipy.sparse.linalg.bicgstab`. ``None`` turns off the fallback stage.
+    :type fallback_solver: callable or None
     :param fallback_maxiter: Maximum number of iterations for ``fallback_solver``.
     :type fallback_maxiter: int or None
     :param max_consecutive_failures: Skip an iterative stage after this many failures in a
@@ -229,7 +230,7 @@ class IterativeLCA(LCA):
     def __init__(
         self,
         *args,
-        iter_solver: Optional[Callable] = None,
+        iter_solver: Optional[Callable] = bicgstab,
         rtol: float = 1e-8,
         atol: float = 0.0,
         maxiter: Optional[int] = 1000,
@@ -238,14 +239,14 @@ class IterativeLCA(LCA):
         residual_factor: float = 10.0,
         max_error: Optional[float] = 1e-6,
         time_limit: Union[float, str, None] = "auto",
-        fallback_solver: Optional[Callable] = None,
+        fallback_solver: Optional[Callable] = bicgstab,
         fallback_maxiter: Optional[int] = 100,
         max_consecutive_failures: Optional[int] = 3,
         retry_after: Optional[int] = 20,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.iter_solver = iter_solver if iter_solver is not None else bicgstab
+        self.iter_solver = iter_solver
         self.rtol = rtol
         self.atol = atol
         self.maxiter = maxiter
@@ -254,7 +255,7 @@ class IterativeLCA(LCA):
         self.residual_factor = residual_factor
         self.max_error = max_error
         self.time_limit = time_limit
-        self.fallback_solver = fallback_solver if fallback_solver is not None else bicgstab
+        self.fallback_solver = fallback_solver
         self.fallback_maxiter = fallback_maxiter
         self.max_consecutive_failures = max_consecutive_failures
         self.retry_after = retry_after
@@ -484,7 +485,13 @@ class IterativeLCA(LCA):
         return None
 
     def _stage_skipped(self, stage: str) -> bool:
-        if stage == "fallback_iterative" and self._reference_solve is None:
+        # Without `iter_solver`, every changed matrix is solved directly, as before
+        # `IterativeLCA` had a fallback stage.
+        if not self.iter_solver:
+            return True
+        if stage == "fallback_iterative" and (
+            not self.fallback_solver or self._reference_solve is None
+        ):
             return True
         if (
             self.max_consecutive_failures is None
