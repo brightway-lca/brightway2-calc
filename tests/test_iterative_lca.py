@@ -469,6 +469,26 @@ def test_iterative_reference_factorization_survives_other_direct_solves():
     assert np.allclose(lca._reference_matrix @ lca._reference_solve(b), b)
 
 
+def test_iterative_failed_first_solve_leaves_no_partial_reference():
+    def failing(matrix, demand, **kwargs):
+        return np.zeros_like(demand), 1
+
+    reference = LCA({3: 1}, data_objs=mc_basic)
+    reference.lci()
+
+    lca = IterativeLCA({3: 1}, data_objs=mc_basic, iter_solver=failing)
+    lca.load_lci_data()
+    lca.build_demand_array()
+    with pytest.raises(ValueError):
+        lca.solve_linear_system(np.ones(5))
+
+    assert lca._reference_solve is None
+    assert lca._reference_finalizer is None
+    lca.lci_calculation()
+    assert np.allclose(lca.supply_array, reference.supply_array)
+    assert lca.solver_stats == {"reference": 1}
+
+
 def test_iterative_releases_reference_on_new_matrices():
     lca = IterativeLCA({1: 1}, data_objs=basic)
     lca.lci()

@@ -367,24 +367,39 @@ class IterativeLCA(LCA):
         reference, and solve ``demand`` with it."""
         start = time.perf_counter()
         matrix = self.technosphere_matrix.tocsr(copy=True)
-        if PYPARDISO:
-            # Use a separate solver instead of the object's own one, which direct solves
-            # use and `LCA.__next__` resets, so the reference factorization survives
-            # direct solves, and the time measured is always a real factorization.
-            solver = PyPardisoSolver()
-            solver.factorize(matrix)
+        solver = None
+        try:
+            if PYPARDISO:
+                # Use a separate solver instead of the object's own one, which direct
+                # solves use and `LCA.__next__` resets, so the reference factorization
+                # survives direct solves, and the time measured is always a real
+                # factorization.
+                solver = PyPardisoSolver()
+                solver.factorize(matrix)
+
+                def solve(b):
+                    return solver.solve(matrix, b)
+
+            else:
+                # UMFPACK factorization needs CSC sparse matrix; see
+                # https://github.com/brightway-lca/brightway2-calc/issues/132
+                solve = factorized(matrix.tocsc())
+
+            def reference_solve(b):
+                return np.asarray(solve(b)).reshape(np.shape(b))
+
+            solution = reference_solve(demand)
+        except Exception:
+            if solver is not None:
+                _release_pardiso_solver(solver)
+            raise
+
+        # Only keep the reference once it works; a partial reference would send later
+        # solves to the fallback stage without a reference matrix.
+        if solver is not None:
             self._reference_finalizer = weakref.finalize(self, _release_pardiso_solver, solver)
             self._reference_finalizer.atexit = False
-
-            def solve(b):
-                return solver.solve(matrix, b)
-
-        else:
-            # UMFPACK factorization needs CSC sparse matrix; see
-            # https://github.com/brightway-lca/brightway2-calc/issues/132
-            solve = factorized(matrix.tocsc())
-        self._reference_solve = lambda b: np.asarray(solve(b)).reshape(np.shape(b))
-        solution = self._reference_solve(demand)
+        self._reference_solve = reference_solve
         self._reference_time = time.perf_counter() - start
         self._reference_matrix = matrix
         return solution
