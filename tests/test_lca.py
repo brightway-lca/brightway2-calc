@@ -1,9 +1,10 @@
+import copy
+import gc
 import json
 import logging
 from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from types import ModuleType
 from unittest.mock import Mock, patch
 
 import bw_processing as bwp
@@ -223,7 +224,7 @@ def test_next_monte_carlo_all_matrices_change():
         assert x != y
 
 
-# _delete_solver_state
+# Per-object pypardiso solver
 
 
 class FakePyPardisoError(Exception):
@@ -231,50 +232,96 @@ class FakePyPardisoError(Exception):
 
 
 @contextmanager
-def patched_pypardiso(free_memory_error):
-    """Install a fake `pypardiso` whose `free_memory()` raises `free_memory_error`.
+def fake_pypardiso():
+    """Make `lca_base` use pypardiso, with fakes for its solver class and `spsolve`.
 
-    Real modules rather than `Mock`s, because `_delete_solver_state` does
-    `from pypardiso.pardiso_wrapper import PyPardisoError`. The `conftest.py`
-    fixtures patch the solver flags used by `fast_scores`, not by `lca_base`.
+    The `conftest.py` fixtures patch the solver flags used by `fast_scores`, not by
+    `lca_base`. Yields the `spsolve` mock; each `PyPardisoSolver()` call returns a new
+    `Mock`.
     """
-    solver = Mock()
-    solver.free_memory.side_effect = free_memory_error
-
-    wrapper = ModuleType("pypardiso.pardiso_wrapper")
-    wrapper.PyPardisoError = FakePyPardisoError
-    aliases = ModuleType("pypardiso.scipy_aliases")
-    aliases.pypardiso_solver = solver
-    root = ModuleType("pypardiso")
-    root.pardiso_wrapper = wrapper
-    root.scipy_aliases = aliases
-
+    spsolve = Mock(return_value=np.ones(2))
     with (
-        patch.dict(
-            "sys.modules",
-            {
-                "pypardiso": root,
-                "pypardiso.pardiso_wrapper": wrapper,
-                "pypardiso.scipy_aliases": aliases,
-            },
-        ),
         patch("bw2calc.lca_base.PYPARDISO", True),
+        patch("bw2calc.lca_base.PyPardisoError", FakePyPardisoError),
+        patch("bw2calc.lca_base.PyPardisoSolver", side_effect=lambda: Mock()),
+        patch("bw2calc.lca_base.spsolve", spsolve),
     ):
-        yield solver
+        yield spsolve
 
 
-def test_delete_solver_state_tolerates_uninitialized_pypardiso():
-    """`free_memory()` raises on recent MKL builds when nothing was ever factorized.
+def test_spsolve_uses_own_pypardiso_solver():
+    """Each LCA object solves with its own solver, reused across its solves."""
+    first, second = LCA.__new__(LCA), LCA.__new__(LCA)
+    matrix, rhs = object(), object()
+
+    with fake_pypardiso() as spsolve:
+        first._spsolve(matrix, rhs)
+        first._spsolve(matrix, rhs)
+        second._spsolve(matrix, rhs)
+
+    first_solver = first._pardiso_solver
+    assert first_solver is not None
+    assert second._pardiso_solver is not first_solver
+    assert [c.kwargs["solver"] for c in spsolve.call_args_list] == [
+        first_solver,
+        first_solver,
+        second._pardiso_solver,
+    ]
+
+
+def test_spsolve_without_pypardiso_creates_no_solver():
+    lca = LCA.__new__(LCA)
+    spsolve = Mock(return_value=np.ones(2))
+
+    with patch("bw2calc.lca_base.PYPARDISO", False), patch("bw2calc.lca_base.spsolve", spsolve):
+        lca._spsolve("matrix", "rhs")
+
+    spsolve.assert_called_once_with("matrix", "rhs")
+    assert lca._pardiso_solver is None
+
+
+def test_delete_solver_state_only_resets_own_solver():
+    """Resetting one LCA object must not discard another's factorization.
+
+    See https://github.com/brightway-lca/brightway2-calc/issues/158
+    """
+    first, second = LCA.__new__(LCA), LCA.__new__(LCA)
+
+    with fake_pypardiso():
+        first._spsolve(object(), object())
+        second._spsolve(object(), object())
+        first._delete_solver_state()
+
+    first._pardiso_solver.free_memory.assert_called_once_with()
+    assert not second._pardiso_solver.free_memory.called
+
+
+def test_delete_solver_state_without_solves():
+    """Nothing to reset for objects which never solved directly, like `JacobiGMRESLCA`."""
+    lca = LCA.__new__(LCA)
+    lca.solver = object()
+
+    with fake_pypardiso():
+        lca._delete_solver_state()
+
+    assert lca._pardiso_solver is None
+    assert not hasattr(lca, "solver")
+
+
+def test_delete_solver_state_tolerates_pypardiso_error():
+    """`free_memory()` raises on recent MKL builds when nothing was factorized.
 
     See https://github.com/brightway-lca/brightway2-calc/issues/157
     """
     lca = LCA.__new__(LCA)
     lca.solver = object()
 
-    with patched_pypardiso(FakePyPardisoError("error code -1")) as solver:
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+        lca._pardiso_solver.free_memory.side_effect = FakePyPardisoError("error code -1")
         lca._delete_solver_state()
 
-    assert solver.free_memory.called
+    assert lca._pardiso_solver.free_memory.called
     # The rest of the cleanup must still happen.
     assert not hasattr(lca, "solver")
 
@@ -283,9 +330,64 @@ def test_delete_solver_state_propagates_other_errors():
     """Only `PyPardisoError` is best-effort; anything else is a real failure."""
     lca = LCA.__new__(LCA)
 
-    with patched_pypardiso(ValueError("something else")):
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+        lca._pardiso_solver.free_memory.side_effect = ValueError("something else")
         with pytest.raises(ValueError):
             lca._delete_solver_state()
+
+
+def test_pypardiso_solver_released_on_garbage_collection():
+    lca = LCA.__new__(LCA)
+
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+    solver = lca._pardiso_solver
+
+    del lca
+    gc.collect()
+
+    solver.free_memory.assert_called_once_with(everything=True)
+
+
+def test_pypardiso_release_errors_not_raised_on_garbage_collection():
+    lca = LCA.__new__(LCA)
+
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+    lca._pardiso_solver.free_memory.side_effect = FakePyPardisoError("error code -1")
+
+    del lca
+    gc.collect()
+
+
+def test_copies_get_their_own_pypardiso_solver():
+    """A copied solver would share MKL memory freed when the original is collected."""
+    lca = LCA.__new__(LCA)
+
+    with fake_pypardiso():
+        lca._spsolve(object(), object())
+
+    assert copy.copy(lca)._pardiso_solver is None
+    assert copy.deepcopy(lca)._pardiso_solver is None
+    assert lca._pardiso_solver is not None
+
+
+@pytest.mark.pypardiso
+def test_pypardiso_factorization_not_shared_between_lca_objects():
+    packages = [fixture_dir / "basic_fixture.zip"]
+    first = LCA({1: 1}, data_objs=packages)
+    first.lci()
+    second = LCA({1: 1}, data_objs=packages)
+    second.lci()
+
+    assert first._pardiso_solver is not second._pardiso_solver
+    second._delete_solver_state()
+    assert first._pardiso_solver._is_already_factorized(first.technosphere_matrix)
+
+    supply_array = first.supply_array.copy()
+    first.lci()
+    assert np.allclose(first.supply_array, supply_array)
 
 
 # build_demand_array

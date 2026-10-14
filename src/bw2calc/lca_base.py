@@ -1,5 +1,6 @@
 import logging
 import warnings
+import weakref
 from collections.abc import Iterator
 from functools import partial
 from typing import Optional, Tuple
@@ -9,6 +10,11 @@ import numpy as np
 
 from bw2calc import PYPARDISO, factorized, spsolve
 from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
+
+if PYPARDISO:
+    from pypardiso.pardiso_wrapper import PyPardisoError, PyPardisoSolver
+else:
+    PyPardisoError, PyPardisoSolver = None, None
 
 logger = logging.getLogger("bw2calc")
 
@@ -23,8 +29,46 @@ PLURAL_ATTRIBUTES = {
 }
 
 
+def _release_pardiso_solver(solver) -> None:
+    """Release all of MKL's memory held by ``solver``; called when its LCA object goes away."""
+    try:
+        solver.free_memory(everything=True)
+    except Exception as exc:
+        # Runs during garbage collection or interpreter shutdown, so there is nobody to raise to
+        logger.debug(
+            "Could not release pypardiso solver memory: %s",
+            exc,
+            extra={"error": str(exc)},
+        )
+
+
 class LCABase(Iterator):
     """Base class for single and multi LCA classes"""
+
+    # Each object gets its own pypardiso solver, created on the first solve, instead of using
+    # the module-level solver behind ``pypardiso.spsolve``. LCA objects are independent: one
+    # object's calculations, or resetting its solver state, must not touch another's
+    # factorization. Pass the same LCA object around if you want to reuse a factorization.
+    _pardiso_solver = None
+
+    def __getstate__(self) -> dict:
+        # A copied solver would point at the same MKL memory as the original, which is freed
+        # when the original is garbage collected. Copies start with their own solver instead.
+        state = self.__dict__.copy()
+        state.pop("_pardiso_solver", None)
+        return state
+
+    def _spsolve(self, matrix, rhs):
+        """Solve ``matrix @ x = rhs`` with this object's own solver.
+
+        All direct solves in an LCA class should go through here rather than calling the
+        module-level ``spsolve``, so that pypardiso state isn't shared between objects."""
+        if not PYPARDISO:
+            return spsolve(matrix, rhs)
+        if self._pardiso_solver is None:
+            self._pardiso_solver = PyPardisoSolver()
+            weakref.finalize(self, _release_pardiso_solver, self._pardiso_solver)
+        return spsolve(matrix, rhs, solver=self._pardiso_solver)
 
     def _has(self, name: str) -> bool:
         """Check for an ``LCA`` attribute or its ``MultiLCA`` equivalent."""
@@ -169,7 +213,7 @@ class LCABase(Iterator):
         if hasattr(self, "solver"):
             return self.solver(demand)
         else:
-            return spsolve(self.technosphere_matrix, demand)
+            return self._spsolve(self.technosphere_matrix, demand)
 
     def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
@@ -276,7 +320,7 @@ class LCABase(Iterator):
                 "Performance is much better with pypardiso (not available on MacOS ARM machines)"
             )
 
-        self.inverted_technosphere_matrix = spsolve(
+        self.inverted_technosphere_matrix = self._spsolve(
             self.technosphere_matrix, np.eye(*self.technosphere_matrix.shape)
         )
         return self.inverted_technosphere_matrix
@@ -375,23 +419,19 @@ class LCABase(Iterator):
         return self.weight()
 
     def _delete_solver_state(self) -> None:
-        """Low-level function to force freeing up memory and removing any `solver` state."""
+        """Low-level function to force freeing up memory and removing any `solver` state.
+
+        Only touches this object's own state; other LCA objects keep their factorizations."""
         if hasattr(self, "solver"):
             delattr(self, "solver")
-        if PYPARDISO:
-            # This is global state in the pypardiso library - use built-in reset function
-            from pypardiso.pardiso_wrapper import PyPardisoError
-            from pypardiso.scipy_aliases import pypardiso_solver
-
+        if self._pardiso_solver is not None:
             try:
-                pypardiso_solver.free_memory()
+                self._pardiso_solver.free_memory()
             except PyPardisoError as exc:
-                # `PYPARDISO` only tells us that pypardiso can be imported, not that this
-                # calculation ever used it. Iterative subclasses like `JacobiGMRESLCA` never
-                # call `spsolve`, so there is no factorization to release, and recent MKL
-                # versions raise instead of ignoring the request. `free_memory()` drops its
-                # stored factorization before making the call which fails, so the Python-side
-                # cleanup still happens; releasing MKL's internal memory is best-effort.
+                # Recent MKL versions raise when there is no factorization to release, e.g.
+                # because factorizing failed. `free_memory()` drops its stored factorization
+                # before making the call which fails, so the Python-side cleanup still
+                # happens; releasing MKL's internal memory is best-effort.
                 # `PyPardisoSolver.solve` sets the phase itself, so the phase left dangling
                 # by the failed call doesn't affect later solves.
                 # See https://github.com/brightway-lca/brightway2-calc/issues/157
