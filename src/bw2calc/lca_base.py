@@ -50,24 +50,33 @@ class LCABase(Iterator):
     # object's calculations, or resetting its solver state, must not touch another's
     # factorization. Pass the same LCA object around if you want to reuse a factorization.
     _pardiso_solver = None
+    # Whether ``_pardiso_solver`` has solved anything since it was last reset, i.e. whether
+    # there is a factorization for ``_delete_solver_state`` to release. Classes which only
+    # sometimes solve directly, like ``JacobiGMRESLCA`` falling back from GMRES, keep their
+    # solver but shouldn't release it again on every Monte Carlo iteration.
+    # See https://github.com/brightway-lca/brightway2-calc/issues/158
+    _used_pypardiso = False
 
     def __getstate__(self) -> dict:
         # A copied solver would point at the same MKL memory as the original, which is freed
         # when the original is garbage collected. Copies start with their own solver instead.
         state = self.__dict__.copy()
         state.pop("_pardiso_solver", None)
+        state.pop("_used_pypardiso", None)
         return state
 
     def _spsolve(self, matrix, rhs):
         """Solve ``matrix @ x = rhs`` with this object's own solver.
 
         All direct solves in an LCA class should go through here rather than calling the
-        module-level ``spsolve``, so that pypardiso state isn't shared between objects."""
+        module-level ``spsolve``, so that pypardiso state isn't shared between objects, and
+        so that ``_delete_solver_state`` knows whether there is anything to release."""
         if not PYPARDISO:
             return spsolve(matrix, rhs)
         if self._pardiso_solver is None:
             self._pardiso_solver = PyPardisoSolver()
             weakref.finalize(self, _release_pardiso_solver, self._pardiso_solver)
+        self._used_pypardiso = True
         return spsolve(matrix, rhs, solver=self._pardiso_solver)
 
     def _has(self, name: str) -> bool:
@@ -424,7 +433,7 @@ class LCABase(Iterator):
         Only touches this object's own state; other LCA objects keep their factorizations."""
         if hasattr(self, "solver"):
             delattr(self, "solver")
-        if self._pardiso_solver is not None:
+        if self._pardiso_solver is not None and self._used_pypardiso:
             try:
                 self._pardiso_solver.free_memory()
             except PyPardisoError as exc:
@@ -443,3 +452,5 @@ class LCABase(Iterator):
                     exc,
                     extra={"error": str(exc)},
                 )
+            # Whatever happened, this object no longer has a factorization to release.
+            self._used_pypardiso = False
