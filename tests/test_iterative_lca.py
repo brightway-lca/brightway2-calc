@@ -325,6 +325,57 @@ def test_iterative_skips_stage_after_consecutive_failures():
     assert len(calls) == 3
 
 
+@pytest.mark.parametrize("retry_after", [3, None])
+def test_iterative_retries_skipped_stage(retry_after):
+    """A run of hard Monte Carlo samples mustn't turn the stage off for all later ones."""
+    calls = []
+
+    def solver(matrix, demand, **kwargs):
+        calls.append(1)
+        if len(calls) <= 2:
+            return np.ones_like(demand), 0
+        return bicgstab(matrix, demand, **kwargs)
+
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    reference = LCA({3: 1}, **kwargs)
+    lca = IterativeLCA(
+        {3: 1}, iter_solver=solver, max_consecutive_failures=2, retry_after=retry_after, **kwargs
+    )
+    reference.lci()
+    lca.lci()
+    for _ in range(7):
+        next(reference)
+        next(lca)
+        assert np.allclose(lca.supply_array, reference.supply_array)
+
+    if retry_after is None:
+        assert len(calls) == 2
+        assert lca.solver_stats == {"reference": 1, "fallback_iterative": 7}
+    else:
+        # Fails twice, is skipped for three samples, and then succeeds again.
+        assert len(calls) == 4
+        assert lca.solver_stats == {"reference": 1, "fallback_iterative": 5, "iterative": 2}
+
+
+def test_iterative_skipped_stage_failing_again_is_skipped_again():
+    calls = []
+
+    def solver(matrix, demand, **kwargs):
+        calls.append(1)
+        return np.ones_like(demand), 0
+
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    lca = IterativeLCA(
+        {3: 1}, iter_solver=solver, max_consecutive_failures=2, retry_after=3, **kwargs
+    )
+    lca.lci()
+    for _ in range(10):
+        next(lca)
+
+    # Samples 1-2 fail, 3-5 are skipped, 6 fails, 7-9 are skipped, 10 fails.
+    assert len(calls) == 4
+
+
 def test_iterative_uses_direct_solver_when_all_stages_fail():
     def failing(matrix, demand, **kwargs):
         return np.zeros_like(demand), 1

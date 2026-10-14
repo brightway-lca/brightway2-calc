@@ -132,8 +132,10 @@ class IterativeLCA(LCA):
     Each iterative stage stops after ``time_limit`` seconds; by default, the time the
     first direct solve took (at least 0.1 s), as after that a direct solve would have been
     faster. After
-    ``max_consecutive_failures`` failures in a row, a stage is skipped until new matrices
-    are loaded. ``solver_stats`` counts how many solves each stage did.
+    ``max_consecutive_failures`` failures in a row, a stage is skipped for the next
+    ``retry_after`` solves, and then tried again; if it fails again, it is skipped again.
+    In Monte Carlo, a run of hard samples then doesn't turn a stage off for all later
+    samples. ``solver_stats`` counts how many solves each stage did.
 
     With pypardiso, the reference factorization has its own ``PyPardisoSolver``, separate
     from the object's solver for direct solves, so direct solves don't replace it. Its
@@ -214,8 +216,11 @@ class IterativeLCA(LCA):
     :param fallback_maxiter: Maximum number of iterations for ``fallback_solver``.
     :type fallback_maxiter: int or None
     :param max_consecutive_failures: Skip an iterative stage after this many failures in a
-        row, until new matrices are loaded. ``None`` never skips a stage.
+        row. ``None`` never skips a stage.
     :type max_consecutive_failures: int or None
+    :param retry_after: Number of solves a failing stage is skipped for before it is tried
+        again. ``None`` skips it until new matrices are loaded.
+    :type retry_after: int or None
     """
 
     STAGES = ("iterative", "fallback_iterative")
@@ -236,6 +241,7 @@ class IterativeLCA(LCA):
         fallback_solver: Optional[Callable] = None,
         fallback_maxiter: Optional[int] = 100,
         max_consecutive_failures: Optional[int] = 3,
+        retry_after: Optional[int] = 20,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -251,6 +257,7 @@ class IterativeLCA(LCA):
         self.fallback_solver = fallback_solver if fallback_solver is not None else bicgstab
         self.fallback_maxiter = fallback_maxiter
         self.max_consecutive_failures = max_consecutive_failures
+        self.retry_after = retry_after
         # Prepared CSR copy used by the iterative solver; don't replace
         # `technosphere_matrix`, as Monte Carlo iteration mutates the matrix held by
         # `technosphere_mm`. `None` means "not prepared yet".
@@ -293,6 +300,8 @@ class IterativeLCA(LCA):
         self._reference_solve = None
         self._reference_time = None
         self._consecutive_failures = {stage: 0 for stage in self.STAGES}
+        # Solves skipped by each stage since it last failed.
+        self._skipped_solves = {stage: 0 for stage in self.STAGES}
 
     def _prepare_matrix(self) -> None:
         # Sparse cleanup is done once per matrix, then reused.
@@ -475,10 +484,14 @@ class IterativeLCA(LCA):
     def _stage_skipped(self, stage: str) -> bool:
         if stage == "fallback_iterative" and self._reference_solve is None:
             return True
-        return (
-            self.max_consecutive_failures is not None
-            and self._consecutive_failures[stage] >= self.max_consecutive_failures
-        )
+        if (
+            self.max_consecutive_failures is None
+            or self._consecutive_failures[stage] < self.max_consecutive_failures
+        ):
+            return False
+        # Skipped stages can't succeed to reset their failure count, so try them again
+        # from time to time; Monte Carlo samples can get easier again.
+        return self.retry_after is None or self._skipped_solves[stage] < self.retry_after
 
     def _iterative_solve(self, demand: np.ndarray) -> np.ndarray:
         self._prepare_matrix()
@@ -487,9 +500,11 @@ class IterativeLCA(LCA):
 
         for stage in self.STAGES:
             if self._stage_skipped(stage):
+                self._skipped_solves[stage] += 1
                 continue
             with _single_threaded_openblas():
                 solution = self._run_stage(stage, matrix, demand, x0)
+            self._skipped_solves[stage] = 0
             if solution is not None:
                 self._consecutive_failures[stage] = 0
                 self.solver_stats[stage] += 1
@@ -497,10 +512,10 @@ class IterativeLCA(LCA):
             self._consecutive_failures[stage] += 1
             if self._stage_skipped(stage):
                 logger.info(
-                    "Iterative stage %s failed %s times in a row; skipping it until new "
-                    "matrices are loaded",
+                    "Iterative stage %s failed %s times in a row; skipping it for %s solves",
                     stage,
                     self._consecutive_failures[stage],
+                    "all further" if self.retry_after is None else self.retry_after,
                 )
 
         self.solver_stats["direct"] += 1
