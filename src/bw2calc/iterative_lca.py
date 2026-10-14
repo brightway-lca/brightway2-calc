@@ -163,8 +163,10 @@ class IterativeLCA(LCA):
     ``A^-1``, so this tracks the true error closely as long as ``A`` is close to ``A0``:
     within about 2x over 80 Monte Carlo solves on ecoinvent 3.12. It costs one solve with
     the reference factorization. Solutions with an estimated error above ``max_error`` are
-    rejected. Without a reference factorization (``direct_first_solve=False``), or with
-    ``max_error=None``, the true residual is checked against
+    rejected, and solutions below it are accepted even if the solver reports that it didn't
+    converge; if the time limit stops the solver, its last iterate is checked. Without a
+    reference factorization (``direct_first_solve=False``), or with ``max_error=None``,
+    the true residual is checked against
     ``residual_factor * max(rtol * ||b||, atol)`` instead.
 
     Every rejected solution is logged as a debug message on the ``bw2calc`` logger.
@@ -438,10 +440,13 @@ class IterativeLCA(LCA):
             return 0.0 if not np.any(correction) else np.inf
         return float(np.linalg.norm(correction) / norm)
 
+    def _checks_forward_error(self) -> bool:
+        return self._reference_solve is not None and self.max_error is not None
+
     def _solution_is_acceptable(self, matrix, demand, solution) -> bool:
         if solution.shape != demand.shape or not np.all(np.isfinite(solution)):
             return False
-        if self._reference_solve is not None and self.max_error is not None:
+        if self._checks_forward_error():
             return self.estimate_error(matrix, demand, solution) <= self.max_error
         residual = np.linalg.norm(matrix @ solution - demand)
         threshold = max(self.rtol * np.linalg.norm(demand), self.atol)
@@ -464,11 +469,25 @@ class IterativeLCA(LCA):
             kwargs = dict(maxiter=self.fallback_maxiter, M=self._reference_preconditioner())
         kwargs.update(x0=x0, atol=self.atol)
 
+        # The forward error check is what we trust, so with it, accept any solution which
+        # passes it, whatever the solver reports. Some systems can't reach `rtol`, e.g.
+        # construction demands where even the direct solution has a relative residual
+        # above 1e-7, and the solver would run until `maxiter` or the time limit, and then
+        # throw away a good solution. Without it, the solver's own convergence test is
+        # part of the check.
+        trust_info = not self._checks_forward_error()
+        last_iterate = None
+
         time_limit = self._stage_time_limit()
         if time_limit is not None:
             deadline = time.perf_counter() + time_limit
 
             def callback(*args):
+                nonlocal last_iterate
+                # Most SciPy solvers pass the current iterate; GMRES with "pr_norm"
+                # passes a residual norm.
+                if args and isinstance(args[0], np.ndarray) and args[0].shape == demand.shape:
+                    last_iterate = args[0]
                 if time.perf_counter() > deadline:
                     raise _TimeLimitExceeded
 
@@ -477,10 +496,12 @@ class IterativeLCA(LCA):
         try:
             solution, info = self._call_solver(solver, matrix, demand, kwargs)
         except _TimeLimitExceeded:
-            solution, info = None, "time limit"
-        else:
-            solution = np.asarray(solution)
-            if info == 0 and self._solution_is_acceptable(matrix, demand, solution):
+            solution, info = (None if trust_info else last_iterate), "time limit"
+        if solution is not None:
+            solution = np.array(solution)
+            if (info == 0 or not trust_info) and self._solution_is_acceptable(
+                matrix, demand, solution
+            ):
                 return solution
 
         # A silent fallback would look like a working but inexplicably slow

@@ -310,6 +310,53 @@ def test_iterative_time_limit_stops_stage():
     assert lca.solver_stats["fallback_iterative"] == 1
 
 
+def exact_unconverged_solver(matrix, demand, **kwargs):
+    """Return the exact solution, but report that `maxiter` was reached."""
+    return np.linalg.solve(matrix.toarray(), demand), 1
+
+
+def test_iterative_accepts_unconverged_solution_passing_forward_error_check():
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    reference = LCA({3: 1}, **kwargs)
+    lca = IterativeLCA({3: 1}, iter_solver=exact_unconverged_solver, **kwargs)
+    reference.lci()
+    lca.lci()
+    next(reference)
+    next(lca)
+
+    assert np.allclose(lca.supply_array, reference.supply_array)
+    assert lca.solver_stats == {"reference": 1, "iterative": 1}
+
+
+def test_iterative_rejects_unconverged_solution_without_forward_error_check():
+    lca = IterativeLCA(
+        {1: 1}, data_objs=basic, iter_solver=exact_unconverged_solver, direct_first_solve=False
+    )
+    lca.lci()
+
+    assert lca.solver_stats == {"direct": 1}
+
+
+def test_iterative_accepts_last_iterate_at_time_limit():
+    def slow_solver(matrix, demand, callback=None, **kwargs):
+        exact = np.linalg.solve(matrix.toarray(), demand)
+        for _ in range(1000):
+            time.sleep(0.001)
+            callback(exact)
+        raise AssertionError("time limit not applied")
+
+    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    reference = LCA({3: 1}, **kwargs)
+    lca = IterativeLCA({3: 1}, iter_solver=slow_solver, time_limit=0.01, **kwargs)
+    reference.lci()
+    lca.lci()
+    next(reference)
+    next(lca)
+
+    assert np.allclose(lca.supply_array, reference.supply_array)
+    assert lca.solver_stats == {"reference": 1, "iterative": 1}
+
+
 def test_iterative_auto_time_limit_is_first_direct_solve_time():
     lca = IterativeLCA({1: 1}, data_objs=basic)
     assert lca._stage_time_limit() is None
