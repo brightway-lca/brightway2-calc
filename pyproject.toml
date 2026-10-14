@@ -32,6 +32,7 @@ dependencies = [
         "pydantic",
         "scipy",
         "stats_arrays",
+        "threadpoolctl",
         "xarray",
 ]
 
