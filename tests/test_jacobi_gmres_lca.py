@@ -3,7 +3,7 @@ from pathlib import Path
 import bw_processing as bwp
 import numpy as np
 import scipy.sparse as sps
-from scipy.sparse.linalg import gmres
+from scipy.sparse.linalg import bicgstab, gmres
 
 from bw2calc import LCA, JacobiGMRESLCA
 
@@ -167,3 +167,27 @@ def test_jacobi_gmres_sequential_supply_matches_lca():
         assert not np.allclose(jacobi.supply_array, 0)
         next(jacobi)
         next(reference)
+
+
+def test_jacobi_gmres_with_other_solver_drops_gmres_arguments():
+    reference = LCA({1: 1}, data_objs=[fixture_dir / "basic_fixture.zip"])
+    reference.lci()
+
+    jacobi = JacobiGMRESLCA(
+        {1: 1}, data_objs=[fixture_dir / "basic_fixture.zip"], iter_solver=bicgstab
+    )
+    jacobi.lci()
+
+    assert np.allclose(jacobi.supply_array, reference.supply_array)
+    assert jacobi.solver_stats == {"iterative": 1}
+
+
+def test_jacobi_gmres_without_solver_solves_directly():
+    reference = LCA({1: 1}, data_objs=[fixture_dir / "basic_fixture.zip"])
+    reference.lci()
+
+    jacobi = JacobiGMRESLCA({1: 1}, data_objs=[fixture_dir / "basic_fixture.zip"], iter_solver=None)
+    jacobi.lci()
+
+    assert np.allclose(jacobi.supply_array, reference.supply_array)
+    assert jacobi.solver_stats == {"direct": 1}

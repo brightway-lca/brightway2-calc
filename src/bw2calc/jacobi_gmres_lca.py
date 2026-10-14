@@ -1,3 +1,4 @@
+import inspect
 from typing import Optional
 
 from scipy.sparse.linalg import gmres
@@ -28,6 +29,7 @@ class JacobiGMRESLCA(IterativeLCA):
     parameters, the correctness checks, and the fallback stages.
 
     :param restart: Number of iterations between GMRES restarts. ``None`` uses SciPy defaults.
+        Only passed to an ``iter_solver`` which accepts it.
     :type restart: int or None
     """
 
@@ -40,12 +42,18 @@ class JacobiGMRESLCA(IterativeLCA):
         **kwargs,
     ):
         kwargs.setdefault("iter_solver", gmres)
-        super().__init__(
-            *args, maxiter=maxiter, direct_first_solve=direct_first_solve, **kwargs
-        )
+        super().__init__(*args, maxiter=maxiter, direct_first_solve=direct_first_solve, **kwargs)
         self.restart = restart
 
     def solver_kwargs(self) -> dict:
         # "pr_norm" calls the callback, and so checks the time limit, on every inner
         # iteration, and avoids SciPy's warning about the default `callback_type`.
-        return {"restart": self.restart, "callback_type": "pr_norm"}
+        kwargs = {"restart": self.restart, "callback_type": "pr_norm"}
+        # Both are GMRES-only, and other solvers raise a `TypeError` for them.
+        try:
+            parameters = inspect.signature(self.iter_solver).parameters
+        except (TypeError, ValueError):
+            return kwargs
+        if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()):
+            return kwargs
+        return {key: value for key, value in kwargs.items() if key in parameters}
