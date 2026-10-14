@@ -254,6 +254,32 @@ def test_normalize_and_weight_reuse_loaded_data(dps, func_units):
     assert mlca.weighting_mm_dict is weighting
 
 
+def test_normalize_after_weight_updates_weighted_inventories(dps, func_units):
+    config = {
+        "impact_categories": [("first", "category"), ("second", "category")],
+        "normalizations": {("n", "1"): [("first", "category"), ("second", "category")]},
+        "weightings": {("w", "1"): [("n", "1")]},
+    }
+    dps.append(get_datapackage(fixture_dir / "multi_lca_simple_normalization.zip"))
+    dps.append(get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"))
+
+    expected = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    expected.lci()
+    expected.lcia()
+    expected.normalize()
+    expected.weight()
+
+    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps)
+    mlca.lci()
+    mlca.lcia()
+    mlca.weight()
+    mlca.normalize()
+
+    assert mlca.scores.keys() == expected.scores.keys()
+    for key, value in expected.scores.items():
+        assert np.allclose(mlca.scores[key], value)
+
+
 def test_normalization_without_weighting(dps, func_units):
     config = {
         "impact_categories": [

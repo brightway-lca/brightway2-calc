@@ -847,9 +847,14 @@ def test_weight_keeps_weighting_data_across_iterations():
     lca.weight()
     assert lca.score == 1
 
-    # weight() must use the weighting column that next() moved to, not reload from column 0.
+    weighting_mm = lca.weighting_mm
+
     next(lca)
+    assert lca.score == 2
+
+    # weight() must use the weighting column that next() moved to, not reload from column 0.
     lca.weight()
+    assert lca.weighting_mm is weighting_mm
     assert lca.score == 2
 
 

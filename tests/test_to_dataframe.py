@@ -373,7 +373,8 @@ def test_to_dataframe_annotated(basic_example):
     frames(expected, df)
 
 
-def test_to_dataframe_fraction_cutoff_negative_score():
+def _three_process_lca(characterization_factors):
+    """One unit of each of three processes, each emitting one unit of its own flow."""
     dp = bwp.create_datapackage()
     dp.add_persistent_vector(
         matrix="technosphere_matrix",
@@ -385,19 +386,34 @@ def test_to_dataframe_fraction_cutoff_negative_score():
         matrix="biosphere_matrix",
         data_array=np.array([1.0, 1, 1]),
         name="b",
-        indices_array=np.array([(201, 101), (201, 102), (202, 103)], dtype=bwp.INDICES_DTYPE),
+        indices_array=np.array([(201, 101), (202, 102), (203, 103)], dtype=bwp.INDICES_DTYPE),
     )
     dp.add_persistent_vector(
         matrix="characterization_matrix",
-        data_array=np.array([-10.0, 1]),
+        data_array=np.array(characterization_factors, dtype=float),
         name="c",
-        indices_array=np.array([(201, 0), (202, 0)], dtype=bwp.INDICES_DTYPE),
+        indices_array=np.array([(201, 0), (202, 0), (203, 0)], dtype=bwp.INDICES_DTYPE),
         global_index=0,
     )
     lca = bc.LCA({1: 1, 2: 1, 3: 1}, data_objs=[dp])
     lca.lci()
     lca.lcia()
+    return lca
+
+
+def test_to_dataframe_fraction_cutoff_negative_score():
+    lca = _three_process_lca([-10, -10, 1])
     assert lca.score == -19
 
-    df = lca.to_dataframe(cutoff=0.5, cutoff_mode="fraction", annotate=False)
+    # Threshold is 0.4 * 21; with the signed total it would be negative and keep every row
+    df = lca.to_dataframe(cutoff=0.4, cutoff_mode="fraction", annotate=False)
     assert sorted(df["amount"]) == [-10, -10]
+
+
+def test_to_dataframe_fraction_cutoff_cancelling_values():
+    lca = _three_process_lca([-10, 10, 1])
+    assert lca.score == 1
+
+    # Threshold is 0.4 * 21; with the signed total it would be 0.4 and keep every row
+    df = lca.to_dataframe(cutoff=0.4, cutoff_mode="fraction", annotate=False)
+    assert sorted(df["amount"]) == [-10, 10]
