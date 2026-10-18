@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import bw_processing as bwp
 import numpy as np
@@ -8,7 +8,9 @@ from bw_processing.io_helpers import generic_directory_filesystem
 from fsspec import AbstractFileSystem
 from fsspec.implementations.zip import ZipFileSystem
 from scipy import sparse
+from scipy.sparse.linalg import splu
 
+from bw2calc import UMFPACK
 from bw2calc.errors import InconsistentGlobalIndex, InvalidReferenceFlags
 
 
@@ -111,6 +113,58 @@ def relative_residual(matrix: Any, solution: Any, rhs: Any) -> np.ndarray:
     residual = np.linalg.norm(matrix @ solution - rhs, axis=0)
     scale = np.linalg.norm(rhs, axis=0)
     return np.divide(residual, scale, out=residual.copy(), where=scale > 0)
+
+
+def lu_solver(matrix: Any) -> Callable[[np.ndarray], np.ndarray]:
+    """Factorize the square sparse ``matrix`` ``A`` with UMFPACK, if installed, or SuperLU,
+    and return a function which solves ``A x = b`` for a 1-d ``b``. Not for PARDISO, which
+    has its own factorization.
+
+    This factorizes ``A^T`` and solves the transposed system ``(A^T)^T x = b``, instead of
+    factorizing ``A``. Both are correct, but LU factorization picks a column ordering to
+    limit fill-in, and technosphere matrices have far less fill transposed. On ecoinvent
+    3.9 cutoff (21,255 x 21,255), single-threaded, factorizing ``A`` took 52 s with
+    SuperLU and 3.2 s with UMFPACK, and ``A^T`` took 1.7 s and 0.3 s, with 8.6x fewer
+    nonzeros in the SuperLU factors, so each solve is faster too; see
+    https://github.com/brightway-lca/brightway2-calc/issues/176. ``scipy``'s ``spsolve``
+    does the same with a CSR matrix, so this is also what ``LCA`` does without
+    ``factorize=True``. Don't use ``scipy.sparse.linalg.factorized(A.tocsc())``, which
+    factorizes ``A``.
+
+    Matrix formats: SuperLU and UMFPACK both factorize CSC matrices, and UMFPACK fails on
+    CSR; see https://github.com/brightway-lca/brightway2-calc/issues/132. The CSC form of
+    ``A^T`` has the same arrays as the CSR form of ``A``, which is what ``LCA`` builds, so
+    ``matrix.tocsr().T`` is CSC without any conversion. Other formats are converted to CSR
+    first."""
+    # CSC, and a view on `matrix`'s arrays if it is CSR.
+    transposed = matrix.tocsr().T
+
+    if not UMFPACK:
+        # `splu` copies the values into its factors, and `solve` doesn't read the matrix
+        # again, so changes to `matrix` afterwards don't matter.
+        factorization = splu(transposed)
+        return lambda b: factorization.solve(b, trans="T")
+
+    import scikits.umfpack as umfpack  # noqa: PLC0415
+
+    # UMFPACK reads the matrix again in each solve, for iterative refinement, so it needs
+    # a copy: Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place.
+    # UMFPACK needs float64 values.
+    transposed = transposed.astype(np.float64, copy=True)
+    # The UMFPACK family must match the index type: "di" for int32 and "dl" for int64.
+    # Pick it from the indices, as `scipy` does; scipy sparse constructors downcast int64
+    # indices to int32 when they fit, so converting the indices wouldn't stick.
+    family = "di" if transposed.indices.dtype == np.int32 else "dl"
+    context = umfpack.UmfpackContext(family)
+    context.numeric(transposed)
+
+    def solve(b: np.ndarray) -> np.ndarray:
+        # `UMFPACK_At` solves with the transpose of the factorized `A^T`, i.e. `A`.
+        # Ignoring warnings as `scipy` does; see scipy/scipy#16523.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return context.solve(umfpack.UMFPACK_At, transposed, b, autoTranspose=False)
+
+    return solve
 
 
 def reference_entries(mapped_matrix) -> tuple:

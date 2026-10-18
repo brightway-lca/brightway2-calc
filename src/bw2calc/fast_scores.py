@@ -342,6 +342,11 @@ class FastScoresOnlyMultiLCA(MultiLCA, FastSupplyArraysMixin):
                     # Nothing to release if factorization failed; don't hide the original error
                     pass
         elif UMFPACK:
+            # This system is `A^T y = rhs`, so factorizing `A^T` here is already the fast
+            # orientation; `lu_solver(transposed)` would factorize `A`, which has much more
+            # fill-in (see `bw2calc.utils.lu_solver`). `transposed` is CSC, a view on the
+            # CSR technosphere matrix, so `tocsc()` doesn't convert anything; UMFPACK needs
+            # CSC, see https://github.com/brightway-lca/brightway2-calc/issues/132.
             solve = factorized(transposed.tocsc())
             solution = np.column_stack([solve(column) for column in rhs.T])
         else:

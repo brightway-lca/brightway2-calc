@@ -8,8 +8,9 @@ from typing import Optional, Tuple
 import matrix_utils as mu
 import numpy as np
 
-from bw2calc import PYPARDISO, factorized, spsolve
+from bw2calc import PYPARDISO, spsolve
 from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
+from bw2calc.utils import lu_solver
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoError, PyPardisoSolver
@@ -180,9 +181,11 @@ class LCABase(Iterator):
     def decompose_technosphere(self) -> None:
         """
         Factorize the technosphere matrix into lower and upper triangular
-        matrices, :math:`A=LU`. Does not solve the linear system :math:`Ax=B`.
+        matrices. Does not solve the linear system :math:`Ax=B`.
 
-        Doesn't return anything, but creates ``self.solver``.
+        Doesn't return anything, but creates ``self.solver``, which solves
+        :math:`Ax=b`. It factorizes :math:`A^T=LU`, which is much faster than
+        :math:`A=LU` for technosphere matrices; see ``bw2calc.utils.lu_solver``.
 
         .. warning:: Incorrect results could occur if a technosphere matrix was
         factorized, and then a new technosphere matrix was constructed, as
@@ -194,9 +197,7 @@ class LCABase(Iterator):
         if PYPARDISO:
             warnings.warn("PARDISO installed; this is a no-op")
         else:
-            # UMFPACK factorization needs CSC sparse matrix; see
-            # https://github.com/brightway-lca/brightway2-calc/issues/132
-            self.solver = factorized(self.technosphere_matrix.tocsc())
+            self.solver = lu_solver(self.technosphere_matrix)
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> None:
         """
