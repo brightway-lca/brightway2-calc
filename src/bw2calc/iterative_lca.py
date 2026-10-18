@@ -193,6 +193,16 @@ class IterativeLCA(LCA):
     preconditioner. Permuting rows doesn't change the solution, so a wrong pairing only
     costs speed, never correctness.
 
+    The preconditioner doesn't rescale anything. The solver uses ``M`` only to choose its
+    search directions (in SciPy's BiCGSTAB: ``phat = M @ p``, then ``x += alpha * phat``),
+    so the iterate ``x`` is always the supply in the original units, and every product
+    with ``A`` uses the unscaled technosphere matrix. ``technosphere_matrix`` and
+    ``biosphere_matrix`` are never changed, and ``supply_array``, the inventory ``B @ x``,
+    and the impact assessment are calculated as for :class:`~bw2calc.lca.LCA`. A change of
+    variables ``x = D^-1 y`` would need ``B D^-1`` (or converting ``y`` back to ``x``), but
+    none is made. The forward error check also uses the original ``A``, so a poor ``M``
+    can make a stage slower or fail, but can't make it accept a wrong solution.
+
     ``jacobi_pairing`` chooses how ``p`` is found:
 
     * ``"auto"`` (default): from the reference exchange flags, if they pair every column
@@ -203,11 +213,26 @@ class IterativeLCA(LCA):
       :class:`~bw2calc.errors.InvalidReferenceFlags` if they can't be used.
     * ``"diagonal"``: always the diagonal, ignoring the flags.
 
-    ``p`` depends only on the matrix structure, so it is found once after loading the data,
-    and kept during Monte Carlo; the pivot values are read from each new matrix. If any
-    pivot is zero or not finite, the iterative stage runs without a preconditioner.
-    ``preconditioner_source`` tells which preconditioner the last iterative stage used:
-    ``"production_pivots"``, ``"diagonal"``, or ``None``.
+    In Monte Carlo, ``p`` and the pivot values are handled separately:
+
+    #. ``load_lci_data()`` builds the matrices and clears ``p``.
+    #. The first solve is direct, and keeps the reference factorization. No preconditioner
+       is built.
+    #. ``next()`` draws new values into the same matrix structure. The prepared matrix
+       copy and the cached preconditioner are discarded; ``p`` is kept, as Monte Carlo
+       changes values, not structure.
+    #. The iterative stage makes a prepared copy of the sampled matrix, builds ``p`` from
+       the flags if this is the first time, and reads this sample's production amounts
+       ``A[p(j), j]``. Production amounts can be uncertain, so they are read from every
+       sample. BiCGSTAB then solves the sampled system with this ``M``, starting from the
+       previous solution, and the result goes through the forward error check and, if
+       needed, the fallback stages as usual.
+    #. Further demands on the same sample reuse the cached ``M``.
+
+    If a pivot is zero or not finite, e.g. a sampled production amount of zero, which is
+    removed from the prepared copy, that sample's iterative stage runs without a
+    preconditioner. ``preconditioner_source`` tells which preconditioner the last
+    iterative stage used: ``"production_pivots"``, ``"diagonal"``, or ``None``.
 
     Monte Carlo on BAFU 2026 v1 (11,947 x 11,947, 114k nonzeros), demand 1 kWh
     ``Electricity, low voltage, at grid`` (CH), 30 iterations, Apple M1 Max, no
