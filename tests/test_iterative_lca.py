@@ -787,18 +787,27 @@ def broken_flags(kind):
 
 
 @pytest.mark.parametrize("kind", ["missing", "conflicting", "shared"])
-def test_iterative_unusable_flags_fall_back_to_diagonal(kind, caplog):
-    caplog.set_level("INFO", logger="bw2calc")
+def test_iterative_unusable_flags_fall_back_to_diagonal(kind):
     matrix, flags = broken_flags(kind)
     lca = IterativeLCA(
         {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
     )
-    lca.lci()
+    with pytest.warns(UserWarning, match="of 40 columns.*using the diagonal"):
+        lca.lci()
 
     assert lca._pivot_pairing == "diagonal"
     assert np.allclose(lca.supply_array, np.linalg.solve(matrix, lca.demand_array))
-    messages = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
-    assert any("using the diagonal" in m and "of 40 columns" in m for m in messages)
+
+
+def test_iterative_no_flags_warns_and_falls_back_to_diagonal():
+    matrix = permuted_system()[0]
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, None)], direct_first_solve=False
+    )
+    with pytest.warns(UserWarning, match="No reference exchange flags"):
+        lca.lci()
+
+    assert lca._pivot_pairing == "diagonal"
 
 
 @pytest.mark.parametrize("kind", ["missing", "conflicting", "shared", "none"])

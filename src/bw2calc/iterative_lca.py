@@ -1,6 +1,7 @@
 import inspect
 import logging
 import time
+import warnings
 import weakref
 from collections import Counter
 from typing import Callable, Optional, Union
@@ -207,8 +208,7 @@ class IterativeLCA(LCA):
 
     * ``"auto"`` (default): from the reference exchange flags, if they pair every column
       with exactly one row, and every row with exactly one column. Otherwise, e.g. for
-      datapackages without flags, the diagonal is used; if flags exist but can't be used,
-      the reason is logged at INFO level.
+      datapackages without flags, the diagonal is used, and a warning gives the reason.
     * ``"reference"``: from the flags, raising
       :class:`~bw2calc.errors.InvalidReferenceFlags` if they can't be used.
     * ``"diagonal"``: always the diagonal, ignoring the flags.
@@ -465,7 +465,11 @@ class IterativeLCA(LCA):
             matvec = lambda r: inverse_pivots * r  # noqa: E731
         else:
             matvec = lambda r: inverse_pivots * r[pivot_rows]  # noqa: E731
-        # LinearOperator form avoids materializing a dense inverse matrix.
+        # `scipy.sparse.linalg.LinearOperator` wraps `matvec`, so the solver only ever
+        # calls `M @ r` and `M` is never stored as a matrix. `M` is diagonal (after
+        # permuting rows), so `matvec` needs only the 1-D array `inverse_pivots`; building
+        # `M` as a matrix would need a sparse copy with its own index arrays, or, for a
+        # dense one, `n^2` entries.
         return LinearOperator(shape=matrix.shape, matvec=matvec, dtype=matrix.dtype)
 
     def _get_preconditioner(self) -> Optional[LinearOperator]:
@@ -495,10 +499,12 @@ class IterativeLCA(LCA):
         except InvalidReferenceFlags as error:
             if self.jacobi_pairing == "reference":
                 raise
-            # Datapackages from before bw2data wrote reference flags have none; that's
-            # the normal case for them, not worth an INFO message.
-            log = logger.info if len(rows) else logger.debug
-            log("%s; using the diagonal for the Jacobi preconditioner", error)
+            # With separate product nodes, the diagonal can hold arbitrary entries or
+            # zeros, making iterative solves slow or sending them to the fallback stages.
+            warnings.warn(
+                f"{error}; using the diagonal for the Jacobi preconditioner. Pass "
+                "`jacobi_pairing='diagonal'` to silence this warning."
+            )
             return None, "diagonal"
         if np.array_equal(pivot_rows, np.arange(len(pivot_rows))):
             # Same preconditioner as the diagonal, without the gather in each iteration.
