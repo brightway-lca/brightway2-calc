@@ -138,6 +138,15 @@ def lu_solver(matrix: Any) -> Callable[[np.ndarray], np.ndarray]:
     first."""
     # CSC, and a view on `matrix`'s arrays if it is CSR.
     transposed = matrix.tocsr().T
+    if not transposed.has_canonical_format:
+        # The solvers need sorted indices without duplicates, and `splu` sorts in place,
+        # which through the view would reorder the arrays of `matrix` too. `IterativeLCA`
+        # compares its reference copy to `technosphere_matrix` array by array, so a
+        # reordered copy would never match. `LCA` builds canonical matrices, so this
+        # copy is for matrices from elsewhere.
+        transposed = transposed.copy()
+        transposed.sum_duplicates()
+        transposed.sort_indices()
 
     if not UMFPACK:
         # `splu` copies the values into its factors, and `solve` doesn't read the matrix

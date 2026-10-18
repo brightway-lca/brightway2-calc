@@ -115,3 +115,28 @@ def test_lu_solver_uses_64_bit_umfpack_family(monkeypatch):
     b = np.array([1.0, 2.0, 3.0])
     assert np.allclose(lu_solver(matrix)(b), np.linalg.solve(lu_test_matrix(), b))
     assert families == ["dl"]
+
+
+@pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
+def test_lu_solver_leaves_a_non_canonical_matrix_alone(monkeypatch, umfpack):
+    """`splu` sorts indices in place; `IterativeLCA` compares its reference copy to the
+    technosphere matrix array by array, so the input must not be reordered."""
+    monkeypatch.setattr(utils, "UMFPACK", umfpack)
+    dense = lu_test_matrix()
+    # `dense` in CSR with the column indices of each row in reverse order.
+    matrix = sps.csr_matrix(
+        (
+            np.array([-0.5, 2.0, -0.25, 1.0, 4.0, -0.1]),
+            np.array([1, 0, 2, 1, 2, 0]),
+            np.array([0, 2, 4, 6]),
+        ),
+        shape=(3, 3),
+    )
+    assert np.array_equal(matrix.toarray(), dense)
+    assert not matrix.has_canonical_format
+    indices, data = matrix.indices.copy(), matrix.data.copy()
+
+    b = np.array([1.0, 2.0, 3.0])
+    assert np.allclose(lu_solver(matrix)(b), np.linalg.solve(dense, b))
+    assert np.array_equal(matrix.indices, indices)
+    assert np.array_equal(matrix.data, data)
