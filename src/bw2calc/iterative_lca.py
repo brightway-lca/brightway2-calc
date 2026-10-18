@@ -11,8 +11,10 @@ from scipy.sparse.linalg import LinearOperator, bicgstab
 from threadpoolctl import ThreadpoolController
 
 from bw2calc import PYPARDISO, factorized
+from bw2calc.errors import InvalidReferenceFlags
 from bw2calc.lca import LCA
 from bw2calc.lca_base import _release_pardiso_solver
+from bw2calc.utils import production_pivot_map, reference_entries
 
 if PYPARDISO:
     from pypardiso import PyPardisoSolver
@@ -29,7 +31,8 @@ class IterativeLCA(LCA):
     returning ``(solution, info)``. ``callback`` is called with any arguments in each
     iteration, and is used for the time limit. The default is
     `BiCGSTAB <https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method>`_
-    with a Jacobi preconditioner, i.e. the inverse of the technosphere diagonal ``D^-1``.
+    with a Jacobi preconditioner, which divides by the production amounts; see
+    `Jacobi preconditioner`_ below.
 
     Benchmarks and choice of default solver
     ---------------------------------------
@@ -171,6 +174,62 @@ class IterativeLCA(LCA):
 
     Every rejected solution is logged as a debug message on the ``bw2calc`` logger.
 
+    Jacobi preconditioner
+    ---------------------
+
+    Scaling each activity to one unit of its reference product turns the technosphere
+    matrix into ``I - T``, with the inputs per unit of output in ``T``, and eigenvalues
+    well inside the unit circle. The preconditioner therefore divides by the *production
+    pivots* ``A[p(j), j]``, where ``p(j)`` is the row of the reference product of activity
+    column ``j``: ``(M r)[j] = r[p(j)] / A[p(j), j]``. This is Jacobi preconditioning after
+    the row permutation ``p``; nothing is reordered, each application is one gather and
+    one multiplication.
+
+    ``p`` comes from the reference exchange flags in the datapackages (bw_processing's
+    ``reference_array``). For databases where processes and their products share an id,
+    ``p(j) = j``, and this is the plain diagonal. For databases with separate product
+    nodes, product rows are numbered independently of activity columns, so the diagonal
+    holds arbitrary entries, often zeros, and only the pivot map gives a useful
+    preconditioner. Permuting rows doesn't change the solution, so a wrong pairing only
+    costs speed, never correctness.
+
+    ``jacobi_pairing`` chooses how ``p`` is found:
+
+    * ``"auto"`` (default): from the reference exchange flags, if they pair every column
+      with exactly one row, and every row with exactly one column. Otherwise, e.g. for
+      datapackages without flags, the diagonal is used; if flags exist but can't be used,
+      the reason is logged at INFO level.
+    * ``"reference"``: from the flags, raising
+      :class:`~bw2calc.errors.InvalidReferenceFlags` if they can't be used.
+    * ``"diagonal"``: always the diagonal, ignoring the flags.
+
+    ``p`` depends only on the matrix structure, so it is found once after loading the data,
+    and kept during Monte Carlo; the pivot values are read from each new matrix. If any
+    pivot is zero or not finite, the iterative stage runs without a preconditioner.
+    ``preconditioner_source`` tells which preconditioner the last iterative stage used:
+    ``"production_pivots"``, ``"diagonal"``, or ``None``.
+
+    Monte Carlo on BAFU 2026 v1 (11,947 x 11,947, 114k nonzeros), demand 1 kWh
+    ``Electricity, low voltage, at grid`` (CH), 30 iterations, Apple M1 Max, no
+    scikit-umfpack. "Separate products" gives the product rows ids which sort
+    independently of the process ids, as separate ``product`` nodes do; this leaves
+    11,939 zeros on the diagonal:
+
+    =================  ==================  ==============  ==========  ===================
+    Product ids        Preconditioner      ms / iteration  Iterations  Stage
+    =================  ==================  ==============  ==========  ===================
+    Shared             -- (``LCA``)        200             --          --
+    Shared             Diagonal            43              20          iterative
+    Shared             Production pivots   42              20          iterative
+    Separate products  -- (``LCA``)        183             --          --
+    Separate products  None (zero diag.)   122             1000        fallback_iterative
+    Separate products  Production pivots   44              20          iterative
+    =================  ==================  ==============  ==========  ===================
+
+    With the diagonal, the zeros left the iterative stage without a preconditioner, so it
+    ran to ``maxiter`` and the fallback stage solved every sample. Supply arrays were
+    within 2e-8 of ``LCA`` in all cases.
+
     Warm starts
     -----------
 
@@ -224,9 +283,13 @@ class IterativeLCA(LCA):
     :param retry_after: Number of solves a failing stage is skipped for before it is tried
         again. ``None`` skips it until new matrices are loaded.
     :type retry_after: int or None
+    :param jacobi_pairing: How the Jacobi preconditioner pairs activity columns with
+        product rows: ``"auto"``, ``"reference"``, or ``"diagonal"``; see above.
+    :type jacobi_pairing: str
     """
 
     STAGES = ("iterative", "fallback_iterative")
+    JACOBI_PAIRINGS = ("auto", "reference", "diagonal")
     MIN_AUTO_TIME_LIMIT = 0.1
 
     def __init__(
@@ -245,8 +308,13 @@ class IterativeLCA(LCA):
         fallback_maxiter: Optional[int] = 100,
         max_consecutive_failures: Optional[int] = 3,
         retry_after: Optional[int] = 20,
+        jacobi_pairing: str = "auto",
         **kwargs,
     ):
+        if jacobi_pairing not in self.JACOBI_PAIRINGS:
+            raise ValueError(
+                f"`jacobi_pairing` must be one of {self.JACOBI_PAIRINGS}, got {jacobi_pairing!r}"
+            )
         super().__init__(*args, **kwargs)
         self.iter_solver = iter_solver
         self.rtol = rtol
@@ -261,6 +329,11 @@ class IterativeLCA(LCA):
         self.fallback_maxiter = fallback_maxiter
         self.max_consecutive_failures = max_consecutive_failures
         self.retry_after = retry_after
+        self.jacobi_pairing = jacobi_pairing
+        # Preconditioner used by the last iterative stage: "production_pivots",
+        # "diagonal", or `None`.
+        self.preconditioner_source = None
+        self._clear_pivot_map()
         # Prepared CSR copy used by the iterative solver; don't replace
         # `technosphere_matrix`, as Monte Carlo iteration mutates the matrix held by
         # `technosphere_mm`. `None` means "not prepared yet".
@@ -286,7 +359,15 @@ class IterativeLCA(LCA):
         # New matrices imply stale solver-side caches.
         self._clear_matrix_caches()
         self._clear_reference()
+        # The pivot map depends on the structure, which only changes here.
+        self._clear_pivot_map()
         self.guess = None
+
+    def _clear_pivot_map(self) -> None:
+        # Row of the reference product of each column, or `None` for the diagonal.
+        self._pivot_rows = None
+        # "production_pivots" or "diagonal"; `None` means "not built yet".
+        self._pivot_pairing = None
 
     def _clear_matrix_caches(self) -> None:
         self._prepared_technosphere_matrix = None
@@ -337,28 +418,67 @@ class IterativeLCA(LCA):
         """Return a preconditioner ``M`` approximating ``A^-1``, or ``None`` for no
         preconditioning. The result is cached until the technosphere matrix changes.
 
-        The default is the Jacobi preconditioner ``D^-1``, the inverse of the
-        technosphere diagonal. Returns ``None`` if any diagonal entry is zero."""
+        The default is the Jacobi preconditioner, which divides by the production pivots
+        ``A[p(j), j]``, or by the diagonal; see ``jacobi_pairing``. Returns ``None`` if
+        any of them is zero or not finite."""
         self._prepare_matrix()
         matrix = self._prepared_technosphere_matrix
-        diagonal = matrix.diagonal()
-        # Cannot build Jacobi inverse if any diagonal entry is zero.
-        if np.any(diagonal == 0):
+        pivot_rows = self._production_pivot_rows()
+        if pivot_rows is None:
+            pivots = matrix.diagonal()
+        else:
+            pivots = _csr_entries(matrix, pivot_rows, np.arange(matrix.shape[1]))
+        # Monte Carlo samples can have a zero production amount.
+        if not np.all(np.isfinite(pivots)) or np.any(pivots == 0):
             return None
 
-        inverse_diagonal = 1.0 / diagonal
-        # LinearOperator form avoids materializing a dense diagonal inverse matrix.
-        return LinearOperator(
-            shape=matrix.shape,
-            matvec=lambda x: inverse_diagonal * x,
-            dtype=matrix.dtype,
-        )
+        inverse_pivots = 1.0 / pivots
+        self.preconditioner_source = self._pivot_pairing
+        # `A` maps activities to products, and `M` approximates `A^-1`, so it maps
+        # products to activities: activity `j` reads the residual of its product `p(j)`.
+        if pivot_rows is None:
+            matvec = lambda r: inverse_pivots * r  # noqa: E731
+        else:
+            matvec = lambda r: inverse_pivots * r[pivot_rows]  # noqa: E731
+        # LinearOperator form avoids materializing a dense inverse matrix.
+        return LinearOperator(shape=matrix.shape, matvec=matvec, dtype=matrix.dtype)
 
     def _get_preconditioner(self) -> Optional[LinearOperator]:
         # Reuse preconditioner when solving multiple demands on same matrix.
         if self._cached_preconditioner is None:
+            # Set by `build_preconditioner` when it returns a Jacobi preconditioner.
+            self.preconditioner_source = None
             self._cached_preconditioner = self.build_preconditioner()
         return self._cached_preconditioner
+
+    def _production_pivot_rows(self) -> Optional[np.ndarray]:
+        """Return the pivot map ``p`` as an array of row indices, or ``None`` for the
+        diagonal. Built once per ``load_lci_data``."""
+        if self._pivot_pairing is None:
+            self._pivot_rows, self._pivot_pairing = self._build_pivot_map()
+            logger.debug("Jacobi preconditioner pairing: %s", self._pivot_pairing)
+        return self._pivot_rows
+
+    def _build_pivot_map(self) -> tuple:
+        if self.jacobi_pairing == "diagonal":
+            return None, "diagonal"
+        rows, cols = reference_entries(self.technosphere_mm)
+        try:
+            if not len(rows):
+                raise InvalidReferenceFlags("No reference exchange flags")
+            pivot_rows = production_pivot_map(rows, cols, self.technosphere_matrix.shape)
+        except InvalidReferenceFlags as error:
+            if self.jacobi_pairing == "reference":
+                raise
+            # Datapackages from before bw2data wrote reference flags have none; that's
+            # the normal case for them, not worth an INFO message.
+            log = logger.info if len(rows) else logger.debug
+            log("%s; using the diagonal for the Jacobi preconditioner", error)
+            return None, "diagonal"
+        if np.array_equal(pivot_rows, np.arange(len(pivot_rows))):
+            # Same preconditioner as the diagonal, without the gather in each iteration.
+            pivot_rows = None
+        return pivot_rows, "production_pivots"
 
     def solver_kwargs(self) -> dict:
         """Additional keyword arguments for ``iter_solver``."""
@@ -643,6 +763,23 @@ def _tolerance_keyword(solver) -> str:
     if "rtol" not in parameters and "tol" in parameters:
         return "tol"
     return "rtol"
+
+
+def _csr_entries(matrix, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
+    """Return ``matrix[rows[k], cols[k]]`` for each ``k``, with zero for entries missing
+    from the structure.
+
+    ``matrix`` must be CSR in canonical form (sorted indices, no duplicates). Faster than
+    fancy indexing, as entries in row-major order have sorted keys
+    ``row * n_cols + col``."""
+    n_cols = matrix.shape[1]
+    entry_rows = np.repeat(np.arange(matrix.shape[0], dtype=np.int64), np.diff(matrix.indptr))
+    keys = entry_rows * n_cols + matrix.indices
+    targets = np.asarray(rows, dtype=np.int64) * n_cols + np.asarray(cols, dtype=np.int64)
+    if not len(keys):
+        return np.zeros(len(targets), dtype=matrix.dtype)
+    offsets = np.minimum(np.searchsorted(keys, targets), len(keys) - 1)
+    return np.where(keys[offsets] == targets, matrix.data[offsets], 0)
 
 
 def _csr_equal(a, b) -> bool:

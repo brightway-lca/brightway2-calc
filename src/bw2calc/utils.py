@@ -9,7 +9,7 @@ from fsspec import AbstractFileSystem
 from fsspec.implementations.zip import ZipFileSystem
 from scipy import sparse
 
-from bw2calc.errors import InconsistentGlobalIndex
+from bw2calc.errors import InconsistentGlobalIndex, InvalidReferenceFlags
 
 
 def get_seed(seed=None):
@@ -111,3 +111,59 @@ def relative_residual(matrix: Any, solution: Any, rhs: Any) -> np.ndarray:
     residual = np.linalg.norm(matrix @ solution - rhs, axis=0)
     scale = np.linalg.norm(rhs, axis=0)
     return np.divide(residual, scale, out=residual.copy(), where=scale > 0)
+
+
+def reference_entries(mapped_matrix) -> tuple:
+    """Return the matrix ``(rows, cols)`` of the entries flagged as reference (production)
+    exchanges in the ``reference_array`` resources of ``mapped_matrix``'s groups.
+
+    Uses ``row_masked`` and ``col_masked``, which are aligned with the flags, and not
+    ``row_matrix`` and ``col_matrix``, which aren't once duplicates are aggregated. The
+    same entry can appear more than once."""
+    rows, cols = [], []
+    for group in mapped_matrix.groups:
+        if group.empty or not group.has_reference:
+            continue
+        flags = np.asarray(group.reference_current, dtype=bool)
+        rows.append(group.row_masked[flags])
+        cols.append(group.col_masked[flags])
+    if not rows:
+        return np.array([], dtype=np.int64), np.array([], dtype=np.int64)
+    return np.concatenate(rows).astype(np.int64), np.concatenate(cols).astype(np.int64)
+
+
+def production_pivot_map(rows: np.ndarray, cols: np.ndarray, shape: tuple) -> np.ndarray:
+    """Return the pivot map ``p``, where ``p[j]`` is the row of the reference product of
+    column ``j``, from the reference exchange entries ``(rows, cols)``.
+
+    Raises ``InvalidReferenceFlags`` unless ``p`` is a permutation: every column has
+    reference entries in exactly one row, and no two columns share a row."""
+    n_rows, n_cols = shape
+    if n_rows != n_cols:
+        raise InvalidReferenceFlags(f"Technosphere matrix is not square: {shape}")
+    pairs = np.unique(np.stack([cols, rows]), axis=1)
+    rows_per_col = np.bincount(pairs[0], minlength=n_cols)
+    unique = rows_per_col[pairs[0]] == 1
+    pivot_rows = np.full(n_cols, -1, dtype=np.int64)
+    pivot_rows[pairs[0][unique]] = pairs[1][unique]
+
+    missing = int((rows_per_col == 0).sum())
+    conflicting = int((rows_per_col > 1).sum())
+    paired = pivot_rows[pivot_rows >= 0]
+    shared = len(paired) - len(np.unique(paired))
+    problems = [
+        message.format(count)
+        for count, message in [
+            (missing, "{:,} columns have no reference exchange"),
+            (conflicting, "{:,} columns have reference exchanges in several rows"),
+            (shared, "{:,} rows are the reference product of several columns"),
+        ]
+        if count
+    ]
+    if problems:
+        raise InvalidReferenceFlags(
+            "Reference exchange flags cover {:,} of {:,} columns: {}".format(
+                len(paired), n_cols, "; ".join(problems)
+            )
+        )
+    return pivot_rows

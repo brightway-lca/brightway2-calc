@@ -27,6 +27,8 @@ def test_jacobi_gmres_returns_no_preconditioner_for_zero_diagonal():
     jacobi.technosphere_matrix = sps.csc_matrix([[0.0, 1.0], [1.0, 2.0]])
     jacobi._prepared_technosphere_matrix = None
     jacobi._cached_preconditioner = None
+    jacobi.jacobi_pairing = "diagonal"
+    jacobi._clear_pivot_map()
 
     preconditioner = jacobi.build_preconditioner()
 
