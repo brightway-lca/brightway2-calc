@@ -209,7 +209,7 @@ class IterativeLCA(LCA):
     * ``"auto"`` (default): from the reference exchange flags, if they pair every column
       with exactly one row, and every row with exactly one column. Otherwise, e.g. for
       datapackages without flags, the diagonal is used. Missing flags give a warning to
-      update bw2data and reprocess; if flags exist but can't be used, the reason is
+      update bw2data; if flags exist but can't be used, the reason is
       logged at INFO level.
     * ``"reference"``: from the flags, raising
       :class:`~bw2calc.errors.InvalidReferenceFlags` if they can't be used.
@@ -508,8 +508,8 @@ class IterativeLCA(LCA):
                 warnings.warn(
                     "No reference exchange flags in the technosphere datapackages; using "
                     "the diagonal for the Jacobi preconditioner, which can make iterative "
-                    "solves much slower. Update bw2data to a version newer than 4.7 and "
-                    "reprocess the databases to get datapackages with `reference` arrays."
+                    "solves much slower. Update bw2data to a version newer than 4.7 to get "
+                    "datapackages with `reference` arrays."
                 )
             return None, "diagonal"
         if np.array_equal(pivot_rows, np.arange(len(pivot_rows))):
