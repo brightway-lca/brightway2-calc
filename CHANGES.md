@@ -1,5 +1,10 @@
 # `bw2calc` Changelog
 
+## Unreleased
+
+* [#177](https://github.com/brightway-lca/brightway2-calc/issues/177): `IterativeLCA`'s Jacobi preconditioner now divides by the production amounts `A[p(j), j]`, where `p(j)` is the row of the reference product of column `j`, taken from the reference exchange flags (bw_processing `reference_array`). Before, it divided by the diagonal, which for databases with separate product nodes holds arbitrary entries or zeros, so iterative solves silently fell back to the slower stages. On BAFU 2026 v1 with separate product ids, Monte Carlo went from 122 ms to 44 ms per iteration, the same as with shared ids. A new `jacobi_pairing` argument (`"auto"`, `"reference"`, or `"diagonal"`) chooses the pairing; `"auto"` falls back to the diagonal, as before, if the flags are missing or don't pair every column with a unique row; missing flags give a warning to update bw2data. `preconditioner_source` tells which one was used. Requires bw_processing >= 1.6 and matrix_utils >= 0.9
+* Add `bw2calc.utils.reference_entries` and `bw2calc.utils.production_pivot_map`, and the `InvalidReferenceFlags` error
+
 ## 3.0.0 (2026-10-14)
 
 * [#158](https://github.com/brightway-lca/brightway2-calc/issues/158): Each LCA object now uses its own pypardiso solver instead of the single module-level solver shared by the whole process. Starting a Monte Carlo iteration, or any other reset of an object's solver state, no longer discards the factorization of every other LCA object, and objects which never solve directly, like `JacobiGMRESLCA`, no longer reset anything. **Behavior change**: each object keeps its own factorization in memory until it is garbage collected or reset, so holding many solved LCA objects at once uses more memory. To reuse a factorization, reuse the same LCA object

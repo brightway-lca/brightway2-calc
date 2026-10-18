@@ -104,3 +104,10 @@ class InaccurateSolution(BW2CalcError):
     """The solution of a linear system doesn't satisfy that system within the given tolerance"""
 
     pass
+
+
+class InvalidReferenceFlags(BW2CalcError):
+    """The reference exchange flags don't pair each activity column with its own product
+    row, i.e. they don't give a full permutation of the technosphere matrix rows"""
+
+    pass

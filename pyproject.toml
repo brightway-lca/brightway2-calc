@@ -24,9 +24,9 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
         "bw_graph_tools >=0.8",
-        "bw_processing >=1.0",
+        "bw_processing >=1.6",
         "fsspec",
-        "matrix_utils >=0.6",
+        "matrix_utils >=0.9",
         "numpy <3",
         "pandas",
         "pydantic",

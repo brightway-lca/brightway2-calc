@@ -7,6 +7,8 @@ import pytest
 from scipy.sparse.linalg import bicgstab, cgs
 
 from bw2calc import LCA, PYPARDISO, IterativeLCA, JacobiGMRESLCA
+from bw2calc.errors import InvalidReferenceFlags
+from bw2calc.utils import production_pivot_map, reference_entries
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
 basic = [fixture_dir / "basic_fixture.zip"]
@@ -621,3 +623,369 @@ def test_iterative_passes_tol_to_solvers_without_rtol():
 
     assert calls == [1e-9]
     assert lca.solver_stats == {"iterative": 1}
+
+
+def pivot_datapackage(matrix, flags=None, samples=None, sequential=True):
+    """Technosphere ``matrix`` with product rows ``1..n`` and activity columns
+    ``1001..1000+n``, i.e. separate product and process ids, as given; no flips.
+
+    ``flags`` is a boolean matrix of the reference exchanges, or ``None`` for no
+    ``reference_array``. ``samples`` is a list of matrices with the same structure, used
+    as data array columns."""
+    matrix = np.asarray(matrix, dtype=float)
+    n = matrix.shape[0]
+    structure = matrix != 0
+    if samples is not None:
+        for sample in samples:
+            structure |= np.asarray(sample) != 0
+    if flags is not None:
+        structure |= flags
+    rows, cols = np.nonzero(structure)
+    indices = np.array(list(zip(rows + 1, cols + 1001)), dtype=bwp.INDICES_DTYPE)
+    reference = None if flags is None else np.asarray(flags)[rows, cols]
+
+    dp = bwp.create_datapackage(sequential=sequential)
+    kwargs = dict(
+        matrix="technosphere_matrix",
+        indices_array=indices,
+        flip_array=np.zeros(len(rows), dtype=bool),
+        reference_array=reference,
+        name="pivot-technosphere",
+    )
+    if samples is None:
+        dp.add_persistent_vector(data_array=matrix[rows, cols], **kwargs)
+    else:
+        data = np.stack([np.asarray(s, dtype=float)[rows, cols] for s in samples], axis=1)
+        dp.add_persistent_array(data_array=data, **kwargs)
+    dp.add_persistent_vector(
+        matrix="biosphere_matrix",
+        indices_array=np.array([(1, 1001 + j) for j in range(n)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.arange(1.0, n + 1),
+        name="pivot-biosphere",
+    )
+    return dp
+
+
+def permuted_system(n=40, seed=0, negative=True):
+    """Return ``(matrix, flags)`` for a technosphere ``(I - T) D`` with dense, small inputs
+    ``T`` and production amounts ``D``, with its rows shuffled.
+
+    As every entry is nonzero, the diagonal holds inputs, not production amounts."""
+    rng = np.random.default_rng(seed)
+    inputs = rng.random((n, n)) * 0.9 / n
+    np.fill_diagonal(inputs, 0)
+    production = rng.uniform(1, 5, n)
+    if negative:
+        # Waste treatment, with a negative reference amount.
+        production[0] = -production[0]
+    matrix = (np.eye(n) - inputs) * production
+    order = rng.permutation(n)
+    while np.any(order == np.arange(n)):
+        order = rng.permutation(n)
+    flags = np.eye(n, dtype=bool)
+    return matrix[order], flags[order]
+
+
+def counting_solver(counts):
+    def solver(matrix, demand, callback=None, **kwargs):
+        counts.append(0)
+
+        def count(*args):
+            counts[-1] += 1
+            if callback is not None:
+                callback(*args)
+
+        return bicgstab(matrix, demand, callback=count, **kwargs)
+
+    return solver
+
+
+def swapped_system():
+    """Products sort in the opposite order to their processes, so the diagonal is all
+    zeros. The explicit zero on the diagonal keeps `[1, 1]` in the structure."""
+    matrix = np.array([[0.0, 1.0], [2.0, -0.5]])
+    flags = np.array([[False, True], [True, False]])
+    return matrix, flags
+
+
+def test_iterative_production_pivots_solve_zero_diagonal():
+    matrix, flags = swapped_system()
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
+    )
+    lca.lci()
+
+    assert lca.solver_stats == {"iterative": 1}
+    assert lca.preconditioner_source == "production_pivots"
+    assert np.allclose(lca.supply_array, np.linalg.solve(matrix, [1, 0]))
+    x = np.array([3.0, 4.0])
+    # Activity `j` reads the residual of its product row `p(j)`.
+    assert np.allclose(lca._get_preconditioner().matvec(x), [4.0 / 2.0, 3.0 / 1.0])
+
+
+def test_iterative_without_flags_keeps_diagonal_behaviour():
+    matrix, _ = swapped_system()
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix)], direct_first_solve=False)
+    lca.lci()
+
+    assert lca._get_preconditioner() is None
+    assert lca.preconditioner_source is None
+    assert lca._pivot_pairing == "diagonal"
+    assert np.allclose(lca.supply_array, np.linalg.solve(matrix, [1, 0]))
+
+
+def test_iterative_caches_missing_preconditioner(monkeypatch):
+    matrix, _ = swapped_system()
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix)], direct_first_solve=False)
+    lca.lci()
+    assert lca._get_preconditioner() is None
+
+    # A zero pivot leaves this matrix without a preconditioner; don't look again for
+    # every demand on it.
+    monkeypatch.setattr(lca, "build_preconditioner", lambda: pytest.fail("rebuilt"))
+    assert lca._get_preconditioner() is None
+    lca.lci_calculation()
+    assert np.allclose(lca.supply_array, np.linalg.solve(matrix, [1, 0]))
+
+
+def test_iterative_preconditioner_source_set_by_the_iterative_stage():
+    matrix, flags = swapped_system()
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix, flags)])
+    # The first solve is direct: no iterative stage has run.
+    lca.lci()
+    assert lca.preconditioner_source is None
+
+    # Inspecting the preconditioner isn't using it.
+    assert lca.build_preconditioner() is not None
+    assert lca.preconditioner_source is None
+
+
+def test_iterative_replaced_matrix_of_another_shape_uses_diagonal():
+    import scipy.sparse as sps
+
+    matrix, flags = permuted_system(n=6)
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
+    )
+    lca.lci()
+    assert lca.preconditioner_source == "production_pivots"
+
+    # The flags in `technosphere_mm` don't fit the new matrix, so `auto` uses the diagonal.
+    smaller = np.array([[2.0, -0.5], [0.0, 4.0]])
+    lca.technosphere_matrix = sps.csr_matrix(smaller)
+    demand = np.array([1.0, 0.0])
+    solution = lca.solve_linear_system(demand)
+
+    assert np.allclose(solution, np.linalg.solve(smaller, demand))
+    assert lca.preconditioner_source == "diagonal"
+    assert lca._pivot_shape == (2, 2)
+
+
+def test_iterative_production_pivots_need_fewer_iterations_than_wrong_diagonal():
+    matrix, flags = permuted_system()
+    counts = {}
+    for pairing in ("auto", "diagonal"):
+        counts[pairing] = []
+        lca = IterativeLCA(
+            {1: 1},
+            data_objs=[pivot_datapackage(matrix, flags)],
+            iter_solver=counting_solver(counts[pairing]),
+            direct_first_solve=False,
+            jacobi_pairing=pairing,
+        )
+        lca.lci()
+        assert np.allclose(lca.supply_array, np.linalg.solve(matrix, lca.demand_array))
+
+    assert lca.preconditioner_source == "diagonal"
+    assert len(counts["auto"]) == 1
+    assert counts["auto"][0] < counts["diagonal"][0]
+
+
+def test_iterative_production_pivots_on_diagonal_match_plain_diagonal():
+    matrix, flags = permuted_system(negative=False)
+    order = np.argmax(flags, axis=0)
+    # Undo the row shuffle: processes and their products sort the same way.
+    matrix, flags = matrix[order], flags[order]
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
+    )
+    lca.lci()
+
+    assert lca.preconditioner_source == "production_pivots"
+    # Identity pivot map: same operator as the diagonal, without the gather.
+    assert lca._pivot_rows is None
+    x = np.arange(1.0, len(matrix) + 1)
+    assert np.allclose(lca._get_preconditioner().matvec(x), x / np.diag(matrix))
+
+
+def broken_flags(kind):
+    matrix, flags = permuted_system()
+    flags = flags.copy()
+    if kind == "missing":
+        flags[:, 3] = False
+    elif kind == "conflicting":
+        # A second reference exchange, in another row, for column 3.
+        flags[np.argmin(flags[:, 3]), 3] = True
+    else:
+        # Column 4 claims the reference product of column 3.
+        flags[:, 4] = flags[:, 3]
+    return matrix, flags
+
+
+@pytest.mark.parametrize("kind", ["missing", "conflicting", "shared"])
+def test_iterative_unusable_flags_fall_back_to_diagonal(kind, caplog):
+    caplog.set_level("INFO", logger="bw2calc")
+    matrix, flags = broken_flags(kind)
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
+    )
+    lca.lci()
+
+    assert lca._pivot_pairing == "diagonal"
+    assert np.allclose(lca.supply_array, np.linalg.solve(matrix, lca.demand_array))
+    messages = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert any("using the diagonal" in m and "of 40 columns" in m for m in messages)
+
+
+def test_iterative_no_flags_warns_to_update_bw2data():
+    matrix = permuted_system()[0]
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, None)], direct_first_solve=False
+    )
+    with pytest.warns(UserWarning, match="Update bw2data"):
+        lca.lci()
+
+    assert lca._pivot_pairing == "diagonal"
+
+
+@pytest.mark.parametrize("kind", ["missing", "conflicting", "shared", "none"])
+def test_iterative_reference_pairing_raises_for_unusable_flags(kind):
+    if kind == "none":
+        matrix, flags = permuted_system()[0], None
+    else:
+        matrix, flags = broken_flags(kind)
+    lca = IterativeLCA(
+        {1: 1},
+        data_objs=[pivot_datapackage(matrix, flags)],
+        direct_first_solve=False,
+        jacobi_pairing="reference",
+    )
+    with pytest.raises(InvalidReferenceFlags):
+        lca.lci()
+
+
+def test_iterative_reference_pairing_raises_before_the_first_solve():
+    matrix = permuted_system()[0]
+    # Default `direct_first_solve=True`: the first solve wouldn't build the pivot map.
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix)], jacobi_pairing="reference")
+    with pytest.raises(InvalidReferenceFlags, match="No reference exchange flags"):
+        lca.load_lci_data()
+
+
+def test_iterative_diagonal_pairing_ignores_flags():
+    matrix, flags = swapped_system()
+    lca = IterativeLCA(
+        {1: 1},
+        data_objs=[pivot_datapackage(matrix, flags)],
+        direct_first_solve=False,
+        jacobi_pairing="diagonal",
+    )
+    lca.lci()
+
+    assert lca._pivot_pairing == "diagonal"
+    assert lca.solver_stats == {"direct": 1}
+
+
+def test_iterative_invalid_jacobi_pairing():
+    with pytest.raises(ValueError, match="jacobi_pairing"):
+        IterativeLCA({1: 1}, data_objs=basic, jacobi_pairing="matching")
+
+
+def test_iterative_production_pivots_monte_carlo(monkeypatch):
+    import bw2calc.iterative_lca as module
+
+    builds = []
+    original = module.production_pivot_map
+    monkeypatch.setattr(
+        module, "production_pivot_map", lambda *args: builds.append(1) or original(*args)
+    )
+
+    matrix, flags = permuted_system()
+    pivot = (np.argmax(flags[:, 5]), 5)
+    samples = [matrix * (1 + 0.1 * k) for k in range(4)]
+    # A sampled zero production amount.
+    samples[2] = samples[2].copy()
+    samples[2][pivot] = 0
+    lca = IterativeLCA(
+        {1: 1},
+        data_objs=[pivot_datapackage(matrix, flags, samples=samples)],
+        use_arrays=True,
+        direct_first_solve=False,
+    )
+    lca.lci()
+
+    for k in range(4):
+        if k:
+            next(lca)
+        expected = np.linalg.solve(samples[k], lca.demand_array)
+        assert np.allclose(lca.supply_array, expected)
+        preconditioner = lca._get_preconditioner()
+        if k == 2:
+            assert preconditioner is None
+            assert lca.preconditioner_source is None
+        else:
+            # Pivots come from the current sample.
+            x = np.zeros(len(matrix))
+            x[pivot[0]] = 1
+            assert np.isclose(preconditioner.matvec(x)[5], 1 / samples[k][pivot])
+            assert lca.preconditioner_source == "production_pivots"
+
+    assert builds == [1]
+    assert lca.solver_stats["iterative"] == 3
+
+
+def test_reference_entries_align_with_masks_and_duplicates():
+    dp = bwp.create_datapackage()
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        # Duplicate (1, 1001) entries are summed, so `row_matrix` has fewer entries than
+        # the flags; only the second one is the reference exchange.
+        indices_array=np.array(
+            [(1, 1001), (2, 1001), (1, 1001), (2, 1002)], dtype=bwp.INDICES_DTYPE
+        ),
+        data_array=np.array([0.4, -0.5, 0.6, 1.0]),
+        reference_array=np.array([False, False, True, True]),
+        name="first",
+    )
+    dp.add_persistent_vector(
+        matrix="technosphere_matrix",
+        indices_array=np.array([(1, 1002), (2, 1002)], dtype=bwp.INDICES_DTYPE),
+        data_array=np.array([-0.1, 2.0]),
+        reference_array=np.array([False, True]),
+        name="second",
+    )
+    lca = LCA({1: 1}, data_objs=[dp])
+    lca.load_lci_data()
+
+    rows, cols = reference_entries(lca.technosphere_mm)
+    pairs = sorted(zip(rows.tolist(), cols.tolist()))
+    row, col = lca.dicts.product, lca.dicts.activity
+    assert pairs == sorted([(row[1], col[1001]), (row[2], col[1002]), (row[2], col[1002])])
+    pivot_rows = production_pivot_map(rows, cols, lca.technosphere_matrix.shape)
+    assert pivot_rows.tolist() == [row[1], row[2]]
+
+
+def test_production_pivot_map_messages():
+    rows, cols = np.array([0, 1, 1]), np.array([0, 1, 2])
+    with pytest.raises(InvalidReferenceFlags, match="1 columns have no reference exchange"):
+        production_pivot_map(rows[:2], cols[:2], (3, 3))
+    with pytest.raises(InvalidReferenceFlags, match="1 rows are the reference product"):
+        production_pivot_map(rows, cols, (3, 3))
+    # One shared row, however many columns claim it.
+    with pytest.raises(InvalidReferenceFlags, match="1 rows are the reference product"):
+        production_pivot_map(np.array([0, 0, 0]), cols, (3, 3))
+    with pytest.raises(InvalidReferenceFlags, match="not square"):
+        production_pivot_map(rows, cols, (2, 3))
+    with pytest.raises(InvalidReferenceFlags, match="don't fit"):
+        production_pivot_map(np.array([0, 1, 3]), cols, (3, 3))
+    assert production_pivot_map(np.array([2, 0, 1]), cols, (3, 3)).tolist() == [2, 0, 1]

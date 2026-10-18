@@ -9,8 +9,10 @@ from bw2calc.iterative_lca import IterativeLCA
 class JacobiGMRESLCA(IterativeLCA):
     """Solve ``Ax=b`` with GMRES using a Jacobi preconditioner.
 
-    The preconditioner is the inverse of the technosphere diagonal, i.e. ``D^-1``.
-    Unlike :class:`bw2calc.iterative_lca.IterativeLCA`, the first solve is also iterative.
+    The Jacobi preconditioner divides by the production pivots ``A[p(j), j]`` from the
+    reference exchange flags, or by the diagonal; see ``jacobi_pairing`` and
+    ``preconditioner_source`` in :class:`bw2calc.iterative_lca.IterativeLCA`. Unlike
+    ``IterativeLCA``, the first solve is also iterative.
 
     .. warning::
 

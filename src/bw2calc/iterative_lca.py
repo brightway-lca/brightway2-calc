@@ -1,6 +1,7 @@
 import inspect
 import logging
 import time
+import warnings
 import weakref
 from collections import Counter
 from typing import Callable, Optional, Union
@@ -11,13 +12,18 @@ from scipy.sparse.linalg import LinearOperator, bicgstab
 from threadpoolctl import ThreadpoolController
 
 from bw2calc import PYPARDISO, factorized
+from bw2calc.errors import InvalidReferenceFlags
 from bw2calc.lca import LCA
 from bw2calc.lca_base import _release_pardiso_solver
+from bw2calc.utils import production_pivot_map, reference_entries
 
 if PYPARDISO:
     from pypardiso import PyPardisoSolver
 
 logger = logging.getLogger("bw2calc")
+
+# `_cached_preconditioner` before `build_preconditioner` ran; `None` is a built result.
+_UNBUILT = object()
 
 
 class IterativeLCA(LCA):
@@ -29,7 +35,8 @@ class IterativeLCA(LCA):
     returning ``(solution, info)``. ``callback`` is called with any arguments in each
     iteration, and is used for the time limit. The default is
     `BiCGSTAB <https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method>`_
-    with a Jacobi preconditioner, i.e. the inverse of the technosphere diagonal ``D^-1``.
+    with a Jacobi preconditioner, which divides by the production amounts; see
+    `Jacobi preconditioner`_ below.
 
     Benchmarks and choice of default solver
     ---------------------------------------
@@ -171,6 +178,92 @@ class IterativeLCA(LCA):
 
     Every rejected solution is logged as a debug message on the ``bw2calc`` logger.
 
+    Jacobi preconditioner
+    ---------------------
+
+    Scaling each activity to one unit of its reference product turns the technosphere
+    matrix into ``I - T``, with the inputs per unit of output in ``T``, and eigenvalues
+    well inside the unit circle. The preconditioner therefore divides by the *production
+    pivots* ``A[p(j), j]``, where ``p(j)`` is the row of the reference product of activity
+    column ``j``: ``(M r)[j] = r[p(j)] / A[p(j), j]``. This is Jacobi preconditioning after
+    the row permutation ``p``; nothing is reordered, each application is one gather and
+    one multiplication.
+
+    ``p`` comes from the reference exchange flags in the datapackages (bw_processing's
+    ``reference_array``). For databases where processes and their products share an id,
+    ``p(j) = j``, and this is the plain diagonal. For databases with separate product
+    nodes, product rows are numbered independently of activity columns, so the diagonal
+    holds arbitrary entries, often zeros, and only the pivot map gives a useful
+    preconditioner. Permuting rows doesn't change the solution, so a wrong pairing only
+    costs speed, never correctness.
+
+    The preconditioner doesn't rescale anything. The solver uses ``M`` only to choose its
+    search directions (in SciPy's BiCGSTAB: ``phat = M @ p``, then ``x += alpha * phat``),
+    so the iterate ``x`` is always the supply in the original units, and every product
+    with ``A`` uses the unscaled technosphere matrix. ``technosphere_matrix`` and
+    ``biosphere_matrix`` are never changed, and ``supply_array``, the inventory ``B @ x``,
+    and the impact assessment are calculated as for :class:`~bw2calc.lca.LCA`. A change of
+    variables ``x = D^-1 y`` would need ``B D^-1`` (or converting ``y`` back to ``x``), but
+    none is made. The forward error check also uses the original ``A``, so a poor ``M``
+    can make a stage slower or fail, but can't make it accept a wrong solution.
+
+    ``jacobi_pairing`` chooses how ``p`` is found:
+
+    * ``"auto"`` (default): from the reference exchange flags, if they pair every column
+      with exactly one row, and every row with exactly one column. Otherwise, e.g. for
+      datapackages without flags, the diagonal is used. Missing flags give a warning to
+      update bw2data; if flags exist but can't be used, the reason is
+      logged at INFO level.
+    * ``"reference"``: from the flags, raising
+      :class:`~bw2calc.errors.InvalidReferenceFlags` if they can't be used.
+    * ``"diagonal"``: always the diagonal, ignoring the flags.
+
+    In Monte Carlo, ``p`` and the pivot values are handled separately:
+
+    #. ``load_lci_data()`` builds the matrices and clears ``p``.
+    #. The first solve is direct, and keeps the reference factorization. No preconditioner
+       is built.
+    #. ``next()`` draws new values into the same matrix structure. The prepared matrix
+       copy and the cached preconditioner are discarded; ``p`` is kept, as Monte Carlo
+       changes values, not structure. ``p`` is only rebuilt if ``technosphere_matrix`` is
+       replaced by a matrix of another shape, which the flags then usually don't fit, so
+       the diagonal is used.
+    #. The iterative stage makes a prepared copy of the sampled matrix, builds ``p`` from
+       the flags if this is the first time, and reads this sample's production amounts
+       ``A[p(j), j]``. Production amounts can be uncertain, so they are read from every
+       sample. BiCGSTAB then solves the sampled system with this ``M``, starting from the
+       previous solution, and the result goes through the forward error check and, if
+       needed, the fallback stages as usual.
+    #. Further demands on the same sample reuse the cached ``M``.
+
+    If a pivot is zero or not finite, e.g. a sampled production amount of zero, which is
+    removed from the prepared copy, that sample's iterative stage runs without a
+    preconditioner. ``preconditioner_source`` tells which preconditioner the last run of
+    the iterative stage used: ``"production_pivots"``, ``"diagonal"``, or ``None``. It is
+    set when the stage runs, so it keeps its value while the stage is skipped, and
+    calling ``build_preconditioner()`` doesn't change it.
+
+    Monte Carlo on BAFU 2026 v1 (11,947 x 11,947, 114k nonzeros), demand 1 kWh
+    ``Electricity, low voltage, at grid`` (CH), 30 iterations, Apple M1 Max, no
+    scikit-umfpack. "Separate products" gives the product rows ids which sort
+    independently of the process ids, as separate ``product`` nodes do; this leaves
+    11,939 zeros on the diagonal:
+
+    =================  ==================  ==============  ==========  ===================
+    Product ids        Preconditioner      ms / iteration  Iterations  Stage
+    =================  ==================  ==============  ==========  ===================
+    Shared             -- (``LCA``)        200             --          --
+    Shared             Diagonal            43              20          iterative
+    Shared             Production pivots   42              20          iterative
+    Separate products  -- (``LCA``)        183             --          --
+    Separate products  None (zero diag.)   122             1000        fallback_iterative
+    Separate products  Production pivots   44              20          iterative
+    =================  ==================  ==============  ==========  ===================
+
+    With the diagonal, the zeros left the iterative stage without a preconditioner, so it
+    ran to ``maxiter`` and the fallback stage solved every sample. Supply arrays were
+    within 2e-8 of ``LCA`` in all cases.
+
     Warm starts
     -----------
 
@@ -224,9 +317,13 @@ class IterativeLCA(LCA):
     :param retry_after: Number of solves a failing stage is skipped for before it is tried
         again. ``None`` skips it until new matrices are loaded.
     :type retry_after: int or None
+    :param jacobi_pairing: How the Jacobi preconditioner pairs activity columns with
+        product rows: ``"auto"``, ``"reference"``, or ``"diagonal"``; see above.
+    :type jacobi_pairing: str
     """
 
     STAGES = ("iterative", "fallback_iterative")
+    JACOBI_PAIRINGS = ("auto", "reference", "diagonal")
     MIN_AUTO_TIME_LIMIT = 0.1
 
     def __init__(
@@ -245,8 +342,13 @@ class IterativeLCA(LCA):
         fallback_maxiter: Optional[int] = 100,
         max_consecutive_failures: Optional[int] = 3,
         retry_after: Optional[int] = 20,
+        jacobi_pairing: str = "auto",
         **kwargs,
     ):
+        if jacobi_pairing not in self.JACOBI_PAIRINGS:
+            raise ValueError(
+                f"`jacobi_pairing` must be one of {self.JACOBI_PAIRINGS}, got {jacobi_pairing!r}"
+            )
         super().__init__(*args, **kwargs)
         self.iter_solver = iter_solver
         self.rtol = rtol
@@ -261,14 +363,20 @@ class IterativeLCA(LCA):
         self.fallback_maxiter = fallback_maxiter
         self.max_consecutive_failures = max_consecutive_failures
         self.retry_after = retry_after
+        self.jacobi_pairing = jacobi_pairing
+        # Preconditioner used by the last run of the iterative stage: "production_pivots",
+        # "diagonal", or `None`. Set in `_run_stage`.
+        self.preconditioner_source = None
+        self._clear_pivot_map()
         # Prepared CSR copy used by the iterative solver; don't replace
         # `technosphere_matrix`, as Monte Carlo iteration mutates the matrix held by
         # `technosphere_mm`. `None` means "not prepared yet".
         self._prepared_technosphere_matrix = None
         # Copy of `technosphere_matrix` the prepared matrix was built from.
         self._prepared_source = None
-        # Cache the preconditioner to avoid rebuilding between solves.
-        self._cached_preconditioner: Optional[LinearOperator] = None
+        # Cache the preconditioner to avoid rebuilding between solves. `None` is cached
+        # too: a sample with a zero pivot has no preconditioner for any of its demands.
+        self._cached_preconditioner = _UNBUILT
         # Last solution vector, used as warm start when `use_guess=True`.
         self.guess = None
         # Number of solves done by each stage: "reference", "iterative",
@@ -286,12 +394,27 @@ class IterativeLCA(LCA):
         # New matrices imply stale solver-side caches.
         self._clear_matrix_caches()
         self._clear_reference()
+        # The pivot map depends on the reference flags, which only change here, and on
+        # the matrix shape, which `_production_pivot_rows` checks.
+        self._clear_pivot_map()
+        if self.jacobi_pairing == "reference":
+            # Fail now, before any result. The iterative stage, which builds the map
+            # otherwise, runs only after the first solve with `direct_first_solve`.
+            self._production_pivot_rows(self.technosphere_matrix.shape)
         self.guess = None
+
+    def _clear_pivot_map(self) -> None:
+        # Row of the reference product of each column, or `None` for the diagonal.
+        self._pivot_rows = None
+        # "production_pivots" or "diagonal"; `None` means "not built yet".
+        self._pivot_pairing = None
+        # Shape of the matrix the pivot map was built for.
+        self._pivot_shape = None
 
     def _clear_matrix_caches(self) -> None:
         self._prepared_technosphere_matrix = None
         self._prepared_source = None
-        self._cached_preconditioner = None
+        self._cached_preconditioner = _UNBUILT
 
     def _clear_reference(self) -> None:
         finalizer = getattr(self, "_reference_finalizer", None)
@@ -331,34 +454,84 @@ class IterativeLCA(LCA):
         # Keep an unmodified copy to detect changes; in-place edits would change `source`.
         self._prepared_source = source.copy()
         self._prepared_technosphere_matrix = matrix
-        self._cached_preconditioner = None
+        self._cached_preconditioner = _UNBUILT
 
     def build_preconditioner(self) -> Optional[LinearOperator]:
         """Return a preconditioner ``M`` approximating ``A^-1``, or ``None`` for no
         preconditioning. The result is cached until the technosphere matrix changes.
 
-        The default is the Jacobi preconditioner ``D^-1``, the inverse of the
-        technosphere diagonal. Returns ``None`` if any diagonal entry is zero."""
+        The default is the Jacobi preconditioner, which divides by the production pivots
+        ``A[p(j), j]``, or by the diagonal; see ``jacobi_pairing``. Returns ``None`` if
+        any of them is zero or not finite."""
         self._prepare_matrix()
         matrix = self._prepared_technosphere_matrix
-        diagonal = matrix.diagonal()
-        # Cannot build Jacobi inverse if any diagonal entry is zero.
-        if np.any(diagonal == 0):
+        pivot_rows = self._production_pivot_rows(matrix.shape)
+        if pivot_rows is None:
+            pivots = matrix.diagonal()
+        else:
+            # Entries missing from the structure are returned as zero. Returns a 1 x n
+            # `np.matrix` for `csr_matrix`, hence the `ravel`.
+            pivots = np.asarray(matrix[pivot_rows, np.arange(matrix.shape[1])]).ravel()
+        # Monte Carlo samples can have a zero production amount.
+        if not np.all(np.isfinite(pivots)) or np.any(pivots == 0):
             return None
 
-        inverse_diagonal = 1.0 / diagonal
-        # LinearOperator form avoids materializing a dense diagonal inverse matrix.
-        return LinearOperator(
-            shape=matrix.shape,
-            matvec=lambda x: inverse_diagonal * x,
-            dtype=matrix.dtype,
-        )
+        inverse_pivots = 1.0 / pivots
+        # `A` maps activities to products, and `M` approximates `A^-1`, so it maps
+        # products to activities: activity `j` reads the residual of its product `p(j)`.
+        if pivot_rows is None:
+            matvec = lambda r: inverse_pivots * r  # noqa: E731
+        else:
+            matvec = lambda r: inverse_pivots * r[pivot_rows]  # noqa: E731
+        # `scipy.sparse.linalg.LinearOperator` wraps `matvec`, so the solver only ever
+        # calls `M @ r` and `M` is never stored as a matrix. `M` is diagonal (after
+        # permuting rows), so `matvec` needs only the 1-D array `inverse_pivots`; building
+        # `M` as a matrix would need a sparse copy with its own index arrays, or, for a
+        # dense one, `n^2` entries.
+        return LinearOperator(shape=matrix.shape, matvec=matvec, dtype=matrix.dtype)
 
     def _get_preconditioner(self) -> Optional[LinearOperator]:
         # Reuse preconditioner when solving multiple demands on same matrix.
-        if self._cached_preconditioner is None:
+        if self._cached_preconditioner is _UNBUILT:
             self._cached_preconditioner = self.build_preconditioner()
         return self._cached_preconditioner
+
+    def _production_pivot_rows(self, shape: tuple) -> Optional[np.ndarray]:
+        """Return the pivot map ``p`` for a matrix of ``shape`` as an array of row indices,
+        or ``None`` for the diagonal. Built once per ``load_lci_data``, and again if
+        ``technosphere_matrix`` was replaced by a matrix of another shape."""
+        if self._pivot_pairing is None or self._pivot_shape != shape:
+            self._pivot_rows, self._pivot_pairing = self._build_pivot_map(shape)
+            self._pivot_shape = shape
+            logger.debug("Jacobi preconditioner pairing: %s", self._pivot_pairing)
+        return self._pivot_rows
+
+    def _build_pivot_map(self, shape: tuple) -> tuple:
+        if self.jacobi_pairing == "diagonal":
+            return None, "diagonal"
+        rows, cols = reference_entries(self.technosphere_mm)
+        try:
+            if not len(rows):
+                raise InvalidReferenceFlags("No reference exchange flags")
+            pivot_rows = production_pivot_map(rows, cols, shape)
+        except InvalidReferenceFlags as error:
+            if self.jacobi_pairing == "reference":
+                raise
+            if len(rows):
+                logger.info("%s; using the diagonal for the Jacobi preconditioner", error)
+            else:
+                # Datapackages from before bw2data wrote reference flags have none.
+                warnings.warn(
+                    "No reference exchange flags in the technosphere datapackages; using "
+                    "the diagonal for the Jacobi preconditioner, which can make iterative "
+                    "solves much slower. Update bw2data to a version newer than 4.7 to get "
+                    "datapackages with `reference` arrays."
+                )
+            return None, "diagonal"
+        if np.array_equal(pivot_rows, np.arange(len(pivot_rows))):
+            # Same preconditioner as the diagonal, without the gather in each iteration.
+            pivot_rows = None
+        return pivot_rows, "production_pivots"
 
     def solver_kwargs(self) -> dict:
         """Additional keyword arguments for ``iter_solver``."""
@@ -461,9 +634,9 @@ class IterativeLCA(LCA):
         """Run one iterative stage, and return its solution, or ``None`` on failure."""
         if stage == "iterative":
             solver = self.iter_solver
-            kwargs = dict(
-                maxiter=self.maxiter, M=self._get_preconditioner(), **self.solver_kwargs()
-            )
+            preconditioner = self._get_preconditioner()
+            self.preconditioner_source = None if preconditioner is None else self._pivot_pairing
+            kwargs = dict(maxiter=self.maxiter, M=preconditioner, **self.solver_kwargs())
         else:
             solver = self.fallback_solver
             kwargs = dict(maxiter=self.fallback_maxiter, M=self._reference_preconditioner())
@@ -542,6 +715,9 @@ class IterativeLCA(LCA):
         self._prepare_matrix()
         matrix = self._prepared_technosphere_matrix
         x0 = self.guess if self.use_guess else None
+        if x0 is not None and x0.shape != demand.shape:
+            # `technosphere_matrix` was replaced by a matrix of another shape.
+            x0 = None
 
         for stage in self.STAGES:
             if self._stage_skipped(stage):
