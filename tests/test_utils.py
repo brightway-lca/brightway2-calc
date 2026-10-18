@@ -80,11 +80,14 @@ def test_lu_solver_factorizes_the_transpose(monkeypatch):
     factorized = []
     monkeypatch.setattr(utils, "splu", lambda m: factorized.append(m) or splu(m))
     dense = lu_test_matrix()
-    lu_solver(sps.csr_matrix(dense))
+    matrix = sps.csr_matrix(dense)
+    lu_solver(matrix)
 
-    # A CSC view of the CSR arrays: no conversion needed before factorizing.
+    # A CSC view of the CSR arrays: no conversion or copy before factorizing.
     assert factorized[0].format == "csc"
     assert np.array_equal(factorized[0].toarray(), dense.T)
+    assert np.shares_memory(factorized[0].data, matrix.data)
+    assert np.shares_memory(factorized[0].indices, matrix.indices)
 
 
 @pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
