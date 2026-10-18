@@ -557,7 +557,9 @@ class IterativeLCA(LCA):
 
             else:
                 # Factorizes `A^T`, which is much faster than `A`; see `lu_solver`.
-                solve = lu_solver(matrix)
+                # `matrix` is this object's own copy, which nothing changes, so UMFPACK
+                # doesn't need another one.
+                solve = lu_solver(matrix, copy=False)
 
             def reference_solve(b):
                 return np.asarray(solve(b)).reshape(np.shape(b))

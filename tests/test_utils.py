@@ -153,3 +153,31 @@ def test_lu_solver_accepts_float32(monkeypatch, umfpack):
     x = lu_solver(sps.csr_matrix(dense.astype(np.float32)))(b)
     assert x.dtype == np.float64
     assert np.allclose(x, np.linalg.solve(dense, b), rtol=1e-5)
+
+
+@needs_umfpack
+@pytest.mark.parametrize("copy", [True, False])
+def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy):
+    import scikits.umfpack as umfpack
+
+    monkeypatch.setattr(utils, "UMFPACK", True)
+    given = []
+    original = umfpack.UmfpackContext
+
+    class Recording:
+        def __init__(self, family):
+            self._context = original(family)
+
+        def numeric(self, matrix):
+            given.append(matrix)
+            return self._context.numeric(matrix)
+
+        def solve(self, *args, **kwargs):
+            return self._context.solve(*args, **kwargs)
+
+    monkeypatch.setattr(umfpack, "UmfpackContext", Recording)
+    dense = lu_test_matrix()
+    matrix = sps.csr_matrix(dense)
+    b = np.array([1.0, 2.0, 3.0])
+    assert np.allclose(lu_solver(matrix, copy=copy)(b), np.linalg.solve(dense, b))
+    assert np.shares_memory(given[0].data, matrix.data) is not copy
