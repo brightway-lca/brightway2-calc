@@ -151,11 +151,13 @@ def lu_solver(matrix: Any) -> Callable[[np.ndarray], np.ndarray]:
     # a copy: Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place.
     # UMFPACK needs float64 values.
     transposed = transposed.astype(np.float64, copy=True)
-    # The UMFPACK family must match the index type: "di" for int32 and "dl" for int64.
-    # Pick it from the indices, as `scipy` does; scipy sparse constructors downcast int64
-    # indices to int32 when they fit, so converting the indices wouldn't stick.
-    family = "di" if transposed.indices.dtype == np.int32 else "dl"
-    context = umfpack.UmfpackContext(family)
+    # Always the 64-bit index family "dl", as `scipy` does, never "di" for int32 indices:
+    # the 32-bit variant sizes its workspace in int32 and ran out of memory on a
+    # 13k x 13k matrix; see scipy/scipy#8278. Convert the indices by assignment: the
+    # sparse constructors downcast int64 indices to int32 when they fit.
+    transposed.indices = transposed.indices.astype(np.int64)
+    transposed.indptr = transposed.indptr.astype(np.int64)
+    context = umfpack.UmfpackContext("dl")
     context.numeric(transposed)
 
     def solve(b: np.ndarray) -> np.ndarray:

@@ -97,3 +97,21 @@ def test_lu_solver_ignores_later_in_place_edits(monkeypatch, umfpack):
     matrix.data *= 3
     b = np.array([1.0, 2.0, 3.0])
     assert np.allclose(solve(b), np.linalg.solve(dense, b))
+
+
+@needs_umfpack
+def test_lu_solver_uses_64_bit_umfpack_family(monkeypatch):
+    """Never "di", which runs out of memory on large matrices; see scipy/scipy#8278."""
+    import scikits.umfpack as umfpack
+
+    monkeypatch.setattr(utils, "UMFPACK", True)
+    families = []
+    original = umfpack.UmfpackContext
+    monkeypatch.setattr(
+        umfpack, "UmfpackContext", lambda family: families.append(family) or original(family)
+    )
+    matrix = sps.csr_matrix(lu_test_matrix())
+    assert matrix.indices.dtype == np.int32
+    b = np.array([1.0, 2.0, 3.0])
+    assert np.allclose(lu_solver(matrix)(b), np.linalg.solve(lu_test_matrix(), b))
+    assert families == ["dl"]
