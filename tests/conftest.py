@@ -71,6 +71,7 @@ def no_solvers_available():
             patch("bw2calc.fast_scores.UMFPACK", False),
             patch("bw2calc.fast_supply_arrays.PYPARDISO", False),
             patch("bw2calc.fast_supply_arrays.UMFPACK", False),
+            patch("bw2calc.utils.UMFPACK", False),
             patch("bw2calc.lca_base.PYPARDISO", False),
             patch("bw2calc.lca.PYPARDISO", False),
             patch("bw2calc.multi_lca.PYPARDISO", False),
@@ -123,6 +124,7 @@ def only_umfpack_available():
             ),
             patch("bw2calc.fast_scores.PYPARDISO", False),
             patch("bw2calc.fast_scores.UMFPACK", True),
+            patch("bw2calc.utils.UMFPACK", True),
         ):
             yield
 

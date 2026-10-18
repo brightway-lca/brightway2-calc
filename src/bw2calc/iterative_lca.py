@@ -11,11 +11,11 @@ import scipy.sparse as sps
 from scipy.sparse.linalg import LinearOperator, bicgstab
 from threadpoolctl import ThreadpoolController
 
-from bw2calc import PYPARDISO, factorized
+from bw2calc import PYPARDISO
 from bw2calc.errors import InvalidReferenceFlags
 from bw2calc.lca import LCA
 from bw2calc.lca_base import _release_pardiso_solver
-from bw2calc.utils import production_pivot_map, reference_entries
+from bw2calc.utils import lu_solver, production_pivot_map, reference_entries
 
 if PYPARDISO:
     from pypardiso import PyPardisoSolver
@@ -556,9 +556,10 @@ class IterativeLCA(LCA):
                     return solver.solve(matrix, b)
 
             else:
-                # UMFPACK factorization needs CSC sparse matrix; see
-                # https://github.com/brightway-lca/brightway2-calc/issues/132
-                solve = factorized(matrix.tocsc())
+                # Factorizes `A^T`, which is much faster than `A`; see `lu_solver`.
+                # `matrix` is this object's own copy, which nothing changes, so UMFPACK
+                # doesn't need another one.
+                solve = lu_solver(matrix, copy=False)
 
             def reference_solve(b):
                 return np.asarray(solve(b)).reshape(np.shape(b))

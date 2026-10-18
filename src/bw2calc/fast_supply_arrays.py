@@ -3,7 +3,8 @@ from typing import Iterator, Union
 import numpy as np
 from scipy import sparse
 
-from bw2calc import PYPARDISO, UMFPACK, factorized
+from bw2calc import PYPARDISO, UMFPACK
+from bw2calc.utils import lu_solver
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoSolver
@@ -63,7 +64,8 @@ class FastSupplyArraysMixin:
             # Return empty array with correct shape when no demands provided
             return supply_array
 
-        solver = factorized(self.technosphere_matrix.tocsc())
+        # Factorizes `A^T`, which is much faster than `A`; see `lu_solver`.
+        solver = lu_solver(self.technosphere_matrix)
         index = 0
         for chunk in self._demand_chunks(demands, self.chunk_size):
             for arr in chunk.T:

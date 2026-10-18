@@ -126,7 +126,7 @@ class TestCalculateSupplyArraysUMFPACK:
         with (
             patch("bw2calc.fast_supply_arrays.UMFPACK", True),
             patch("bw2calc.fast_supply_arrays.PYPARDISO", False),
-            patch("bw2calc.fast_supply_arrays.factorized", mock_umfpack_solver),
+            patch("bw2calc.fast_supply_arrays.lu_solver", mock_umfpack_solver),
         ):
             result = basic_lca.calculate_supply_arrays(demand_arrays)
 
