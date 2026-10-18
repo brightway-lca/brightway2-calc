@@ -454,7 +454,9 @@ class IterativeLCA(LCA):
         if pivot_rows is None:
             pivots = matrix.diagonal()
         else:
-            pivots = _csr_entries(matrix, pivot_rows, np.arange(matrix.shape[1]))
+            # Entries missing from the structure are returned as zero. Returns a 1 x n
+            # `np.matrix` for `csr_matrix`, hence the `ravel`.
+            pivots = np.asarray(matrix[pivot_rows, np.arange(matrix.shape[1])]).ravel()
         # Monte Carlo samples can have a zero production amount.
         if not np.all(np.isfinite(pivots)) or np.any(pivots == 0):
             return None
@@ -800,23 +802,6 @@ def _tolerance_keyword(solver) -> str:
     if "rtol" not in parameters and "tol" in parameters:
         return "tol"
     return "rtol"
-
-
-def _csr_entries(matrix, rows: np.ndarray, cols: np.ndarray) -> np.ndarray:
-    """Return ``matrix[rows[k], cols[k]]`` for each ``k``, with zero for entries missing
-    from the structure.
-
-    ``matrix`` must be CSR in canonical form (sorted indices, no duplicates). Faster than
-    fancy indexing, as entries in row-major order have sorted keys
-    ``row * n_cols + col``."""
-    n_cols = matrix.shape[1]
-    entry_rows = np.repeat(np.arange(matrix.shape[0], dtype=np.int64), np.diff(matrix.indptr))
-    keys = entry_rows * n_cols + matrix.indices
-    targets = np.asarray(rows, dtype=np.int64) * n_cols + np.asarray(cols, dtype=np.int64)
-    if not len(keys):
-        return np.zeros(len(targets), dtype=matrix.dtype)
-    offsets = np.minimum(np.searchsorted(keys, targets), len(keys) - 1)
-    return np.where(keys[offsets] == targets, matrix.data[offsets], 0)
 
 
 def _csr_equal(a, b) -> bool:

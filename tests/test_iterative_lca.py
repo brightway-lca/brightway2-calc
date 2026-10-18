@@ -8,7 +8,6 @@ from scipy.sparse.linalg import bicgstab, cgs
 
 from bw2calc import LCA, PYPARDISO, IterativeLCA, JacobiGMRESLCA
 from bw2calc.errors import InvalidReferenceFlags
-from bw2calc.iterative_lca import _csr_entries
 from bw2calc.utils import production_pivot_map, reference_entries
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
@@ -930,12 +929,3 @@ def test_production_pivot_map_messages():
     with pytest.raises(InvalidReferenceFlags, match="not square"):
         production_pivot_map(rows, cols, (2, 3))
     assert production_pivot_map(np.array([2, 0, 1]), cols, (3, 3)).tolist() == [2, 0, 1]
-
-
-def test_csr_entries_returns_zero_for_missing_entries():
-    import scipy.sparse as sps
-
-    matrix = sps.csr_matrix(np.array([[1.0, 0, 2], [0, 3, 0], [4, 0, 5]]))
-    values = _csr_entries(matrix, np.array([0, 0, 1, 2, 2]), np.array([0, 1, 1, 2, 1]))
-    assert values.tolist() == [1, 0, 3, 5, 0]
-    assert _csr_entries(sps.csr_matrix((2, 2)), np.array([0]), np.array([1])).tolist() == [0]
