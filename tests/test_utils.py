@@ -140,3 +140,13 @@ def test_lu_solver_leaves_a_non_canonical_matrix_alone(monkeypatch, umfpack):
     assert np.allclose(lu_solver(matrix)(b), np.linalg.solve(dense, b))
     assert np.array_equal(matrix.indices, indices)
     assert np.array_equal(matrix.data, data)
+
+
+@pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
+def test_lu_solver_accepts_float32(monkeypatch, umfpack):
+    monkeypatch.setattr(utils, "UMFPACK", umfpack)
+    dense = lu_test_matrix()
+    b = np.array([1.0, 2.0, 3.0])
+    x = lu_solver(sps.csr_matrix(dense.astype(np.float32)))(b)
+    assert x.dtype == np.float64
+    assert np.allclose(x, np.linalg.solve(dense, b), rtol=1e-5)

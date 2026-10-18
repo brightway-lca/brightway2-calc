@@ -138,13 +138,14 @@ def lu_solver(matrix: Any) -> Callable[[np.ndarray], np.ndarray]:
     first."""
     # CSC, and a view on `matrix`'s arrays if it is CSR.
     transposed = matrix.tocsr().T
-    if not transposed.has_canonical_format:
-        # The solvers need sorted indices without duplicates, and `splu` sorts in place,
-        # which through the view would reorder the arrays of `matrix` too. `IterativeLCA`
-        # compares its reference copy to `technosphere_matrix` array by array, so a
-        # reordered copy would never match. `LCA` builds canonical matrices, so this
-        # copy is for matrices from elsewhere.
-        transposed = transposed.copy()
+    if transposed.dtype != np.float64 or not transposed.has_canonical_format:
+        # Both solvers need float64 values and sorted indices without duplicates, and
+        # `splu` sorts in place, which through the view would reorder the arrays of
+        # `matrix` too. `IterativeLCA` compares its reference copy to
+        # `technosphere_matrix` array by array, so a reordered copy would never match.
+        # `LCA` builds canonical float64 matrices, so this copy is for matrices from
+        # elsewhere.
+        transposed = transposed.astype(np.float64, copy=True)
         transposed.sum_duplicates()
         transposed.sort_indices()
 
@@ -158,8 +159,7 @@ def lu_solver(matrix: Any) -> Callable[[np.ndarray], np.ndarray]:
 
     # UMFPACK reads the matrix again in each solve, for iterative refinement, so it needs
     # a copy: Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place.
-    # UMFPACK needs float64 values.
-    transposed = transposed.astype(np.float64, copy=True)
+    transposed = transposed.copy()
     # Always the 64-bit index family "dl", as `scipy` does, never "di" for int32 indices:
     # the 32-bit variant sizes its workspace in int32 and ran out of memory on a
     # 13k x 13k matrix; see scipy/scipy#8278. Convert the indices by assignment: the
