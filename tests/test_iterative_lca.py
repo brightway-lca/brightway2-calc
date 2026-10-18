@@ -734,6 +734,53 @@ def test_iterative_without_flags_keeps_diagonal_behaviour():
     assert np.allclose(lca.supply_array, np.linalg.solve(matrix, [1, 0]))
 
 
+def test_iterative_caches_missing_preconditioner(monkeypatch):
+    matrix, _ = swapped_system()
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix)], direct_first_solve=False)
+    lca.lci()
+    assert lca._get_preconditioner() is None
+
+    # A zero pivot leaves this matrix without a preconditioner; don't look again for
+    # every demand on it.
+    monkeypatch.setattr(lca, "build_preconditioner", lambda: pytest.fail("rebuilt"))
+    assert lca._get_preconditioner() is None
+    lca.lci_calculation()
+    assert np.allclose(lca.supply_array, np.linalg.solve(matrix, [1, 0]))
+
+
+def test_iterative_preconditioner_source_set_by_the_iterative_stage():
+    matrix, flags = swapped_system()
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix, flags)])
+    # The first solve is direct: no iterative stage has run.
+    lca.lci()
+    assert lca.preconditioner_source is None
+
+    # Inspecting the preconditioner isn't using it.
+    assert lca.build_preconditioner() is not None
+    assert lca.preconditioner_source is None
+
+
+def test_iterative_replaced_matrix_of_another_shape_uses_diagonal():
+    import scipy.sparse as sps
+
+    matrix, flags = permuted_system(n=6)
+    lca = IterativeLCA(
+        {1: 1}, data_objs=[pivot_datapackage(matrix, flags)], direct_first_solve=False
+    )
+    lca.lci()
+    assert lca.preconditioner_source == "production_pivots"
+
+    # The flags in `technosphere_mm` don't fit the new matrix, so `auto` uses the diagonal.
+    smaller = np.array([[2.0, -0.5], [0.0, 4.0]])
+    lca.technosphere_matrix = sps.csr_matrix(smaller)
+    demand = np.array([1.0, 0.0])
+    solution = lca.solve_linear_system(demand)
+
+    assert np.allclose(solution, np.linalg.solve(smaller, demand))
+    assert lca.preconditioner_source == "diagonal"
+    assert lca._pivot_shape == (2, 2)
+
+
 def test_iterative_production_pivots_need_fewer_iterations_than_wrong_diagonal():
     matrix, flags = permuted_system()
     counts = {}
@@ -825,6 +872,14 @@ def test_iterative_reference_pairing_raises_for_unusable_flags(kind):
     )
     with pytest.raises(InvalidReferenceFlags):
         lca.lci()
+
+
+def test_iterative_reference_pairing_raises_before_the_first_solve():
+    matrix = permuted_system()[0]
+    # Default `direct_first_solve=True`: the first solve wouldn't build the pivot map.
+    lca = IterativeLCA({1: 1}, data_objs=[pivot_datapackage(matrix)], jacobi_pairing="reference")
+    with pytest.raises(InvalidReferenceFlags, match="No reference exchange flags"):
+        lca.load_lci_data()
 
 
 def test_iterative_diagonal_pairing_ignores_flags():
@@ -926,6 +981,11 @@ def test_production_pivot_map_messages():
         production_pivot_map(rows[:2], cols[:2], (3, 3))
     with pytest.raises(InvalidReferenceFlags, match="1 rows are the reference product"):
         production_pivot_map(rows, cols, (3, 3))
+    # One shared row, however many columns claim it.
+    with pytest.raises(InvalidReferenceFlags, match="1 rows are the reference product"):
+        production_pivot_map(np.array([0, 0, 0]), cols, (3, 3))
     with pytest.raises(InvalidReferenceFlags, match="not square"):
         production_pivot_map(rows, cols, (2, 3))
+    with pytest.raises(InvalidReferenceFlags, match="don't fit"):
+        production_pivot_map(np.array([0, 1, 3]), cols, (3, 3))
     assert production_pivot_map(np.array([2, 0, 1]), cols, (3, 3)).tolist() == [2, 0, 1]

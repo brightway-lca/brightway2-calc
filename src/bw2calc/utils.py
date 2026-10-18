@@ -141,16 +141,25 @@ def production_pivot_map(rows: np.ndarray, cols: np.ndarray, shape: tuple) -> np
     n_rows, n_cols = shape
     if n_rows != n_cols:
         raise InvalidReferenceFlags(f"Technosphere matrix is not square: {shape}")
-    pairs = np.unique(np.stack([cols, rows]), axis=1)
-    rows_per_col = np.bincount(pairs[0], minlength=n_cols)
-    unique = rows_per_col[pairs[0]] == 1
+    rows, cols = np.asarray(rows, dtype=np.int64), np.asarray(cols, dtype=np.int64)
+    # The flags are read from `technosphere_mm`, but `technosphere_matrix` can have been
+    # replaced by a smaller matrix since.
+    if len(rows) and (
+        rows.min() < 0 or cols.min() < 0 or rows.max() >= n_rows or cols.max() >= n_cols
+    ):
+        raise InvalidReferenceFlags(f"Reference exchange entries don't fit a {shape} matrix")
+    # Unique (col, row) pairs as integer keys; `np.unique(..., axis=1)` sorts void
+    # records, which is much slower.
+    pair_cols, pair_rows = np.divmod(np.unique(cols * n_rows + rows), n_rows)
+    rows_per_col = np.bincount(pair_cols, minlength=n_cols)
+    unique = rows_per_col[pair_cols] == 1
     pivot_rows = np.full(n_cols, -1, dtype=np.int64)
-    pivot_rows[pairs[0][unique]] = pairs[1][unique]
+    pivot_rows[pair_cols[unique]] = pair_rows[unique]
 
     missing = int((rows_per_col == 0).sum())
     conflicting = int((rows_per_col > 1).sum())
     paired = pivot_rows[pivot_rows >= 0]
-    shared = len(paired) - len(np.unique(paired))
+    shared = int((np.unique(paired, return_counts=True)[1] > 1).sum())
     problems = [
         message.format(count)
         for count, message in [

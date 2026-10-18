@@ -22,6 +22,9 @@ if PYPARDISO:
 
 logger = logging.getLogger("bw2calc")
 
+# `_cached_preconditioner` before `build_preconditioner` ran; `None` is a built result.
+_UNBUILT = object()
+
 
 class IterativeLCA(LCA):
     """Solve ``Ax=b`` using iterative techniques instead of
@@ -222,7 +225,9 @@ class IterativeLCA(LCA):
        is built.
     #. ``next()`` draws new values into the same matrix structure. The prepared matrix
        copy and the cached preconditioner are discarded; ``p`` is kept, as Monte Carlo
-       changes values, not structure.
+       changes values, not structure. ``p`` is only rebuilt if ``technosphere_matrix`` is
+       replaced by a matrix of another shape, which the flags then usually don't fit, so
+       the diagonal is used.
     #. The iterative stage makes a prepared copy of the sampled matrix, builds ``p`` from
        the flags if this is the first time, and reads this sample's production amounts
        ``A[p(j), j]``. Production amounts can be uncertain, so they are read from every
@@ -233,8 +238,10 @@ class IterativeLCA(LCA):
 
     If a pivot is zero or not finite, e.g. a sampled production amount of zero, which is
     removed from the prepared copy, that sample's iterative stage runs without a
-    preconditioner. ``preconditioner_source`` tells which preconditioner the last
-    iterative stage used: ``"production_pivots"``, ``"diagonal"``, or ``None``.
+    preconditioner. ``preconditioner_source`` tells which preconditioner the last run of
+    the iterative stage used: ``"production_pivots"``, ``"diagonal"``, or ``None``. It is
+    set when the stage runs, so it keeps its value while the stage is skipped, and
+    calling ``build_preconditioner()`` doesn't change it.
 
     Monte Carlo on BAFU 2026 v1 (11,947 x 11,947, 114k nonzeros), demand 1 kWh
     ``Electricity, low voltage, at grid`` (CH), 30 iterations, Apple M1 Max, no
@@ -357,8 +364,8 @@ class IterativeLCA(LCA):
         self.max_consecutive_failures = max_consecutive_failures
         self.retry_after = retry_after
         self.jacobi_pairing = jacobi_pairing
-        # Preconditioner used by the last iterative stage: "production_pivots",
-        # "diagonal", or `None`.
+        # Preconditioner used by the last run of the iterative stage: "production_pivots",
+        # "diagonal", or `None`. Set in `_run_stage`.
         self.preconditioner_source = None
         self._clear_pivot_map()
         # Prepared CSR copy used by the iterative solver; don't replace
@@ -367,8 +374,9 @@ class IterativeLCA(LCA):
         self._prepared_technosphere_matrix = None
         # Copy of `technosphere_matrix` the prepared matrix was built from.
         self._prepared_source = None
-        # Cache the preconditioner to avoid rebuilding between solves.
-        self._cached_preconditioner: Optional[LinearOperator] = None
+        # Cache the preconditioner to avoid rebuilding between solves. `None` is cached
+        # too: a sample with a zero pivot has no preconditioner for any of its demands.
+        self._cached_preconditioner = _UNBUILT
         # Last solution vector, used as warm start when `use_guess=True`.
         self.guess = None
         # Number of solves done by each stage: "reference", "iterative",
@@ -386,8 +394,13 @@ class IterativeLCA(LCA):
         # New matrices imply stale solver-side caches.
         self._clear_matrix_caches()
         self._clear_reference()
-        # The pivot map depends on the structure, which only changes here.
+        # The pivot map depends on the reference flags, which only change here, and on
+        # the matrix shape, which `_production_pivot_rows` checks.
         self._clear_pivot_map()
+        if self.jacobi_pairing == "reference":
+            # Fail now, before any result. The iterative stage, which builds the map
+            # otherwise, runs only after the first solve with `direct_first_solve`.
+            self._production_pivot_rows(self.technosphere_matrix.shape)
         self.guess = None
 
     def _clear_pivot_map(self) -> None:
@@ -395,11 +408,13 @@ class IterativeLCA(LCA):
         self._pivot_rows = None
         # "production_pivots" or "diagonal"; `None` means "not built yet".
         self._pivot_pairing = None
+        # Shape of the matrix the pivot map was built for.
+        self._pivot_shape = None
 
     def _clear_matrix_caches(self) -> None:
         self._prepared_technosphere_matrix = None
         self._prepared_source = None
-        self._cached_preconditioner = None
+        self._cached_preconditioner = _UNBUILT
 
     def _clear_reference(self) -> None:
         finalizer = getattr(self, "_reference_finalizer", None)
@@ -439,7 +454,7 @@ class IterativeLCA(LCA):
         # Keep an unmodified copy to detect changes; in-place edits would change `source`.
         self._prepared_source = source.copy()
         self._prepared_technosphere_matrix = matrix
-        self._cached_preconditioner = None
+        self._cached_preconditioner = _UNBUILT
 
     def build_preconditioner(self) -> Optional[LinearOperator]:
         """Return a preconditioner ``M`` approximating ``A^-1``, or ``None`` for no
@@ -450,7 +465,7 @@ class IterativeLCA(LCA):
         any of them is zero or not finite."""
         self._prepare_matrix()
         matrix = self._prepared_technosphere_matrix
-        pivot_rows = self._production_pivot_rows()
+        pivot_rows = self._production_pivot_rows(matrix.shape)
         if pivot_rows is None:
             pivots = matrix.diagonal()
         else:
@@ -462,7 +477,6 @@ class IterativeLCA(LCA):
             return None
 
         inverse_pivots = 1.0 / pivots
-        self.preconditioner_source = self._pivot_pairing
         # `A` maps activities to products, and `M` approximates `A^-1`, so it maps
         # products to activities: activity `j` reads the residual of its product `p(j)`.
         if pivot_rows is None:
@@ -478,28 +492,28 @@ class IterativeLCA(LCA):
 
     def _get_preconditioner(self) -> Optional[LinearOperator]:
         # Reuse preconditioner when solving multiple demands on same matrix.
-        if self._cached_preconditioner is None:
-            # Set by `build_preconditioner` when it returns a Jacobi preconditioner.
-            self.preconditioner_source = None
+        if self._cached_preconditioner is _UNBUILT:
             self._cached_preconditioner = self.build_preconditioner()
         return self._cached_preconditioner
 
-    def _production_pivot_rows(self) -> Optional[np.ndarray]:
-        """Return the pivot map ``p`` as an array of row indices, or ``None`` for the
-        diagonal. Built once per ``load_lci_data``."""
-        if self._pivot_pairing is None:
-            self._pivot_rows, self._pivot_pairing = self._build_pivot_map()
+    def _production_pivot_rows(self, shape: tuple) -> Optional[np.ndarray]:
+        """Return the pivot map ``p`` for a matrix of ``shape`` as an array of row indices,
+        or ``None`` for the diagonal. Built once per ``load_lci_data``, and again if
+        ``technosphere_matrix`` was replaced by a matrix of another shape."""
+        if self._pivot_pairing is None or self._pivot_shape != shape:
+            self._pivot_rows, self._pivot_pairing = self._build_pivot_map(shape)
+            self._pivot_shape = shape
             logger.debug("Jacobi preconditioner pairing: %s", self._pivot_pairing)
         return self._pivot_rows
 
-    def _build_pivot_map(self) -> tuple:
+    def _build_pivot_map(self, shape: tuple) -> tuple:
         if self.jacobi_pairing == "diagonal":
             return None, "diagonal"
         rows, cols = reference_entries(self.technosphere_mm)
         try:
             if not len(rows):
                 raise InvalidReferenceFlags("No reference exchange flags")
-            pivot_rows = production_pivot_map(rows, cols, self.technosphere_matrix.shape)
+            pivot_rows = production_pivot_map(rows, cols, shape)
         except InvalidReferenceFlags as error:
             if self.jacobi_pairing == "reference":
                 raise
@@ -620,9 +634,9 @@ class IterativeLCA(LCA):
         """Run one iterative stage, and return its solution, or ``None`` on failure."""
         if stage == "iterative":
             solver = self.iter_solver
-            kwargs = dict(
-                maxiter=self.maxiter, M=self._get_preconditioner(), **self.solver_kwargs()
-            )
+            preconditioner = self._get_preconditioner()
+            self.preconditioner_source = None if preconditioner is None else self._pivot_pairing
+            kwargs = dict(maxiter=self.maxiter, M=preconditioner, **self.solver_kwargs())
         else:
             solver = self.fallback_solver
             kwargs = dict(maxiter=self.fallback_maxiter, M=self._reference_preconditioner())
@@ -701,6 +715,9 @@ class IterativeLCA(LCA):
         self._prepare_matrix()
         matrix = self._prepared_technosphere_matrix
         x0 = self.guess if self.use_guess else None
+        if x0 is not None and x0.shape != demand.shape:
+            # `technosphere_matrix` was replaced by a matrix of another shape.
+            x0 = None
 
         for stage in self.STAGES:
             if self._stage_skipped(stage):
