@@ -36,6 +36,11 @@ jobs:
       with:
         repository_url: https://test.pypi.org/legacy/
         skip_existing: true
+        # Both steps share `dist/`. With attestations on, this step writes
+        # `*.publish.attestation` files there, and the PyPI step then refuses to
+        # run: "The following distributions already have publish attestations".
+        # The 3.0.0 and 3.1.0 tag runs failed this way and were uploaded by hand.
+        attestations: false
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@release/v1
