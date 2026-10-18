@@ -23,7 +23,6 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-        "bw_graph_tools >=0.8",
         "bw_processing >=1.6",
         "fsspec",
         "matrix_utils >=0.9",
@@ -42,9 +41,13 @@ homepage = "https://github.com/brightway-lca/brightway2-calc"
 tracker = "https://github.com/brightway-lca/brightway2-calc/issues"
 
 [project.optional-dependencies]
+partitioned = [
+    "bw_graph_tools >=0.8",
+]
 testing = [
     "bw2calc",
     "bw2data>=4.5",
+    "bw_graph_tools >=0.8",
     "pytest",
     "pytest-cov",
     "pytest-randomly",

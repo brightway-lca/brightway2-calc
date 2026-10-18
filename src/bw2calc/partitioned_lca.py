@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from importlib.util import find_spec
 from typing import Optional
 
 import bw_processing as bwp
@@ -111,6 +112,12 @@ class PartitionedMonteCarloLCA(Iterator):
         data_objs: list,
         seed_override: Optional[int] = None,
     ):
+        # Imported lazily to avoid a circular import, as bw_graph_tools depends on bw2calc
+        if find_spec("bw_graph_tools") is None:
+            raise ImportError(
+                "PartitionedMonteCarloLCA requires bw_graph_tools; install it with "
+                "`pip install bw2calc[partitioned]`."
+            )
         if not all(isinstance(k, int) for k in demand):
             raise TypeError("All demand keys must be integers (activity/product database IDs).")
         self.demand = demand

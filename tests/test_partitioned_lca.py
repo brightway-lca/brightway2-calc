@@ -612,3 +612,11 @@ def test_stochastic_characterization_varies():
         scores.append(p_lca.score)
 
     assert len(set(np.round(scores, 8))) > 1, "Scores must vary when CFs have distributions"
+
+
+def test_missing_bw_graph_tools_raises(monkeypatch):
+    import bw2calc.partitioned_lca as partitioned_lca
+
+    monkeypatch.setattr(partitioned_lca, "find_spec", lambda name: None)
+    with pytest.raises(ImportError, match="bw2calc\\[partitioned\\]"):
+        PartitionedMonteCarloLCA({3: 1}, ["static_db"], [])
