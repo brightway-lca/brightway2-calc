@@ -24,15 +24,15 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
         "bw_processing >=1.6",
-        "fsspec",
+        "fsspec>=2023.3.0",
         "matrix_utils >=0.9",
         "numpy <3",
         "pandas",
         "pydantic",
-        "scipy",
-        "stats_arrays",
-        "threadpoolctl",
-        "xarray",
+        "scipy>=1.12",
+        "stats_arrays>=0.6.5",
+        "threadpoolctl>=3.0.0",
+        "xarray>=0.21.0",
 ]
 
 [project.urls]
