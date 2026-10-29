@@ -7,7 +7,7 @@ import pytest
 import scipy.sparse as sps
 from bw_processing.io_helpers import generic_directory_filesystem
 from fsspec.implementations.zip import ZipFileSystem as ZFS
-from scipy.sparse.linalg import splu
+from scipy.sparse.linalg import splu, spsolve
 
 from bw2calc import utils
 from bw2calc.utils import get_datapackage, get_seed, lu_solver
@@ -120,6 +120,26 @@ def test_lu_solver_uses_64_bit_umfpack_family(monkeypatch):
     assert families == ["dl"]
 
 
+@needs_umfpack
+def test_lu_solver_skips_umfpack_iterative_refinement(monkeypatch):
+    """With the default of two steps, UMFPACK takes one on this matrix."""
+    import scikits.umfpack as umfpack
+
+    monkeypatch.setattr(utils, "UMFPACK", True)
+    contexts = []
+    original = umfpack.UmfpackContext
+    monkeypatch.setattr(
+        umfpack, "UmfpackContext", lambda family: contexts.append(original(family)) or contexts[-1]
+    )
+    rng = np.random.default_rng(0)
+    matrix = (sps.eye(50) - 0.3 * sps.random(50, 50, density=0.1, random_state=rng)).tocsr()
+    b = rng.random(50)
+    x = lu_solver(matrix)(b)
+    expected = spsolve(matrix, b)
+    assert np.linalg.norm(x - expected) <= 1e-10 * np.linalg.norm(expected)
+    assert contexts[0].info[umfpack.umfDefines["UMFPACK_IR_TAKEN"]] == 0
+
+
 @pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
 def test_lu_solver_leaves_a_non_canonical_matrix_alone(monkeypatch, umfpack):
     """`splu` sorts indices in place; `IterativeLCA` compares its reference copy to the
@@ -167,6 +187,7 @@ def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy):
     class Recording:
         def __init__(self, family):
             self._context = original(family)
+            self.control = self._context.control
 
         def numeric(self, matrix):
             given.append(matrix)

@@ -1,5 +1,9 @@
 # `bw2calc` Changelog
 
+## Unreleased
+
+* [#184](https://github.com/brightway-lca/brightway2-calc/issues/184): `lu_solver` turns off UMFPACK's iterative refinement, so repeated solves are about 3x faster with reference BLAS or OpenBLAS.
+
 ## 3.1.0 (2026-10-18)
 
 * [#177](https://github.com/brightway-lca/brightway2-calc/issues/177): `IterativeLCA`'s Jacobi preconditioner now divides by the production amounts `A[p(j), j]`, where `p(j)` is the row of the reference product of column `j`, taken from the reference exchange flags (bw_processing `reference_array`). Before, it divided by the diagonal, which for databases with separate product nodes holds arbitrary entries or zeros, so iterative solves silently fell back to the slower stages. On BAFU 2026 v1 with separate product ids, Monte Carlo went from 122 ms to 44 ms per iteration, the same as with shared ids. A new `jacobi_pairing` argument (`"auto"`, `"reference"`, or `"diagonal"`) chooses the pairing; `"auto"` falls back to the diagonal, as before, if the flags are missing or don't pair every column with a unique row; missing flags give a warning to update bw2data. `preconditioner_source` tells which one was used. Requires bw_processing >= 1.6 and matrix_utils >= 0.9

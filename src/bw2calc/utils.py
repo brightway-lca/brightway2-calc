@@ -137,6 +137,9 @@ def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarr
     ``matrix.tocsr().T`` is CSC without any conversion. Other formats are converted to CSR
     first.
 
+    UMFPACK's iterative refinement is off: it was most of each solve, and scores move by
+    rounding on ecoinvent and about 1e-11 relative with very badly scaled units; see #184.
+
     :param copy: UMFPACK reads the matrix again in each solve, so by default it gets a
         copy of ``matrix``. Pass ``False`` for a matrix which is never changed after this
         call, to skip that copy. SuperLU never needs one."""
@@ -174,6 +177,7 @@ def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarr
     transposed.indices = transposed.indices.astype(np.int64)
     transposed.indptr = transposed.indptr.astype(np.int64)
     context = umfpack.UmfpackContext("dl")
+    context.control[umfpack.umfDefines["UMFPACK_IRSTEP"]] = 0
     context.numeric(transposed)
 
     def solve(b: np.ndarray) -> np.ndarray:
