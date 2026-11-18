@@ -69,6 +69,8 @@ class SingleValueDiagonalMatrix(MappedMatrix):
             indexer_override=indexer_override,
             diagonal=True,
             custom_filter=custom_filter,
+            # Only passed on if given, as it needs matrix_utils >= 0.10
+            **{key: kwargs[key] for key in ("derive_group_seeds",) if key in kwargs},
         )
 
         if self.raw_data.shape != (1,):

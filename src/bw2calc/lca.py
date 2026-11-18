@@ -13,6 +13,7 @@ from fsspec import AbstractFileSystem
 from scipy import sparse
 
 from bw2calc import PYPARDISO, __version__
+from bw2calc.calculation_config import CalculationConfig, resolve_calculation_config
 from bw2calc.dictionary_manager import DictionaryManager
 from bw2calc.errors import OutsideTechnosphere
 from bw2calc.lca_base import LCABase
@@ -51,10 +52,11 @@ class LCA(LCABase):
         data_objs: Optional[Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
+        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
         seed_override: Optional[int] = None,
-        use_arrays: Optional[bool] = False,
-        use_distributions: Optional[bool] = False,
-        selective_use: Optional[dict] = False,
+        use_arrays: Optional[bool] = None,
+        use_distributions: Optional[bool] = None,
+        selective_use: Optional[dict] = None,
     ):
         """Create a new LCA calculation object.
 
@@ -62,8 +64,7 @@ class LCA(LCABase):
         (scenario-based), depending on the ``data_objs`` input data..
 
         This class supports both stochastic and static LCA, and can use a variety of ways to
-        describe uncertainty. The input flags `use_arrays` and `use_distributions` control some of
-        this stochastic behaviour. See the
+        describe uncertainty. `calculation_config` controls this stochastic behaviour. See the
         [documentation for `matrix_utils`](https://github.com/brightway-lca/matrix_utils) for more
         information on the technical implementation.
 
@@ -91,21 +92,24 @@ class LCA(LCABase):
             `biosphere`.
         log_config : dict
             Optional arguments to pass to logging. Not yet implemented.
-        seed_override : int
-            RNG seed to use in place of `Datapackage` seed, if any.
-        use_arrays : bool
-            Use arrays instead of vectors from the given `data_objs`
-        use_distributions : bool
-            Use probability distributions from the given `data_objs`
-        selective_use : dict[str, dict]
-            Dictionary that gives more control on whether `use_arrays` or `use_distributions` should
-            be used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`.
-            Standard matrix labels are `technosphere_matrix`, `biosphere_matrix`, and
-            `characterization_matrix`.
+        calculation_config : CalculationConfig | dict
+            How matrices are built and sampled: `use_arrays`, `use_distributions`, the RNG `seed`,
+            `derive_group_seeds`, and per-matrix overrides of these. See `CalculationConfig`.
+        seed_override, use_arrays, use_distributions, selective_use
+            Deprecated; use `calculation_config` instead. `selective_use` corresponds to
+            `CalculationConfig.matrices`, and `seed_override` to `CalculationConfig.seed`.
 
         """
         if not isinstance(demand, Mapping):
             raise ValueError("Demand must be a dictionary")
+
+        self.calculation_config = resolve_calculation_config(
+            calculation_config,
+            seed_override=seed_override,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            selective_use=selective_use,
+        )
 
         if data_objs is None:
             try:
@@ -128,11 +132,7 @@ class LCA(LCABase):
 
         self.dicts = DictionaryManager()
         self.demand = demand
-        self.use_arrays = use_arrays
-        self.use_distributions = use_distributions
-        self.selective_use = selective_use or {}
         self.remapping_dicts = remapping_dicts or {}
-        self.seed_override = seed_override
 
         message = """Initialized LCA object. Demand: {demand}, data_objs: {data_objs}""".format(
             demand=self.demand, data_objs=self.packages
@@ -231,15 +231,11 @@ class LCA(LCABase):
         global_index = consistent_global_index(data_objs or self.packages)
         fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
 
-        use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
-
         try:
             self.characterization_mm = mu.MappedMatrix(
                 packages=data_objs or self.packages,
                 matrix="characterization_matrix",
-                use_arrays=use_arrays,
-                use_distributions=use_distributions,
-                seed_override=self.seed_override,
+                **self.matrix_kwargs("characterization_matrix"),
                 row_mapper=self.biosphere_mm.row_mapper,
                 diagonal=True,
                 custom_filter=fltr,
@@ -254,14 +250,10 @@ class LCA(LCABase):
         self, data_objs: Optional[Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
-        use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
-
         self.normalization_mm = mu.MappedMatrix(
             packages=data_objs or self.packages,
             matrix="normalization_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("normalization_matrix"),
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
         )
@@ -271,16 +263,12 @@ class LCA(LCABase):
         self, data_objs: Optional[Iterable[Union[AbstractFileSystem, bwp.DatapackageBase]]] = None
     ) -> None:
         """Load normalization data."""
-        use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
-
         self.weighting_mm = SingleValueDiagonalMatrix(
             packages=data_objs or self.packages,
             matrix="weighting_matrix",
             row_mapper=None,
             dimension=len(self.biosphere_mm.row_mapper),
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("weighting_matrix"),
         )
         self.weighting_matrix = self.weighting_mm.matrix
 
