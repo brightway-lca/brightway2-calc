@@ -22,7 +22,7 @@ def test_iterative_default_solver_is_bicgstab():
 
 @pytest.mark.parametrize("iter_solver", [None, False])
 def test_iterative_without_solver_solves_directly(iter_solver):
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=iter_solver, **kwargs)
     reference.lci()
@@ -39,7 +39,7 @@ def test_iterative_without_fallback_solver_skips_fallback_stage():
     def failing(matrix, demand, **kwargs):
         return np.zeros_like(demand), 1
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     lca = IterativeLCA({3: 1}, iter_solver=failing, fallback_solver=None, **kwargs)
     lca.lci()
     next(lca)
@@ -74,7 +74,12 @@ def test_iterative_direct_first_solve_skips_solver():
         calls.append(kwargs["x0"])
         return bicgstab(matrix, demand, **kwargs)
 
-    lca = IterativeLCA({3: 1}, data_objs=mc_basic, iter_solver=solver, use_distributions=True)
+    lca = IterativeLCA(
+        {3: 1},
+        data_objs=mc_basic,
+        iter_solver=solver,
+        calculation_config={"use_distributions": True},
+    )
     lca.lci()
     assert calls == []
 
@@ -104,7 +109,7 @@ def test_iterative_uses_reference_factorization_for_unchanged_matrix():
 
 
 def test_iterative_monte_carlo_matches_lca():
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, **kwargs)
     reference.lci()
@@ -212,7 +217,12 @@ LOOP_DEMAND = {1: 1, 2: -1}
 
 
 def loop_lca(cls, **kwargs):
-    return cls(LOOP_DEMAND, data_objs=[loop_datapackage(LOOP_VALUES)], use_arrays=True, **kwargs)
+    return cls(
+        LOOP_DEMAND,
+        data_objs=[loop_datapackage(LOOP_VALUES)],
+        calculation_config={"use_arrays": True},
+        **kwargs,
+    )
 
 
 def small_residual_wrong_solver(matrix, demand, **kwargs):
@@ -276,7 +286,7 @@ def test_iterative_falls_back_to_reference_preconditioned_solver():
         fallback_calls.append(kwargs["M"])
         return bicgstab(matrix, demand, **kwargs)
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=solver, fallback_solver=fallback, **kwargs)
     reference.lci()
@@ -298,7 +308,7 @@ def test_iterative_time_limit_stops_stage():
             callback(None)
         raise AssertionError("time limit not applied")
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=slow_solver, time_limit=0.01, **kwargs)
     reference.lci()
@@ -318,7 +328,7 @@ def exact_unconverged_solver(matrix, demand, **kwargs):
 
 
 def test_iterative_accepts_unconverged_solution_passing_forward_error_check():
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=exact_unconverged_solver, **kwargs)
     reference.lci()
@@ -347,7 +357,7 @@ def test_iterative_accepts_last_iterate_at_time_limit():
             callback(exact)
         raise AssertionError("time limit not applied")
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=slow_solver, time_limit=0.01, **kwargs)
     reference.lci()
@@ -381,7 +391,7 @@ def test_iterative_skips_stage_after_consecutive_failures():
         calls.append(1)
         return np.ones_like(demand), 0
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=solver, max_consecutive_failures=2, **kwargs)
     reference.lci()
@@ -412,7 +422,7 @@ def test_iterative_retries_skipped_stage(retry_after):
             return np.ones_like(demand), 0
         return bicgstab(matrix, demand, **kwargs)
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA(
         {3: 1}, iter_solver=solver, max_consecutive_failures=2, retry_after=retry_after, **kwargs
@@ -440,7 +450,7 @@ def test_iterative_skipped_stage_failing_again_is_skipped_again():
         calls.append(1)
         return np.ones_like(demand), 0
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     lca = IterativeLCA(
         {3: 1}, iter_solver=solver, max_consecutive_failures=2, retry_after=3, **kwargs
     )
@@ -456,7 +466,7 @@ def test_iterative_uses_direct_solver_when_all_stages_fail():
     def failing(matrix, demand, **kwargs):
         return np.zeros_like(demand), 1
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=failing, fallback_solver=failing, **kwargs)
     reference.lci()
@@ -473,7 +483,7 @@ def test_iterative_direct_fallback_releases_its_factorization():
     def failing(matrix, demand, **kwargs):
         return np.zeros_like(demand), 1
 
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     reference = LCA({3: 1}, **kwargs)
     lca = IterativeLCA({3: 1}, iter_solver=failing, fallback_solver=failing, **kwargs)
     reference.lci()
@@ -492,7 +502,7 @@ def test_iterative_direct_fallback_releases_its_factorization():
 
 def test_iterative_reference_survives_monte_carlo_iteration():
     """`LCA.__next__` frees the object's direct solver factorization, but not the reference."""
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     lca = IterativeLCA({3: 1}, **kwargs)
     lca.lci()
     reference_solve = lca._reference_solve
@@ -506,7 +516,7 @@ def test_iterative_reference_survives_monte_carlo_iteration():
 def test_iterative_reference_factorization_survives_other_direct_solves():
     """The reference must not share the object's solver for direct solves, which
     `LCA.__next__` resets, or be affected by other objects' solves."""
-    kwargs = dict(data_objs=mc_basic, seed_override=42, use_distributions=True)
+    kwargs = dict(data_objs=mc_basic, calculation_config={"use_distributions": True, "seed": 42})
     lca = IterativeLCA({3: 1}, **kwargs)
     other = LCA({3: 1}, **kwargs)
     lca.lci()
@@ -919,7 +929,7 @@ def test_iterative_production_pivots_monte_carlo(monkeypatch):
     lca = IterativeLCA(
         {1: 1},
         data_objs=[pivot_datapackage(matrix, flags, samples=samples)],
-        use_arrays=True,
+        calculation_config={"use_arrays": True},
         direct_first_solve=False,
     )
     lca.lci()

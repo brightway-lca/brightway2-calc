@@ -59,9 +59,9 @@ class MultiLCA(LCABase):
     calculation_config : CalculationConfig | dict
         How matrices are built and sampled: `use_arrays`, `use_distributions`, the RNG `seed`,
         `derive_group_seeds`, and per-matrix overrides of these. See `CalculationConfig`.
-    seed_override, use_arrays, use_distributions, selective_use
-        Deprecated; use `calculation_config` instead. `selective_use` corresponds to
-        `CalculationConfig.matrices`, and `seed_override` to `CalculationConfig.seed`.
+        Keyword-only. Replaces the `seed_override`, `use_arrays`, `use_distributions`, and
+        `selective_use` arguments; `selective_use` corresponds to `CalculationConfig.matrices`, and
+        `seed_override` to `CalculationConfig.seed`.
     """
 
     matrix_labels = [
@@ -81,22 +81,12 @@ class MultiLCA(LCABase):
         data_objs: Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]],
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
-        seed_override: Optional[int] = None,
-        use_arrays: Optional[bool] = None,
-        use_distributions: Optional[bool] = None,
-        selective_use: Optional[dict] = None,
         *,
         calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
         # Validation checks
         DemandsValidator(demands=demands)
-        self.calculation_config = resolve_calculation_config(
-            calculation_config,
-            seed_override=seed_override,
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            selective_use=selective_use,
-        )
+        self.calculation_config = resolve_calculation_config(calculation_config)
         if isinstance(method_config, MethodConfig):
             method_config = {
                 key: value for key, value in method_config.model_dump().items() if value is not None

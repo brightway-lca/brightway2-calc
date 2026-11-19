@@ -1,5 +1,4 @@
 import inspect
-import warnings
 from typing import Optional, Union
 
 import matrix_utils as mu
@@ -78,22 +77,6 @@ class CalculationConfig(BaseModel):
     derive_group_seeds: Optional[bool] = None
     matrices: dict[str, MatrixConfig] = {}
 
-    @classmethod
-    def from_legacy(
-        cls,
-        seed_override: Optional[int] = None,
-        use_arrays: Optional[bool] = None,
-        use_distributions: Optional[bool] = None,
-        selective_use: Optional[dict] = None,
-    ) -> "CalculationConfig":
-        """Build from the arguments ``LCA`` and ``MultiLCA`` took before ``CalculationConfig``."""
-        return cls(
-            use_arrays=bool(use_arrays),
-            use_distributions=bool(use_distributions),
-            seed=seed_override,
-            matrices=selective_use or {},
-        )
-
     def _matrix(self, matrix_label: str) -> MatrixConfig:
         matrix = self.matrices.get(matrix_label)
         if matrix is None:
@@ -167,33 +150,16 @@ class CalculationConfig(BaseModel):
 
 
 def resolve_calculation_config(
-    calculation_config: Union[CalculationConfig, dict, None], **legacy
+    calculation_config: Union[CalculationConfig, dict, None],
 ) -> CalculationConfig:
-    """Get a ``CalculationConfig`` from either a config or the legacy arguments, not both."""
-    given = sorted(
-        key
-        for key, value in legacy.items()
-        if value is not None and value is not False and value != {}
-    )
-    if calculation_config is not None:
-        if given:
-            raise ValueError(
-                f"Can't pass both `calculation_config` and the legacy arguments {given}; "
-                "set them in `calculation_config` instead"
-            )
-        if isinstance(calculation_config, dict):
-            return CalculationConfig.model_validate(calculation_config)
-        if not isinstance(calculation_config, CalculationConfig):
-            raise TypeError(
-                "`calculation_config` must be a `CalculationConfig` or a dict, not "
-                f"{type(calculation_config).__name__}"
-            )
-        return calculation_config.model_copy(deep=True)
-    if given:
-        warnings.warn(
-            f"The arguments {given} are deprecated; use "
-            "`calculation_config=CalculationConfig(...)` instead",
-            DeprecationWarning,
-            stacklevel=3,
+    """Get a new ``CalculationConfig`` from a config, a dict, or ``None`` (the defaults)."""
+    if calculation_config is None:
+        return CalculationConfig()
+    if isinstance(calculation_config, dict):
+        return CalculationConfig.model_validate(calculation_config)
+    if not isinstance(calculation_config, CalculationConfig):
+        raise TypeError(
+            "`calculation_config` must be a `CalculationConfig` or a dict, not "
+            f"{type(calculation_config).__name__}"
         )
-    return CalculationConfig.from_legacy(**legacy)
+    return calculation_config.model_copy(deep=True)

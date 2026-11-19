@@ -221,7 +221,7 @@ def test_iteration_with_distributions_varies():
         demand={3: 1.0},
         static_databases=["static_db"],
         data_objs=[static_dp, stochastic_dp, method_dp],
-        seed_override=42,
+        calculation_config={"use_distributions": True, "seed": 42},
     )
     p_lca.lci()
     p_lca.lcia()
@@ -245,7 +245,7 @@ def test_keep_first_iteration():
         demand={3: 1.0},
         static_databases=["static_db"],
         data_objs=[static_dp, stochastic_dp, method_dp],
-        seed_override=1,
+        calculation_config={"use_distributions": True, "seed": 1},
     )
     p_lca.lci()
     p_lca.lcia()
@@ -601,7 +601,7 @@ def test_stochastic_characterization_varies():
         demand={3: 1.0},
         static_databases=["static_db"],
         data_objs=[static_dp, stochastic_dp, method_dp],
-        seed_override=99,
+        calculation_config={"use_distributions": True, "seed": 99},
     )
     p_lca.lci()
     p_lca.lcia()

@@ -81,8 +81,8 @@ class PartitionedMonteCarloLCA(Iterator):
         Passed to the inner stochastic LCA. Defaults to
         ``CalculationConfig(use_distributions=True)``.
         The static system is always built without uncertainty.
-    seed_override : int, optional
-        Deprecated; use ``calculation_config=CalculationConfig(use_distributions=True, seed=...)``.
+        Keyword-only. Replaces the ``seed_override`` argument; use
+        ``CalculationConfig(use_distributions=True, seed=...)`` instead.
 
     Notes
     -----
@@ -115,7 +115,6 @@ class PartitionedMonteCarloLCA(Iterator):
         demand: dict[int, float],
         static_databases: list,
         data_objs: list,
-        seed_override: Optional[int] = None,
         *,
         calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
@@ -129,14 +128,9 @@ class PartitionedMonteCarloLCA(Iterator):
             raise TypeError("All demand keys must be integers (activity/product database IDs).")
         self.demand = demand
         self.static_databases = list(static_databases)
-        if calculation_config is None and seed_override is None:
-            calculation_config = CalculationConfig(use_distributions=True)
-        self.calculation_config = resolve_calculation_config(
-            calculation_config, seed_override=seed_override
-        )
         if calculation_config is None:
-            # Legacy ``seed_override``; this class always used distributions
-            self.calculation_config.use_distributions = True
+            calculation_config = CalculationConfig(use_distributions=True)
+        self.calculation_config = resolve_calculation_config(calculation_config)
 
         packages = [get_datapackage(obj) for obj in data_objs]
         (

@@ -338,7 +338,9 @@ def test_selective_use(dps, func_units):
         "weighting_matrix": {"use_distributions": True},
     }
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca = MultiLCA(
+        demands=func_units, method_config=config, data_objs=dps, calculation_config={"matrices": su}
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()
@@ -392,7 +394,9 @@ def test_selective_use_keep_first(dps, func_units):
         "weighting_matrix": {"use_distributions": True},
     }
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca = MultiLCA(
+        demands=func_units, method_config=config, data_objs=dps, calculation_config={"matrices": su}
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()
@@ -442,7 +446,12 @@ def test_monte_carlo_multiple_iterations_use_distributions(dps, func_units):
         get_datapackage(fixture_dir / "multi_lca_simple_weighting.zip"),
     )
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, use_distributions=True)
+    mlca = MultiLCA(
+        demands=func_units,
+        method_config=config,
+        data_objs=dps,
+        calculation_config={"use_distributions": True},
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()
@@ -491,7 +500,9 @@ def test_monte_carlo_multiple_iterations_selective_use(dps, func_units):
         "weighting_matrix": {"use_distributions": True},
     }
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca = MultiLCA(
+        demands=func_units, method_config=config, data_objs=dps, calculation_config={"matrices": su}
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()
@@ -539,7 +550,9 @@ def test_monte_carlo_multiple_iterations_selective_use_technosphere(dps, func_un
         "technosphere_matrix": {"use_distributions": True},
     }
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca = MultiLCA(
+        demands=func_units, method_config=config, data_objs=dps, calculation_config={"matrices": su}
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()
@@ -590,7 +603,9 @@ def test_monte_carlo_multiple_iterations_selective_use_in_list_comprehension(dps
         "weighting_matrix": {"use_distributions": True},
     }
 
-    mlca = MultiLCA(demands=func_units, method_config=config, data_objs=dps, selective_use=su)
+    mlca = MultiLCA(
+        demands=func_units, method_config=config, data_objs=dps, calculation_config={"matrices": su}
+    )
     mlca.lci()
     mlca.lcia()
     mlca.normalize()

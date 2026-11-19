@@ -176,33 +176,6 @@ def test_lca_reproducible():
 
     config = CalculationConfig(use_distributions=True, seed=42)
     assert np.allclose(scores(calculation_config=config), scores(calculation_config=config))
-    with pytest.warns(DeprecationWarning):
-        legacy = scores(use_distributions=True, seed_override=42)
-    assert np.allclose(scores(calculation_config=config), legacy)
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"seed_override": 1},
-        {"use_arrays": True},
-        {"use_distributions": True},
-        {"selective_use": {"biosphere_matrix": {"use_distributions": True}}},
-    ],
-)
-def test_lca_legacy_arguments_deprecated(kwargs):
-    with pytest.warns(DeprecationWarning, match="calculation_config"):
-        LCA({1: 1}, data_objs=[lognormal_datapackage()], **kwargs)
-
-
-def test_lca_legacy_and_config_conflict():
-    with pytest.raises(ValueError, match="legacy"):
-        LCA(
-            {1: 1},
-            data_objs=[lognormal_datapackage()],
-            calculation_config=CalculationConfig(),
-            use_distributions=True,
-        )
 
 
 def test_lca_attributes_write_through():
@@ -260,40 +233,6 @@ def test_derive_group_seeds_false_identical_draws():
 
 
 # Review of https://github.com/brightway-lca/brightway2-calc/pull/190
-
-
-def test_seed_still_positional():
-    with pytest.warns(DeprecationWarning):
-        lca = LCA({1: 1}, None, None, None, [lognormal_datapackage()], None, None, 42)
-    assert lca.seed_override == 42
-    with pytest.warns(DeprecationWarning):
-        mlca = MultiLCA(
-            {"a": {1: 1}},
-            {"impact_categories": [("foo",)]},
-            [lognormal_datapackage()],
-            None,
-            None,
-            42,
-        )
-    assert mlca.seed_override == 42
-
-
-def test_calculation_config_keyword_only():
-    with pytest.raises(TypeError):
-        LCA(
-            {1: 1},
-            None,
-            None,
-            None,
-            [lognormal_datapackage()],
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            CalculationConfig(),
-        )
 
 
 def test_calculation_config_wrong_type():
@@ -372,3 +311,30 @@ def test_matrix_explicit_none_kept():
     assert config.matrix_kwargs("biosphere_matrix")["seed_override"] is None
     assert config.matrix_kwargs("technosphere_matrix")["seed_override"] == 42
     assert config.selective_use == {"technosphere_matrix": {"use_arrays": True}}
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"seed_override": 1},
+        {"use_arrays": True},
+        {"use_distributions": True},
+        {"selective_use": {"biosphere_matrix": {"use_distributions": True}}},
+    ],
+)
+def test_legacy_arguments_removed(kwargs):
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        LCA({1: 1}, data_objs=[lognormal_datapackage()], **kwargs)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        MultiLCA(
+            demands={"a": {1: 1}},
+            method_config={"impact_categories": [("foo",)]},
+            data_objs=[lognormal_datapackage()],
+            **kwargs,
+        )
+
+
+def test_calculation_config_keyword_only():
+    # The eighth positional argument used to be `seed_override`
+    with pytest.raises(TypeError, match="positional"):
+        LCA({1: 1}, None, None, None, [lognormal_datapackage()], None, None, CalculationConfig())
