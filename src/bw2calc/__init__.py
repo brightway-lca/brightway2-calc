@@ -1,9 +1,11 @@
 # flake8: noqa
 __all__ = [
     "CachingLCA",
+    "CalculationConfig",
     "DenseLCA",
     "JacobiGMRESLCA",
     "LCA",
+    "MatrixConfig",
     "LeastSquaresLCA",
     "IterativeLCA",
     "MethodConfig",
@@ -68,6 +70,7 @@ except ImportError:
 
 
 from bw2calc.caching_lca import CachingLCA
+from bw2calc.calculation_config import CalculationConfig, MatrixConfig
 from bw2calc.dense_lca import DenseLCA
 from bw2calc.fast_scores import FastScoresOnlyMultiLCA
 from bw2calc.iterative_lca import IterativeLCA

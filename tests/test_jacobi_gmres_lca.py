@@ -74,8 +74,7 @@ def test_jacobi_gmres_keeps_monte_carlo_technosphere_current():
     jacobi = JacobiGMRESLCA(
         {3: 1},
         data_objs=packages,
-        seed_override=42,
-        use_distributions=True,
+        calculation_config={"use_distributions": True, "seed": 42},
     )
     jacobi.lci()
 
@@ -131,7 +130,7 @@ def test_jacobi_gmres_advances_sequential_technosphere_array():
     jacobi = JacobiGMRESLCA(
         {1: 1},
         data_objs=packages + [sequential_technosphere_override(values)],
-        use_arrays=True,
+        calculation_config={"use_arrays": True},
     )
     jacobi.lci()
     row, col = jacobi.dicts.product[2], jacobi.dicts.activity[101]
@@ -152,12 +151,12 @@ def test_jacobi_gmres_sequential_supply_matches_lca():
     jacobi = JacobiGMRESLCA(
         {1: 1},
         data_objs=packages + [sequential_technosphere_override(values)],
-        use_arrays=True,
+        calculation_config={"use_arrays": True},
     )
     reference = LCA(
         {1: 1},
         data_objs=packages + [sequential_technosphere_override(values)],
-        use_arrays=True,
+        calculation_config={"use_arrays": True},
     )
     jacobi.lci()
     reference.lci()

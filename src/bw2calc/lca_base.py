@@ -9,6 +9,7 @@ import matrix_utils as mu
 import numpy as np
 
 from bw2calc import PYPARDISO, spsolve
+from bw2calc.calculation_config import CalculationConfig
 from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
 from bw2calc.utils import lu_solver
 
@@ -97,24 +98,59 @@ class LCABase(Iterator):
         """
         self.keep_first_iteration_flag = True
 
+    calculation_config: CalculationConfig
+
+    # The settings below are kept as attributes for backwards compatibility; they read from and
+    # write to ``calculation_config``.
+
+    @property
+    def use_arrays(self) -> bool:
+        return self.calculation_config.use_arrays
+
+    @use_arrays.setter
+    def use_arrays(self, value: bool) -> None:
+        self.calculation_config.use_arrays = bool(value)
+
+    @property
+    def use_distributions(self) -> bool:
+        return self.calculation_config.use_distributions
+
+    @use_distributions.setter
+    def use_distributions(self, value: bool) -> None:
+        self.calculation_config.use_distributions = bool(value)
+
+    @property
+    def seed_override(self) -> Optional[int]:
+        return self.calculation_config.seed
+
+    @seed_override.setter
+    def seed_override(self, value: Optional[int]) -> None:
+        self.calculation_config.seed = value
+
+    @property
+    def selective_use(self) -> dict:
+        """Per-matrix flags in the legacy format. Changing the returned dict in place has no
+        effect; assign a new dict, or change ``calculation_config.matrices``."""
+        return self.calculation_config.selective_use
+
+    @selective_use.setter
+    def selective_use(self, value: Optional[dict]) -> None:
+        self.calculation_config.set_selective_use(value)
+
     def check_selective_use(self, matrix_label: str) -> Tuple[bool, bool]:
-        return (
-            self.selective_use.get(matrix_label, {}).get("use_arrays", self.use_arrays),
-            self.selective_use.get(matrix_label, {}).get(
-                "use_distributions", self.use_distributions
-            ),
-        )
+        """``(use_arrays, use_distributions)`` for ``matrix_label``."""
+        return self.calculation_config.flags(matrix_label)
+
+    def matrix_kwargs(self, matrix_label: str) -> dict:
+        """Sampling arguments for ``matrix_utils.MappedMatrix`` for ``matrix_label``."""
+        return self.calculation_config.matrix_kwargs(matrix_label)
 
     def load_lci_data(self, nonsquare_ok=False) -> None:
         """Load inventory data and create technosphere and biosphere matrices."""
-        use_arrays, use_distributions = self.check_selective_use("technosphere_matrix")
-
         self.technosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="technosphere_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("technosphere_matrix"),
         )
         self.dicts.product = partial(self.technosphere_mm.row_mapper.to_dict)
         self.dicts.activity = partial(self.technosphere_mm.col_mapper.to_dict)
@@ -140,14 +176,10 @@ class LCABase(Iterator):
                 )
             )
 
-        use_arrays, use_distributions = self.check_selective_use("biosphere_matrix")
-
         self.biosphere_mm = mu.MappedMatrix(
             packages=self.packages,
             matrix="biosphere_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("biosphere_matrix"),
             col_mapper=self.technosphere_mm.col_mapper,
             empty_ok=True,
         )

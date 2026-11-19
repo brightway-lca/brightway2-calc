@@ -21,7 +21,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
         "bw_processing >=1.6",
         "fsspec>=2023.3.0",
