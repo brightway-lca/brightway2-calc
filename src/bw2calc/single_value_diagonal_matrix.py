@@ -32,6 +32,8 @@ class SingleValueDiagonalMatrix(MappedMatrix):
         * row_mapper: Optional instance of `ArrayMapper`. Used when matrices must align.
         * col_mapper: Optional instance of `ArrayMapper`. Used when matrices must align.
         * seed_override: Optional integer. Overrides the RNG seed given in the datapackage, if any.
+        * derive_group_seeds: Optional bool, passed to `MappedMatrix` if given. Needs
+          `matrix_utils >= 0.10`.
         * indexer_override: Parameter for custom indexers. See above.
         * diagonal: If True, only use the `row` indices to build a diagonal matrix.
         * custom_filter: Callable for function to filter data based on `indices` values. See above.
@@ -51,6 +53,7 @@ class SingleValueDiagonalMatrix(MappedMatrix):
         seed_override: Union[int, None] = None,
         indexer_override: Any = None,
         custom_filter: Union[Callable, None] = None,
+        derive_group_seeds: Union[bool, None] = None,
         **kwargs,
     ):
         self.dimension = dimension
@@ -69,6 +72,8 @@ class SingleValueDiagonalMatrix(MappedMatrix):
             indexer_override=indexer_override,
             diagonal=True,
             custom_filter=custom_filter,
+            # Only passed on if given, as it needs matrix_utils >= 0.10
+            **({} if derive_group_seeds is None else {"derive_group_seeds": derive_group_seeds}),
         )
 
         if self.raw_data.shape != (1,):

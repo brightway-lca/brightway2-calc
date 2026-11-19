@@ -139,13 +139,15 @@ def test_auto_direction(basic_test_data):
 
 @needs_solver
 def test_auto_direction_uses_forward_when_stochastic(basic_test_data):
-    lca = fast_scores(basic_test_data, use_distributions=True, direction="auto")
+    lca = fast_scores(
+        basic_test_data, calculation_config={"use_distributions": True}, direction="auto"
+    )
     assert hasattr(lca, "supply_array")
     assert not hasattr(lca, "product_scores")
 
     lca = fast_scores(
         basic_test_data,
-        selective_use={"characterization_matrix": {"use_arrays": True}},
+        calculation_config={"matrices": {"characterization_matrix": {"use_arrays": True}}},
         direction="auto",
     )
     assert hasattr(lca, "supply_array")
@@ -155,9 +157,9 @@ def test_auto_direction_uses_forward_when_stochastic(basic_test_data):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"use_distributions": True},
-        {"use_arrays": True},
-        {"selective_use": {"technosphere_matrix": {"use_distributions": True}}},
+        {"calculation_config": {"use_distributions": True}},
+        {"calculation_config": {"use_arrays": True}},
+        {"calculation_config": {"matrices": {"technosphere_matrix": {"use_distributions": True}}}},
     ],
 )
 def test_adjoint_stochastic_not_implemented(basic_test_data, kwargs):
@@ -317,7 +319,7 @@ def test_direction_setter_validates(basic_test_data):
         demands=basic_test_data["demands"],
         method_config=basic_test_data["config"],
         data_objs=basic_test_data["dps"],
-        use_distributions=True,
+        calculation_config={"use_distributions": True},
     )
     with pytest.raises(NotImplementedError, match="adjoint"):
         stochastic.direction = "adjoint"
@@ -465,7 +467,7 @@ def test_default_direction_is_forward_with_future_warning(basic_test_data):
         {"direction": "adjoint"},
         # "auto" would also use forward for these
         {"demands": {"γ": {100: 1}, "ε": {103: 2}}},
-        {"use_distributions": True},
+        {"calculation_config": {"use_distributions": True}},
     ],
 )
 def test_no_future_warning_when_default_makes_no_difference(basic_test_data, kwargs):

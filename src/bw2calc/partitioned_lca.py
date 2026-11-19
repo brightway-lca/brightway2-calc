@@ -1,11 +1,12 @@
 from collections.abc import Iterator
 from importlib.util import find_spec
-from typing import Optional
+from typing import Optional, Union
 
 import bw_processing as bwp
 import matrix_utils as mu
 import numpy as np
 
+from bw2calc.calculation_config import CalculationConfig, resolve_calculation_config
 from bw2calc.errors import (
     CyclicDependencyGraph,
     DemandInStaticDatabase,
@@ -76,8 +77,14 @@ class PartitionedMonteCarloLCA(Iterator):
         All datapackages: stochastic LCI + static LCI + LCIA method. Packages for databases
         listed in ``static_databases`` are identified by their ``metadata["name"]`` field, which
         must equal ``bw_processing.clean_datapackage_name(database_name)``.
+    calculation_config : CalculationConfig | dict, optional
+        Passed to the inner stochastic LCA. Defaults to
+        ``CalculationConfig(use_distributions=True)``.
+        The static system is always built without uncertainty.
+        Keyword-only.
     seed_override : int, optional
-        RNG seed passed to the inner stochastic LCA.
+        Deprecated; use ``calculation_config=CalculationConfig(use_distributions=True, seed=...)``.
+        Passing it together with ``calculation_config`` raises an error.
 
     Notes
     -----
@@ -111,6 +118,8 @@ class PartitionedMonteCarloLCA(Iterator):
         static_databases: list,
         data_objs: list,
         seed_override: Optional[int] = None,
+        *,
+        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
         # Imported lazily to avoid a circular import, as bw_graph_tools depends on bw2calc
         if find_spec("bw_graph_tools") is None:
@@ -122,7 +131,14 @@ class PartitionedMonteCarloLCA(Iterator):
             raise TypeError("All demand keys must be integers (activity/product database IDs).")
         self.demand = demand
         self.static_databases = list(static_databases)
-        self.seed_override = seed_override
+        if calculation_config is None and seed_override is None:
+            calculation_config = CalculationConfig(use_distributions=True)
+        self.calculation_config = resolve_calculation_config(
+            calculation_config, seed_override=seed_override
+        )
+        if calculation_config is None:
+            # Deprecated ``seed_override``; this class always used distributions
+            self.calculation_config.use_distributions = True
 
         packages = [get_datapackage(obj) for obj in data_objs]
         (
@@ -143,8 +159,7 @@ class PartitionedMonteCarloLCA(Iterator):
         self._lca = LCA(
             demand=self.demand,
             data_objs=self.stochastic_packages + self.method_packages + [dynamic_dp],
-            use_distributions=True,
-            seed_override=self.seed_override,
+            calculation_config=self.calculation_config,
         )
         self._lca.lci()
 
@@ -160,6 +175,14 @@ class PartitionedMonteCarloLCA(Iterator):
     # ------------------------------------------------------------------
     # Delegated properties
     # ------------------------------------------------------------------
+
+    @property
+    def seed_override(self) -> Optional[int]:
+        return self.calculation_config.seed
+
+    @seed_override.setter
+    def seed_override(self, value: Optional[int]) -> None:
+        self.calculation_config.seed = value
 
     @property
     def score(self) -> float:
@@ -326,7 +349,6 @@ class PartitionedMonteCarloLCA(Iterator):
         static_lca = LCA(
             demand={0: 1.0},
             data_objs=self.static_packages,
-            use_distributions=False,
         )
         static_lca.load_lci_data()
         static_lca.decompose_technosphere()
