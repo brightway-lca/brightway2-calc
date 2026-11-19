@@ -115,8 +115,9 @@ class PartitionedMonteCarloLCA(Iterator):
         demand: dict[int, float],
         static_databases: list,
         data_objs: list,
-        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
         seed_override: Optional[int] = None,
+        *,
+        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
         # Imported lazily to avoid a circular import, as bw_graph_tools depends on bw2calc
         if find_spec("bw_graph_tools") is None:

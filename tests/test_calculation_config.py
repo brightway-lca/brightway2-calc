@@ -257,3 +257,118 @@ def test_derive_group_seeds_false_identical_draws():
     )
     samples = draws(lca)
     assert np.allclose(samples[:, 0], samples[:, 1])
+
+
+# Review of https://github.com/brightway-lca/brightway2-calc/pull/190
+
+
+def test_seed_still_positional():
+    with pytest.warns(DeprecationWarning):
+        lca = LCA({1: 1}, None, None, None, [lognormal_datapackage()], None, None, 42)
+    assert lca.seed_override == 42
+    with pytest.warns(DeprecationWarning):
+        mlca = MultiLCA(
+            {"a": {1: 1}},
+            {"impact_categories": [("foo",)]},
+            [lognormal_datapackage()],
+            None,
+            None,
+            42,
+        )
+    assert mlca.seed_override == 42
+
+
+def test_calculation_config_keyword_only():
+    with pytest.raises(TypeError):
+        LCA(
+            {1: 1},
+            None,
+            None,
+            None,
+            [lognormal_datapackage()],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            CalculationConfig(),
+        )
+
+
+def test_calculation_config_wrong_type():
+    with pytest.raises(TypeError, match="must be a `CalculationConfig` or a dict, not int"):
+        LCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=42)
+
+
+def test_matrices_dict_added_in_place():
+    lca = LCA(
+        {1: 1},
+        data_objs=[lognormal_datapackage()],
+        calculation_config=CalculationConfig(seed=1),
+    )
+    lca.calculation_config.matrices["biosphere_matrix"] = {"use_distributions": True, "seed": 2}
+    assert lca.check_selective_use("biosphere_matrix") == (False, True)
+    assert lca.selective_use == {"biosphere_matrix": {"use_distributions": True}}
+    lca.lci()
+    assert lca.biosphere_mm.seed_override == 2
+    assert lca.calculation_config.matrices["biosphere_matrix"] == MatrixConfig(
+        use_distributions=True, seed=2
+    )
+
+
+def test_matrices_invalid_dict_added_in_place():
+    config = CalculationConfig()
+    config.matrices["biosphere_matrix"] = {"use_distribution": True}
+    with pytest.raises(ValueError):
+        config.matrix_kwargs("biosphere_matrix")
+
+
+def test_matrix_explicit_none_overrides_global(monkeypatch):
+    monkeypatch.setattr(cc, "MU_DERIVE_GROUP_SEEDS", True)
+    config = CalculationConfig(
+        seed=42,
+        derive_group_seeds=False,
+        use_distributions=True,
+        matrices={
+            "biosphere_matrix": {"seed": None, "derive_group_seeds": None},
+            "characterization_matrix": MatrixConfig(seed=None),
+            # `None` always means the global value for the flags
+            "normalization_matrix": {"use_distributions": None},
+        },
+    )
+    assert config.matrix_kwargs("technosphere_matrix") == {
+        "use_arrays": False,
+        "use_distributions": True,
+        "seed_override": 42,
+        "derive_group_seeds": False,
+    }
+    assert config.matrix_kwargs("biosphere_matrix") == {
+        "use_arrays": False,
+        "use_distributions": True,
+        "seed_override": None,
+    }
+    assert config.matrix_kwargs("characterization_matrix") == {
+        "use_arrays": False,
+        "use_distributions": True,
+        "seed_override": None,
+        "derive_group_seeds": False,
+    }
+    assert config.matrix_kwargs("normalization_matrix")["use_distributions"] is True
+    assert config.matrix_kwargs("normalization_matrix")["seed_override"] == 42
+
+
+def test_matrix_explicit_none_kept():
+    config = CalculationConfig(seed=42, matrices={"biosphere_matrix": {"seed": None}})
+    # Copied when passed to an LCA
+    lca = LCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config)
+    assert lca.calculation_config.matrix_kwargs("biosphere_matrix")["seed_override"] is None
+    # Assigned after construction
+    config = CalculationConfig(seed=42, matrices={"biosphere_matrix": {"use_arrays": True}})
+    config.matrices["biosphere_matrix"].seed = None
+    assert config.matrix_kwargs("biosphere_matrix")["seed_override"] is None
+    # Changing the legacy flags
+    config.set_selective_use({"technosphere_matrix": {"use_arrays": True}})
+    assert config.matrix_kwargs("biosphere_matrix")["seed_override"] is None
+    assert config.matrix_kwargs("technosphere_matrix")["seed_override"] == 42
+    assert config.selective_use == {"technosphere_matrix": {"use_arrays": True}}

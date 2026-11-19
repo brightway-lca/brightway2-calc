@@ -52,11 +52,12 @@ class LCA(LCABase):
         data_objs: Optional[Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
-        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
         seed_override: Optional[int] = None,
         use_arrays: Optional[bool] = None,
         use_distributions: Optional[bool] = None,
         selective_use: Optional[dict] = None,
+        *,
+        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
         """Create a new LCA calculation object.
 

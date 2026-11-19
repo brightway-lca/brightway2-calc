@@ -1,6 +1,6 @@
 import inspect
 import warnings
-from typing import Optional
+from typing import Optional, Union
 
 import matrix_utils as mu
 from pydantic import BaseModel, ConfigDict
@@ -9,13 +9,20 @@ from pydantic import BaseModel, ConfigDict
 # https://github.com/brightway-lca/matrix_utils/pull/52
 MU_DERIVE_GROUP_SEEDS = "derive_group_seeds" in inspect.signature(mu.MappedMatrix).parameters
 
-LEGACY_ARGUMENTS = ("seed_override", "use_arrays", "use_distributions", "selective_use")
+# ``MatrixConfig`` fields for which an explicit ``None`` overrides the global value
+NULLABLE = {"seed", "derive_group_seeds"}
 
 
 class MatrixConfig(BaseModel):
     """Settings for one matrix, such as ``technosphere_matrix``.
 
-    Each field left as ``None`` uses the value of the same field in ``CalculationConfig``.
+    Each field which isn't given uses the value of the same field in ``CalculationConfig``.
+
+    ``seed`` and ``derive_group_seeds`` can be explicitly set to ``None`` to override a global
+    value with ``None``: ``MatrixConfig(seed=None)`` uses the datapackage ``seed`` for this
+    matrix even if ``CalculationConfig.seed`` is set, and ``MatrixConfig(derive_group_seeds=None)``
+    uses the matrix_utils default. For ``use_arrays`` and ``use_distributions``, ``None`` always
+    means the global value.
     """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -87,9 +94,21 @@ class CalculationConfig(BaseModel):
             matrices=selective_use or {},
         )
 
+    def _matrix(self, matrix_label: str) -> MatrixConfig:
+        matrix = self.matrices.get(matrix_label)
+        if matrix is None:
+            return MatrixConfig()
+        if not isinstance(matrix, MatrixConfig):
+            # Dicts added to ``matrices`` in place aren't validated by pydantic
+            matrix = self.matrices[matrix_label] = MatrixConfig.model_validate(matrix)
+        return matrix
+
     def _get(self, matrix_label: str, field: str):
-        value = getattr(self.matrices.get(matrix_label, MatrixConfig()), field)
-        return getattr(self, field) if value is None else value
+        matrix = self._matrix(matrix_label)
+        value = getattr(matrix, field)
+        if value is None and not (field in NULLABLE and field in matrix.model_fields_set):
+            return getattr(self, field)
+        return value
 
     def flags(self, matrix_label: str) -> tuple[bool, bool]:
         """``(use_arrays, use_distributions)`` for ``matrix_label``."""
@@ -118,39 +137,37 @@ class CalculationConfig(BaseModel):
     @property
     def selective_use(self) -> dict:
         """The matrix flags in the legacy ``selective_use`` format."""
-        return {
-            label: {
+        result = {}
+        for label in self.matrices:
+            flags = {
                 key: value
-                for key, value in matrix.model_dump(
-                    include={"use_arrays", "use_distributions"}
-                ).items()
+                for key, value in self._matrix(label)
+                .model_dump(include={"use_arrays", "use_distributions"})
+                .items()
                 if value is not None
             }
-            for label, matrix in self.matrices.items()
-            if matrix.use_arrays is not None or matrix.use_distributions is not None
-        }
+            if flags:
+                result[label] = flags
+        return result
 
     def set_selective_use(self, selective_use: Optional[dict]) -> None:
         """Replace the matrix flags with ``selective_use``, keeping other matrix settings."""
         selective_use = selective_use or {}
         matrices = {}
         for label in set(self.matrices).union(selective_use):
-            current = self.matrices.get(label, MatrixConfig())
-            flags = selective_use.get(label, {})
-            matrix = MatrixConfig(
-                **{
-                    **current.model_dump(),
-                    "use_arrays": flags.get("use_arrays"),
-                    "use_distributions": flags.get("use_distributions"),
-                }
-            )
-            if matrix != MatrixConfig():
-                matrices[label] = matrix
+            # Only the fields which were set, to keep an explicit ``None`` apart from "not set"
+            values = self._matrix(label).model_dump(exclude_unset=True)
+            for key in ("use_arrays", "use_distributions"):
+                values.pop(key, None)
+                if selective_use.get(label, {}).get(key) is not None:
+                    values[key] = selective_use[label][key]
+            if values:
+                matrices[label] = MatrixConfig(**values)
         self.matrices = matrices
 
 
 def resolve_calculation_config(
-    calculation_config: Optional[CalculationConfig], **legacy
+    calculation_config: Union[CalculationConfig, dict, None], **legacy
 ) -> CalculationConfig:
     """Get a ``CalculationConfig`` from either a config or the legacy arguments, not both."""
     given = sorted(
@@ -166,6 +183,11 @@ def resolve_calculation_config(
             )
         if isinstance(calculation_config, dict):
             return CalculationConfig.model_validate(calculation_config)
+        if not isinstance(calculation_config, CalculationConfig):
+            raise TypeError(
+                "`calculation_config` must be a `CalculationConfig` or a dict, not "
+                f"{type(calculation_config).__name__}"
+            )
         return calculation_config.model_copy(deep=True)
     if given:
         warnings.warn(
