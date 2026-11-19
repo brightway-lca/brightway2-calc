@@ -52,6 +52,10 @@ class LCA(LCABase):
         data_objs: Optional[Iterable[Union[Path, AbstractFileSystem, bwp.DatapackageBase]]] = None,
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
+        seed_override: Optional[int] = None,
+        use_arrays: Optional[bool] = None,
+        use_distributions: Optional[bool] = None,
+        selective_use: Optional[dict] = None,
         *,
         calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
@@ -92,15 +96,23 @@ class LCA(LCABase):
         calculation_config : CalculationConfig | dict
             How matrices are built and sampled: `use_arrays`, `use_distributions`, the RNG `seed`,
             `derive_group_seeds`, and per-matrix overrides of these. See `CalculationConfig`.
-            Keyword-only. Replaces the `seed_override`, `use_arrays`, `use_distributions`, and
-            `selective_use` arguments; `selective_use` corresponds to `CalculationConfig.matrices`,
-            and `seed_override` to `CalculationConfig.seed`.
+            Keyword-only.
+        seed_override, use_arrays, use_distributions, selective_use
+            Deprecated; use `calculation_config` instead. `selective_use` corresponds to
+            `CalculationConfig.matrices`, and `seed_override` to `CalculationConfig.seed`.
+            Passing any of these together with `calculation_config` raises an error.
 
         """
         if not isinstance(demand, Mapping):
             raise ValueError("Demand must be a dictionary")
 
-        self.calculation_config = resolve_calculation_config(calculation_config)
+        self.calculation_config = resolve_calculation_config(
+            calculation_config,
+            seed_override=seed_override,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            selective_use=selective_use,
+        )
 
         if data_objs is None:
             try:

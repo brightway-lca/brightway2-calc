@@ -4,7 +4,7 @@ import pytest
 from stats_arrays import LognormalUncertainty
 
 import bw2calc.calculation_config as cc
-from bw2calc import LCA, CalculationConfig, MatrixConfig, MultiLCA
+from bw2calc import LCA, CalculationConfig, JacobiGMRESLCA, MatrixConfig, MultiLCA
 
 
 def lognormal_datapackage():
@@ -313,19 +313,26 @@ def test_matrix_explicit_none_kept():
     assert config.selective_use == {"technosphere_matrix": {"use_arrays": True}}
 
 
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"seed_override": 1},
-        {"use_arrays": True},
-        {"use_distributions": True},
-        {"selective_use": {"biosphere_matrix": {"use_distributions": True}}},
-    ],
-)
-def test_legacy_arguments_removed(kwargs):
-    with pytest.raises(TypeError, match="unexpected keyword argument"):
-        LCA({1: 1}, data_objs=[lognormal_datapackage()], **kwargs)
-    with pytest.raises(TypeError, match="unexpected keyword argument"):
+LEGACY = [
+    {"seed_override": 1},
+    {"seed_override": 0},
+    {"use_arrays": True},
+    {"use_arrays": False},
+    {"use_distributions": True},
+    {"use_distributions": False},
+    {"selective_use": {"biosphere_matrix": {"use_distributions": True}}},
+    {"selective_use": {}},
+]
+
+
+@pytest.mark.parametrize("kwargs", LEGACY)
+def test_legacy_arguments_deprecated(kwargs):
+    with pytest.warns(DeprecationWarning, match="calculation_config") as record:
+        lca = LCA({1: 1}, data_objs=[lognormal_datapackage()], **kwargs)
+    assert record[0].filename == __file__
+    for key, value in kwargs.items():
+        assert getattr(lca, key) == value
+    with pytest.warns(DeprecationWarning, match="calculation_config"):
         MultiLCA(
             demands={"a": {1: 1}},
             method_config={"impact_categories": [("foo",)]},
@@ -334,7 +341,62 @@ def test_legacy_arguments_removed(kwargs):
         )
 
 
+@pytest.mark.parametrize("kwargs", LEGACY)
+def test_legacy_arguments_and_config_conflict(kwargs):
+    # An error even if the values agree
+    config = CalculationConfig(
+        seed=kwargs.get("seed_override"),
+        use_arrays=kwargs.get("use_arrays", False),
+        use_distributions=kwargs.get("use_distributions", False),
+        matrices=kwargs.get("selective_use", {}),
+    )
+    with pytest.raises(ValueError, match="deprecated arguments"):
+        LCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config, **kwargs)
+    with pytest.raises(ValueError, match="deprecated arguments"):
+        MultiLCA(
+            demands={"a": {1: 1}},
+            method_config={"impact_categories": [("foo",)]},
+            data_objs=[lognormal_datapackage()],
+            calculation_config=config,
+            **kwargs,
+        )
+
+
+def test_legacy_none_is_not_given():
+    config = CalculationConfig(use_distributions=True)
+    lca = LCA(
+        {1: 1},
+        data_objs=[lognormal_datapackage()],
+        calculation_config=config,
+        seed_override=None,
+        use_arrays=None,
+        use_distributions=None,
+        selective_use=None,
+    )
+    assert lca.calculation_config == config
+
+
+def test_legacy_matches_config():
+    def samples(**kwargs):
+        return draws(LCA({1: 1}, data_objs=[lognormal_datapackage()], **kwargs), 10)
+
+    with pytest.warns(DeprecationWarning):
+        legacy = samples(use_distributions=True, seed_override=42)
+    assert np.allclose(legacy, samples(calculation_config={"use_distributions": True, "seed": 42}))
+
+
+def test_seed_still_positional():
+    with pytest.warns(DeprecationWarning):
+        lca = LCA({1: 1}, None, None, None, [lognormal_datapackage()], None, None, 42)
+    assert lca.seed_override == 42
+
+
 def test_calculation_config_keyword_only():
-    # The eighth positional argument used to be `seed_override`
     with pytest.raises(TypeError, match="positional"):
-        LCA({1: 1}, None, None, None, [lognormal_datapackage()], None, None, CalculationConfig())
+        LCA({1: 1}, None, None, None, [lognormal_datapackage()], *[None] * 6, CalculationConfig())
+
+
+def test_deprecation_warning_points_at_caller_for_subclasses():
+    with pytest.warns(DeprecationWarning, match="calculation_config") as record:
+        JacobiGMRESLCA({1: 1}, data_objs=[lognormal_datapackage()], use_distributions=True)
+    assert record[0].filename == __file__

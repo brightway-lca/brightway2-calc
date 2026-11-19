@@ -1,4 +1,7 @@
 import inspect
+import os
+import sys
+import warnings
 from typing import Optional, Union
 
 import matrix_utils as mu
@@ -149,12 +152,57 @@ class CalculationConfig(BaseModel):
         self.matrices = matrices
 
 
+def _external_stacklevel() -> int:
+    """``stacklevel`` for ``warnings.warn`` of the first caller outside ``bw2calc``.
+
+    A fixed value would be wrong for subclasses, as each ``super().__init__()`` adds a frame.
+    """
+    package = os.path.dirname(os.path.abspath(__file__)) + os.sep
+    # Level 1 is the function calling ``warnings.warn``, which is our caller
+    frame, level = sys._getframe(1), 1
+    while frame is not None and os.path.abspath(frame.f_code.co_filename).startswith(package):
+        frame, level = frame.f_back, level + 1
+    return level
+
+
 def resolve_calculation_config(
     calculation_config: Union[CalculationConfig, dict, None],
+    seed_override: Optional[int] = None,
+    use_arrays: Optional[bool] = None,
+    use_distributions: Optional[bool] = None,
+    selective_use: Optional[dict] = None,
 ) -> CalculationConfig:
-    """Get a new ``CalculationConfig`` from a config, a dict, or ``None`` (the defaults)."""
+    """Get a new ``CalculationConfig`` from a config, a dict, or the deprecated arguments.
+
+    Any deprecated argument which isn't ``None`` counts as given. Giving one together with
+    ``calculation_config`` raises a ``ValueError``, even if the values agree.
+    """
+    legacy = {
+        "seed_override": seed_override,
+        "use_arrays": use_arrays,
+        "use_distributions": use_distributions,
+        "selective_use": selective_use,
+    }
+    given = [key for key, value in legacy.items() if value is not None]
     if calculation_config is None:
-        return CalculationConfig()
+        if given:
+            warnings.warn(
+                f"The arguments {given} are deprecated; use "
+                "`calculation_config=CalculationConfig(...)` instead",
+                DeprecationWarning,
+                stacklevel=_external_stacklevel(),
+            )
+        return CalculationConfig(
+            use_arrays=bool(use_arrays),
+            use_distributions=bool(use_distributions),
+            seed=seed_override,
+            matrices=selective_use or {},
+        )
+    if given:
+        raise ValueError(
+            f"Can't pass both `calculation_config` and the deprecated arguments {given}; "
+            "set them in `calculation_config` only"
+        )
     if isinstance(calculation_config, dict):
         return CalculationConfig.model_validate(calculation_config)
     if not isinstance(calculation_config, CalculationConfig):
