@@ -1,3 +1,4 @@
+import functools
 import time
 from pathlib import Path
 
@@ -70,6 +71,7 @@ def test_iterative_custom_solver():
 def test_iterative_direct_first_solve_skips_solver():
     calls = []
 
+    @functools.wraps(bicgstab)
     def solver(matrix, demand, **kwargs):
         calls.append(kwargs["x0"])
         return bicgstab(matrix, demand, **kwargs)
@@ -92,6 +94,7 @@ def test_iterative_direct_first_solve_skips_solver():
 def test_iterative_uses_reference_factorization_for_unchanged_matrix():
     calls = []
 
+    @functools.wraps(bicgstab)
     def solver(matrix, demand, **kwargs):
         calls.append(kwargs["x0"])
         return bicgstab(matrix, demand, **kwargs)
@@ -174,6 +177,7 @@ def test_iterative_does_not_modify_technosphere_matrix():
 def test_iterative_uses_jacobi_preconditioner_by_default():
     calls = []
 
+    @functools.wraps(bicgstab)
     def solver(matrix, demand, **kwargs):
         calls.append(kwargs["M"])
         return bicgstab(matrix, demand, **kwargs)
@@ -282,6 +286,7 @@ def test_iterative_falls_back_to_reference_preconditioned_solver():
 
     fallback_calls = []
 
+    @functools.wraps(bicgstab)
     def fallback(matrix, demand, **kwargs):
         fallback_calls.append(kwargs["M"])
         return bicgstab(matrix, demand, **kwargs)
@@ -416,6 +421,7 @@ def test_iterative_retries_skipped_stage(retry_after):
     """A run of hard Monte Carlo samples mustn't turn the stage off for all later ones."""
     calls = []
 
+    @functools.wraps(bicgstab)
     def solver(matrix, demand, **kwargs):
         calls.append(1)
         if len(calls) <= 2:
@@ -697,6 +703,7 @@ def permuted_system(n=40, seed=0, negative=True):
 
 
 def counting_solver(counts):
+    @functools.wraps(bicgstab)
     def solver(matrix, demand, callback=None, **kwargs):
         counts.append(0)
 

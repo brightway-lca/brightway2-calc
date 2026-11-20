@@ -1,3 +1,4 @@
+import functools
 from pathlib import Path
 
 import bw_processing as bwp
@@ -38,6 +39,7 @@ def test_jacobi_gmres_returns_no_preconditioner_for_zero_diagonal():
 def test_jacobi_gmres_uses_previous_solution_as_guess():
     calls = []
 
+    @functools.wraps(gmres)
     def recording_gmres(matrix, demand, **kwargs):
         calls.append(kwargs.get("x0"))
         return gmres(matrix, demand, **kwargs)
