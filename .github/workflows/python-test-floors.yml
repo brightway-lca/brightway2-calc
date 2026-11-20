@@ -2,11 +2,13 @@ name: Python 🐍 dependency floors
 on:
   push:
     branches: [main, develop]
-    paths: ["pyproject.toml", "src/**", "tests/**"]
+    paths: ["pyproject.toml", "src/**", "tests/**", ".github/workflows/python-test-floors.yml"]
   pull_request:
     branches: [main, develop]
-    paths: ["pyproject.toml", "src/**", "tests/**"]
+    paths: ["pyproject.toml", "src/**", "tests/**", ".github/workflows/python-test-floors.yml"]
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   floors:
     runs-on: ubuntu-latest
@@ -20,6 +22,6 @@ jobs:
           pip install uv
           uv pip install --system --resolution lowest-direct .
           uv pip freeze > constraints.txt # keep the floors when adding the test tools
-          uv pip install --system -c constraints.txt pytest pytest-cov "bw2data>=4.5" bw_graph_tools
+          uv pip install --system -c constraints.txt pytest pytest-cov "bw2data>=4.5" "bw_graph_tools>=0.8"
       - name: Test with pytest
         run: pytest
