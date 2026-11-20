@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-* [#184](https://github.com/brightway-lca/brightway2-calc/issues/184): `lu_solver` turns off UMFPACK's iterative refinement, so repeated solves are about 3x faster with reference BLAS or OpenBLAS.
+* [#189](https://github.com/brightway-lca/brightway2-calc/issues/189): New `CalculationConfig` object (and `MatrixConfig` for per-matrix overrides) for how matrices are built and sampled. Pass it as `calculation_config` to `LCA`, `MultiLCA`, and `PartitionedMonteCarloLCA` (a dict also works). It holds `use_arrays`, `use_distributions`, the RNG `seed`, `derive_group_seeds`, and `matrices`, which replaces `selective_use` and can also set a separate `seed` or `derive_group_seeds` per matrix. A per-matrix `seed` or `derive_group_seeds` explicitly set to `None` overrides the global value with `None`. `calculation_config` is keyword-only. `derive_group_seeds` is passed to matrix_utils (>= 0.10, [matrix_utils #52](https://github.com/brightway-lca/matrix_utils/pull/52)), which by default now derives a separate RNG seed for each resource group, so a single seed no longer makes the technosphere and biosphere (or other groups) draw identical samples. **A given seed therefore gives different samples with matrix_utils >= 0.10**; set `derive_group_seeds=False` for the old behaviour
+* The `seed_override`, `use_arrays`, `use_distributions`, and `selective_use` arguments of `LCA`, `MultiLCA`, their subclasses, and `PartitionedMonteCarloLCA` are deprecated in favour of `calculation_config`, and raise a `DeprecationWarning` when given (anything but `None`, so also `use_distributions=False`). Passing one of them together with `calculation_config` raises a `ValueError`, even if the values agree. The attributes of the same names still work, and read from and write to `calculation_config`; changing the dict returned by `selective_use` in place has no effect
+* Python 3.11 is now the minimum supported version; 3.9 and 3.10 have reached end of life, and CI already tested only 3.11 and later. See [brightway2 #92](https://github.com/brightway-lca/brightway2/issues/92)
 
 ## 3.1.0 (2026-10-18)
 

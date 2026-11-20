@@ -121,7 +121,7 @@ def test_demand_mapping_but_not_dict():
 
 def test_next_data_array():
     packages = [fixture_dir / "array_sequential.zip"]
-    lca = LCA({1: 1}, data_objs=packages, use_arrays=True)
+    lca = LCA({1: 1}, data_objs=packages, calculation_config={"use_arrays": True})
     lca.lci()
     lca.lcia()
 
@@ -132,7 +132,7 @@ def test_next_data_array():
 
 def test_data_array_keep_first():
     packages = [fixture_dir / "array_sequential.zip"]
-    lca = LCA({1: 1}, data_objs=packages, use_arrays=True)
+    lca = LCA({1: 1}, data_objs=packages, calculation_config={"use_arrays": True})
     lca.lci()
     lca.lcia()
     lca.keep_first_iteration()
@@ -166,7 +166,7 @@ def test_next_plain_monte_carlo():
     packages = [
         fixture_dir / "mc_basic.zip",
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc = LCA({3: 1}, data_objs=packages, calculation_config={"use_distributions": True})
     mc.lci()
     mc.lcia()
     first = mc.score
@@ -181,8 +181,10 @@ def test_selective_use():
     mc = LCA(
         {3: 1},
         data_objs=packages,
-        use_distributions=True,
-        selective_use={"biosphere_matrix": {"use_distributions": False}},
+        calculation_config={
+            "use_distributions": True,
+            "matrices": {"biosphere_matrix": {"use_distributions": False}},
+        },
     )
     mc.lci()
     mc.lcia()
@@ -195,7 +197,7 @@ def test_next_monte_carlo_as_iterator():
     packages = [
         fixture_dir / "mc_basic.zip",
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc = LCA({3: 1}, data_objs=packages, calculation_config={"use_distributions": True})
     mc.lci()
     mc.lcia()
     for _, _ in zip(mc, range(10)):
@@ -206,7 +208,7 @@ def test_next_monte_carlo_all_matrices_change():
     packages = [
         fixture_dir / "mc_basic.zip",
     ]
-    mc = LCA({3: 1}, data_objs=packages, use_distributions=True)
+    mc = LCA({3: 1}, data_objs=packages, calculation_config={"use_distributions": True})
     mc.lci()
     mc.lcia()
     a = [
@@ -989,7 +991,7 @@ def test_weight_keeps_weighting_data_across_iterations():
         indices_array=np.array([(0, 0)], dtype=bwp.INDICES_DTYPE),
     )
 
-    lca = LCA({1: 1}, data_objs=[dp], use_arrays=True)
+    lca = LCA({1: 1}, data_objs=[dp], calculation_config={"use_arrays": True})
     lca.lci()
     lca.lcia()
     lca.weight()

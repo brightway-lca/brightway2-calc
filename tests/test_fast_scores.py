@@ -427,8 +427,7 @@ def test_after_matrix_iteration_rebuilds_precalculated(basic_test_data):
         demands=basic_test_data["demands"],
         method_config=basic_test_data["config"],
         data_objs=basic_test_data["dps"],
-        use_distributions=True,
-        seed_override=42,
+        calculation_config={"use_distributions": True, "seed": 42},
     )
     fsmlca._load_datapackages()
     fsmlca.build_precalculated()
@@ -457,8 +456,7 @@ def test_next_calls_after_matrix_iteration(basic_test_data):
         demands=basic_test_data["demands"],
         method_config=basic_test_data["config"],
         data_objs=basic_test_data["dps"],
-        use_distributions=True,
-        seed_override=42,
+        calculation_config={"use_distributions": True, "seed": 42},
     )
     fsmlca._load_datapackages()
     fsmlca.build_precalculated()
@@ -504,8 +502,7 @@ def test_next_keep_first_iteration_skips_after_matrix_iteration(basic_test_data)
         demands=basic_test_data["demands"],
         method_config=basic_test_data["config"],
         data_objs=basic_test_data["dps"],
-        use_distributions=True,
-        seed_override=42,
+        calculation_config={"use_distributions": True, "seed": 42},
     )
     fsmlca._load_datapackages()
     fsmlca.build_precalculated()
@@ -557,9 +554,11 @@ def test_monte_carlo_matches_multi_lca(basic_test_data, fixture_dir, selective_u
         "demands": basic_test_data["demands"],
         "method_config": method_config,
         "data_objs": dps,
-        "use_distributions": selective_use is None,
-        "selective_use": selective_use,
-        "seed_override": 42,
+        "calculation_config": {
+            "use_distributions": selective_use is None,
+            "matrices": selective_use or {},
+            "seed": 42,
+        },
     }
 
     fsmlca = FastScoresOnlyMultiLCA(**kwargs)

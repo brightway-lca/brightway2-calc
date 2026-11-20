@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from scipy import sparse
 
 from bw2calc import PYPARDISO, __version__
+from bw2calc.calculation_config import CalculationConfig, resolve_calculation_config
 from bw2calc.dictionary_manager import DictionaryManager
 from bw2calc.errors import OutsideTechnosphere
 from bw2calc.lca_base import LCABase
@@ -55,16 +56,14 @@ class MultiLCA(LCABase):
         `remapping_dicts` can provide such remapping for any of `activity`, `product`, `biosphere`.
     log_config : dict
         Optional arguments to pass to logging. Not yet implemented.
-    seed_override : int
-        RNG seed to use in place of `Datapackage` seed, if any.
-    use_arrays : bool
-        Use arrays instead of vectors from the given `data_objs`
-    use_distributions : bool
-        Use probability distributions from the given `data_objs`
-    selective_use : dict[str, dict]
-        Dictionary that gives more control on whether `use_arrays` or `use_distributions` should be
-        used. Has the form `{matrix_label: {"use_arrays"|"use_distributions": bool}`. Standard
-        matrix labels are `technosphere_matrix`, `biosphere_matrix`, and `characterization_matrix`.
+    calculation_config : CalculationConfig | dict
+        How matrices are built and sampled: `use_arrays`, `use_distributions`, the RNG `seed`,
+        `derive_group_seeds`, and per-matrix overrides of these. See `CalculationConfig`.
+        Keyword-only.
+    seed_override, use_arrays, use_distributions, selective_use
+        Deprecated; use `calculation_config` instead. `selective_use` corresponds to
+        `CalculationConfig.matrices`, and `seed_override` to `CalculationConfig.seed`.
+        Passing any of these together with `calculation_config` raises an error.
     """
 
     matrix_labels = [
@@ -85,12 +84,21 @@ class MultiLCA(LCABase):
         remapping_dicts: Optional[Iterable[dict]] = None,
         log_config: Optional[dict] = None,
         seed_override: Optional[int] = None,
-        use_arrays: Optional[bool] = False,
-        use_distributions: Optional[bool] = False,
+        use_arrays: Optional[bool] = None,
+        use_distributions: Optional[bool] = None,
         selective_use: Optional[dict] = None,
+        *,
+        calculation_config: Optional[Union[CalculationConfig, dict]] = None,
     ):
         # Validation checks
         DemandsValidator(demands=demands)
+        self.calculation_config = resolve_calculation_config(
+            calculation_config,
+            seed_override=seed_override,
+            use_arrays=use_arrays,
+            use_distributions=use_distributions,
+            selective_use=selective_use,
+        )
         if isinstance(method_config, MethodConfig):
             method_config = {
                 key: value for key, value in method_config.model_dump().items() if value is not None
@@ -101,11 +109,7 @@ class MultiLCA(LCABase):
         self.config = method_config
         self.packages = [get_datapackage(obj) for obj in data_objs]
         self.dicts = DictionaryManager()
-        self.use_arrays = use_arrays
-        self.use_distributions = use_distributions
-        self.selective_use = selective_use or {}
         self.remapping_dicts = remapping_dicts or {}
-        self.seed_override = seed_override
 
         message = (
             """Initialized MultiLCA object. Demands: {demands}, data_objs: {data_objs}""".format(
@@ -270,8 +274,6 @@ class MultiLCA(LCABase):
         global_index = consistent_global_index(data_objs or self.packages)
         fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
 
-        use_arrays, use_distributions = self.check_selective_use("characterization_matrix")
-
         self.characterization_mm_dict = mu.MappedMatrixDict(
             packages={
                 ic: self.filter_package_by_identifier(
@@ -280,9 +282,7 @@ class MultiLCA(LCABase):
                 for ic in self.config["impact_categories"]
             },
             matrix="characterization_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("characterization_matrix"),
             row_mapper=self.biosphere_mm.row_mapper,
             col_mapper=None,
             diagonal=True,
@@ -300,8 +300,6 @@ class MultiLCA(LCABase):
         self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None
     ) -> None:
         """Load normalization data."""
-        use_arrays, use_distributions = self.check_selective_use("normalization_matrix")
-
         self.normalization_mm_dict = mu.MappedMatrixDict(
             packages={
                 nrml: self.filter_package_by_identifier(
@@ -310,9 +308,7 @@ class MultiLCA(LCABase):
                 for nrml in self.config["normalizations"]
             },
             matrix="normalization_matrix",
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("normalization_matrix"),
             row_mapper=self.biosphere_mm.row_mapper,
             diagonal=True,
         )
@@ -329,8 +325,6 @@ class MultiLCA(LCABase):
         self, data_objs: Optional[Iterable[bwp.DatapackageBase]] = None
     ) -> None:
         """Load weighting data."""
-        use_arrays, use_distributions = self.check_selective_use("weighting_matrix")
-
         self.weighting_mm_dict = mu.MappedMatrixDict(
             packages={
                 wng: self.filter_package_by_identifier(
@@ -341,9 +335,7 @@ class MultiLCA(LCABase):
             matrix="weighting_matrix",
             row_mapper=None,
             dimension=len(self.biosphere_mm.row_mapper),
-            use_arrays=use_arrays,
-            use_distributions=use_distributions,
-            seed_override=self.seed_override,
+            **self.matrix_kwargs("weighting_matrix"),
             matrix_class=SingleValueDiagonalMatrix,
             diagonal=True,
         )
