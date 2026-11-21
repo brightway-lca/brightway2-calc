@@ -140,8 +140,9 @@ def lu_solver(
     first.
 
     :param copy: UMFPACK reads the matrix again in each solve for iterative refinement, so
-        by default it gets a copy of ``matrix``, unless ``refine`` is ``False``. Pass ``False`` for a matrix which is never changed after this
-        call, to skip that copy. SuperLU never needs one.
+        by default it gets a copy of ``matrix``. Pass ``False`` for a matrix which is never
+        changed after this call, to skip that copy. No copy is needed, or made, if ``refine``
+        is ``False``, or with SuperLU.
     :param refine: UMFPACK's iterative refinement (two steps by default) is most of each
         solve. ``False`` skips it, which is about 3x faster with reference BLAS or OpenBLAS
         but can lose accuracy on badly scaled matrices; see
