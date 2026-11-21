@@ -193,7 +193,7 @@ def mock_pypardiso_solver():
 def mock_umfpack_solver():
     """Fixture providing a mock UMFPACK solver."""
 
-    def mock_factorized(matrix):
+    def mock_factorized(matrix, **kwargs):
         def solver(b):
             import numpy as np
 

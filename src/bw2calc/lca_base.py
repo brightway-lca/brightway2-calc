@@ -218,6 +218,8 @@ class LCABase(Iterator):
         Doesn't return anything, but creates ``self.solver``, which solves
         :math:`Ax=b`. It factorizes :math:`A^T=LU`, which is much faster than
         :math:`A=LU` for technosphere matrices; see ``bw2calc.utils.lu_solver``.
+        With UMFPACK, ``calculation_config.iterative_refinement`` sets whether
+        ``self.solver`` refines its solutions.
 
         .. warning:: Incorrect results could occur if a technosphere matrix was
         factorized, and then a new technosphere matrix was constructed, as
@@ -229,7 +231,9 @@ class LCABase(Iterator):
         if PYPARDISO:
             warnings.warn("PARDISO installed; this is a no-op")
         else:
-            self.solver = lu_solver(self.technosphere_matrix)
+            self.solver = lu_solver(
+                self.technosphere_matrix, refine=self.calculation_config.iterative_refinement
+            )
 
     def solve_linear_system(self, demand: Optional[np.ndarray] = None) -> None:
         """

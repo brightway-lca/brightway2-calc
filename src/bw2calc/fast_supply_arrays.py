@@ -65,7 +65,9 @@ class FastSupplyArraysMixin:
             return supply_array
 
         # Factorizes `A^T`, which is much faster than `A`; see `lu_solver`.
-        solver = lu_solver(self.technosphere_matrix)
+        solver = lu_solver(
+            self.technosphere_matrix, refine=self.calculation_config.iterative_refinement
+        )
         index = 0
         for chunk in self._demand_chunks(demands, self.chunk_size):
             for arr in chunk.T:

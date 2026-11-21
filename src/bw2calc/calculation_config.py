@@ -36,7 +36,8 @@ class MatrixConfig(BaseModel):
 
 
 class CalculationConfig(BaseModel):
-    """Settings for how matrices are built from datapackages, and how they are sampled.
+    """Settings for how matrices are built from datapackages, how they are sampled, and how
+    the technosphere matrix is solved.
 
     Parameters
     ----------
@@ -58,6 +59,15 @@ class CalculationConfig(BaseModel):
         ``biosphere_matrix``, ``characterization_matrix``, ``normalization_matrix``, or
         ``weighting_matrix``). These override the global settings for that matrix. Replaces
         ``selective_use``.
+    iterative_refinement : bool
+        Let UMFPACK refine each solution of a factorized technosphere matrix. Default ``True``.
+        ``False`` skips the refinement, which makes each solve about 3x faster with reference
+        BLAS or OpenBLAS, but can lose accuracy on badly scaled matrices; see
+        https://github.com/brightway-lca/brightway2-calc/issues/184. Applies to solves which
+        reuse a factorization made by ``bw2calc.utils.lu_solver``: ``lci(factorize=True)``
+        and every later solve with ``self.solver``, and ``FastSupplyArraysMixin``. Solves
+        without ``factorize=True``, ``FastScoresOnlyMultiLCA.solve_adjoint``, and the reference
+        solves of ``IterativeLCA`` are always refined. No effect with PARDISO or SuperLU.
 
     Example
     -------
@@ -79,6 +89,7 @@ class CalculationConfig(BaseModel):
     seed: Optional[int] = None
     derive_group_seeds: Optional[bool] = None
     matrices: dict[str, MatrixConfig] = {}
+    iterative_refinement: bool = True
 
     def _matrix(self, matrix_label: str) -> MatrixConfig:
         matrix = self.matrices.get(matrix_label)
