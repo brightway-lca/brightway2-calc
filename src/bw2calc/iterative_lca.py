@@ -558,7 +558,9 @@ class IterativeLCA(LCA):
             else:
                 # Factorizes `A^T`, which is much faster than `A`; see `lu_solver`.
                 # `matrix` is this object's own copy, which nothing changes, so UMFPACK
-                # doesn't need another one.
+                # doesn't need another one. Always refined, whatever
+                # `calculation_config.iterative_refinement` says: `estimate_error` trusts
+                # this solve as its reference.
                 solve = lu_solver(matrix, copy=False)
 
             def reference_solve(b):

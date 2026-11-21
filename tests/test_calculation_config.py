@@ -4,7 +4,19 @@ import pytest
 from stats_arrays import LognormalUncertainty
 
 import bw2calc.calculation_config as cc
-from bw2calc import LCA, CalculationConfig, JacobiGMRESLCA, MatrixConfig, MultiLCA
+from bw2calc import (
+    LCA,
+    CalculationConfig,
+    IterativeLCA,
+    JacobiGMRESLCA,
+    MatrixConfig,
+    MultiLCA,
+    fast_supply_arrays,
+    iterative_lca,
+    lca_base,
+)
+from bw2calc.fast_supply_arrays import FastSupplyArraysMixin
+from bw2calc.utils import lu_solver
 
 
 def lognormal_datapackage():
@@ -400,3 +412,67 @@ def test_deprecation_warning_points_at_caller_for_subclasses():
     with pytest.warns(DeprecationWarning, match="calculation_config") as record:
         JacobiGMRESLCA({1: 1}, data_objs=[lognormal_datapackage()], use_distributions=True)
     assert record[0].filename == __file__
+
+
+# Iterative refinement
+
+
+@pytest.fixture
+def lu_solver_calls(monkeypatch):
+    """Solve with `lu_solver`, not PARDISO, and collect the keyword arguments it gets."""
+    calls = []
+
+    def recording(matrix, **kwargs):
+        calls.append(kwargs)
+        return lu_solver(matrix, **kwargs)
+
+    for module in (lca_base, fast_supply_arrays, iterative_lca):
+        monkeypatch.setattr(module, "PYPARDISO", False)
+        monkeypatch.setattr(module, "lu_solver", recording)
+    monkeypatch.setattr(fast_supply_arrays, "UMFPACK", True)
+    return calls
+
+
+def test_iterative_refinement_default():
+    assert CalculationConfig().iterative_refinement is True
+    with pytest.raises(ValueError):
+        MatrixConfig(iterative_refinement=False)
+
+
+@pytest.mark.parametrize("config, refine", [(None, True), ({"iterative_refinement": False}, False)])
+def test_iterative_refinement_factorized_lci(lu_solver_calls, config, refine):
+    lca = LCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config)
+    lca.lci(factorize=True)
+    assert lu_solver_calls == [{"refine": refine}]
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(lca.supply_array, expected)
+    lca.lci(demand={2: 1})
+    assert len(lu_solver_calls) == 1
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(lca.supply_array, expected)
+
+
+@pytest.mark.parametrize("config, refine", [(None, True), ({"iterative_refinement": False}, False)])
+def test_iterative_refinement_fast_supply_arrays(lu_solver_calls, config, refine):
+    class FastLCA(LCA, FastSupplyArraysMixin):
+        pass
+
+    lca = FastLCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config)
+    lca.load_lci_data()
+    lca.build_demand_array()
+    result = lca.calculate_supply_arrays([lca.demand_array])
+    assert lu_solver_calls == [{"refine": refine}]
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(result[:, 0], expected)
+
+
+def test_iterative_refinement_always_on_for_iterative_lca_reference(lu_solver_calls):
+    """`IterativeLCA.estimate_error` trusts the reference solve."""
+    lca = IterativeLCA(
+        {1: 1},
+        data_objs=[lognormal_datapackage()],
+        calculation_config={"iterative_refinement": False},
+    )
+    lca.lci()
+    assert lca.solver_stats["reference"] == 1
+    assert lu_solver_calls == [{"copy": False}]

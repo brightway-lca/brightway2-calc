@@ -7,7 +7,7 @@ import pytest
 import scipy.sparse as sps
 from bw_processing.io_helpers import generic_directory_filesystem
 from fsspec.implementations.zip import ZipFileSystem as ZFS
-from scipy.sparse.linalg import splu
+from scipy.sparse.linalg import splu, spsolve
 
 from bw2calc import utils
 from bw2calc.utils import get_datapackage, get_seed, lu_solver
@@ -91,33 +91,56 @@ def test_lu_solver_factorizes_the_transpose(monkeypatch):
 
 
 @pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
-def test_lu_solver_ignores_later_in_place_edits(monkeypatch, umfpack):
-    """Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place."""
+@pytest.mark.parametrize("refine", [True, False])
+def test_lu_solver_ignores_later_in_place_edits(monkeypatch, umfpack, refine):
+    """Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place. Without
+    refinement UMFPACK gets no copy of the matrix, as its solves don't read it."""
     monkeypatch.setattr(utils, "UMFPACK", umfpack)
     dense = lu_test_matrix()
     matrix = sps.csr_matrix(dense)
-    solve = lu_solver(matrix)
+    solve = lu_solver(matrix, refine=refine)
     matrix.data *= 3
     b = np.array([1.0, 2.0, 3.0])
     assert np.allclose(solve(b), np.linalg.solve(dense, b))
 
 
-@needs_umfpack
-def test_lu_solver_uses_64_bit_umfpack_family(monkeypatch):
-    """Never "di", which runs out of memory on large matrices; see scipy/scipy#8278."""
+@pytest.fixture
+def umfpack_contexts(monkeypatch):
+    """Force UMFPACK and collect the real contexts `lu_solver` creates."""
     import scikits.umfpack as umfpack
 
     monkeypatch.setattr(utils, "UMFPACK", True)
-    families = []
+    contexts = []
     original = umfpack.UmfpackContext
     monkeypatch.setattr(
-        umfpack, "UmfpackContext", lambda family: families.append(family) or original(family)
+        umfpack, "UmfpackContext", lambda family: contexts.append(original(family)) or contexts[-1]
     )
+    return contexts
+
+
+@needs_umfpack
+def test_lu_solver_uses_64_bit_umfpack_family(umfpack_contexts):
+    """Never "di", which runs out of memory on large matrices; see scipy/scipy#8278."""
     matrix = sps.csr_matrix(lu_test_matrix())
     assert matrix.indices.dtype == np.int32
     b = np.array([1.0, 2.0, 3.0])
     assert np.allclose(lu_solver(matrix)(b), np.linalg.solve(lu_test_matrix(), b))
-    assert families == ["dl"]
+    assert [context.family for context in umfpack_contexts] == ["dl"]
+
+
+@needs_umfpack
+@pytest.mark.parametrize("kwargs, refined", [({}, True), ({"refine": False}, False)])
+def test_lu_solver_umfpack_iterative_refinement(umfpack_contexts, kwargs, refined):
+    """By default, UMFPACK takes a refinement step on this matrix; `refine=False` skips it."""
+    import scikits.umfpack as umfpack
+
+    rng = np.random.default_rng(0)
+    matrix = (sps.eye(50) - 0.3 * sps.random(50, 50, density=0.1, random_state=rng)).tocsr()
+    b = rng.random(50)
+    x = lu_solver(matrix, **kwargs)(b)
+    expected = spsolve(matrix, b)
+    assert np.linalg.norm(x - expected) <= 1e-10 * np.linalg.norm(expected)
+    assert (umfpack_contexts[0].info[umfpack.UMFPACK_IR_TAKEN] >= 1) == refined
 
 
 @pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
@@ -156,8 +179,10 @@ def test_lu_solver_accepts_float32(monkeypatch, umfpack):
 
 
 @needs_umfpack
-@pytest.mark.parametrize("copy", [True, False])
-def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy):
+@pytest.mark.parametrize(
+    "copy, refine, copied", [(True, True, True), (False, True, False), (True, False, False)]
+)
+def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy, refine, copied):
     import scikits.umfpack as umfpack
 
     monkeypatch.setattr(utils, "UMFPACK", True)
@@ -167,6 +192,7 @@ def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy):
     class Recording:
         def __init__(self, family):
             self._context = original(family)
+            self.control = self._context.control
 
         def numeric(self, matrix):
             given.append(matrix)
@@ -179,5 +205,5 @@ def test_lu_solver_copies_for_umfpack_unless_told_not_to(monkeypatch, copy):
     dense = lu_test_matrix()
     matrix = sps.csr_matrix(dense)
     b = np.array([1.0, 2.0, 3.0])
-    assert np.allclose(lu_solver(matrix, copy=copy)(b), np.linalg.solve(dense, b))
-    assert np.shares_memory(given[0].data, matrix.data) is not copy
+    assert np.allclose(lu_solver(matrix, copy=copy, refine=refine)(b), np.linalg.solve(dense, b))
+    assert np.shares_memory(given[0].data, matrix.data) is not copied

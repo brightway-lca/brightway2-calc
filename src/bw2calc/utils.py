@@ -115,7 +115,9 @@ def relative_residual(matrix: Any, solution: Any, rhs: Any) -> np.ndarray:
     return np.divide(residual, scale, out=residual.copy(), where=scale > 0)
 
 
-def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarray]:
+def lu_solver(
+    matrix: Any, copy: bool = True, refine: bool = True
+) -> Callable[[np.ndarray], np.ndarray]:
     """Factorize the square sparse ``matrix`` ``A`` with UMFPACK, if installed, or SuperLU,
     and return a function which solves ``A x = b`` for a 1-d ``b``. Not for PARDISO, which
     has its own factorization.
@@ -137,9 +139,14 @@ def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarr
     ``matrix.tocsr().T`` is CSC without any conversion. Other formats are converted to CSR
     first.
 
-    :param copy: UMFPACK reads the matrix again in each solve, so by default it gets a
-        copy of ``matrix``. Pass ``False`` for a matrix which is never changed after this
-        call, to skip that copy. SuperLU never needs one."""
+    :param copy: UMFPACK reads the matrix again in each solve for iterative refinement, so
+        by default it gets a copy of ``matrix``. Pass ``False`` for a matrix which is never
+        changed after this call, to skip that copy. No copy is needed, or made, if ``refine``
+        is ``False``, or with SuperLU.
+    :param refine: UMFPACK's iterative refinement (two steps by default) is most of each
+        solve. ``False`` skips it, which is about 3x faster with reference BLAS or OpenBLAS
+        but can lose accuracy on badly scaled matrices; see
+        https://github.com/brightway-lca/brightway2-calc/issues/184. Ignored by SuperLU."""
     # CSC, and a view on `matrix`'s arrays if it is CSR.
     transposed = matrix.tocsr().T
     if transposed.dtype != np.float64 or not transposed.has_canonical_format:
@@ -164,8 +171,9 @@ def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarr
     # UMFPACK reads the matrix again in each solve, for iterative refinement, so it needs
     # a copy unless the caller promises not to change `matrix`: Monte Carlo and
     # `IterativeLCA` edit `technosphere_matrix` in place. The conversions above, or
-    # `tocsr()` for a non-CSR input, may already have made one.
-    if copy and np.may_share_memory(transposed.data, matrix.data):
+    # `tocsr()` for a non-CSR input, may already have made one. Without refinement, `solve`
+    # only reads the factors, so there is nothing to protect.
+    if copy and refine and np.may_share_memory(transposed.data, matrix.data):
         transposed = transposed.copy()
     # Always the 64-bit index family "dl", as `scipy` does, never "di" for int32 indices:
     # the 32-bit variant sizes its workspace in int32 and ran out of memory on a
@@ -174,6 +182,8 @@ def lu_solver(matrix: Any, copy: bool = True) -> Callable[[np.ndarray], np.ndarr
     transposed.indices = transposed.indices.astype(np.int64)
     transposed.indptr = transposed.indptr.astype(np.int64)
     context = umfpack.UmfpackContext("dl")
+    if not refine:
+        context.control[umfpack.UMFPACK_IRSTEP] = 0
     context.numeric(transposed)
 
     def solve(b: np.ndarray) -> np.ndarray:
