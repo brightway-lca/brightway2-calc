@@ -91,12 +91,14 @@ def test_lu_solver_factorizes_the_transpose(monkeypatch):
 
 
 @pytest.mark.parametrize("umfpack", [False, pytest.param(True, marks=needs_umfpack)])
-def test_lu_solver_ignores_later_in_place_edits(monkeypatch, umfpack):
-    """Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place."""
+@pytest.mark.parametrize("refine", [True, False])
+def test_lu_solver_ignores_later_in_place_edits(monkeypatch, umfpack, refine):
+    """Monte Carlo and `IterativeLCA` edit `technosphere_matrix` in place. Without
+    refinement UMFPACK gets no copy of the matrix, as its solves don't read it."""
     monkeypatch.setattr(utils, "UMFPACK", umfpack)
     dense = lu_test_matrix()
     matrix = sps.csr_matrix(dense)
-    solve = lu_solver(matrix)
+    solve = lu_solver(matrix, refine=refine)
     matrix.data *= 3
     b = np.array([1.0, 2.0, 3.0])
     assert np.allclose(solve(b), np.linalg.solve(dense, b))
