@@ -60,14 +60,17 @@ class CalculationConfig(BaseModel):
         ``weighting_matrix``). These override the global settings for that matrix. Replaces
         ``selective_use``.
     iterative_refinement : bool
-        Let UMFPACK refine each solution of a factorized technosphere matrix. Default ``True``.
-        ``False`` skips the refinement, which makes each solve about 3x faster with reference
-        BLAS or OpenBLAS, but can lose accuracy on badly scaled matrices; see
-        https://github.com/brightway-lca/brightway2-calc/issues/184. Applies to solves which
-        reuse a factorization made by ``bw2calc.utils.lu_solver``: ``lci(factorize=True)``
-        and every later solve with ``self.solver``, and ``FastSupplyArraysMixin``. Solves
-        without ``factorize=True``, ``FastScoresOnlyMultiLCA.solve_adjoint``, and the reference
-        solves of ``IterativeLCA`` are always refined. No effect with PARDISO or SuperLU.
+        Let UMFPACK or PARDISO refine each solution of a factorized technosphere matrix.
+        Default ``True``. ``False`` skips the refinement, which makes each solve about 3x faster
+        with UMFPACK (reference BLAS or OpenBLAS) and about 2x faster with PARDISO, but can lose
+        accuracy on badly scaled matrices; see
+        https://github.com/brightway-lca/brightway2-calc/issues/184. Applies to
+        ``lci(factorize=True)`` and every later solve which reuses that factorization, and to
+        ``FastSupplyArraysMixin``. Solves without ``factorize=True``,
+        ``FastScoresOnlyMultiLCA.solve_adjoint``, and the reference solves of ``IterativeLCA``
+        are always refined. With PARDISO the setting holds until the next Monte Carlo
+        iteration resets the solver, also for solves on a changed technosphere matrix. No
+        effect with SuperLU.
 
     Example
     -------
