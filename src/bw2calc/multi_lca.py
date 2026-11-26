@@ -18,7 +18,7 @@ from bw2calc.lca_base import LCABase
 from bw2calc.method_config import MethodConfig
 from bw2calc.restricted_sparse_matrix_dict import RestrictedSparseMatrixDict
 from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from bw2calc.utils import convert_tuple_to_list, get_datapackage, global_index_filter, utc_now
+from bw2calc.utils import GlobalIndexFilter, convert_tuple_to_list, get_datapackage, utc_now
 
 logger = logging.getLogger("bw2calc")
 
@@ -271,13 +271,20 @@ class MultiLCA(LCABase):
         This method will filter out regionalized characterization factors.
 
         """
-        # Each resource group is filtered with its own global index
-        fltr = global_index_filter(data_objs or self.packages)
+        # Iterated once per impact category
+        data_objs = list(data_objs or self.packages)
+        # Each resource group is filtered with its own global index. Only the packages
+        # filtered to an impact category are registered, so only their indices are loaded
+        fltr = GlobalIndexFilter()
 
         self.characterization_mm_dict = mu.MappedMatrixDict(
             packages={
-                ic: self.filter_package_by_identifier(
-                    data_objs=data_objs or self.packages, identifier=convert_tuple_to_list(ic)
+                ic: list(
+                    fltr.through(
+                        self.filter_package_by_identifier(
+                            data_objs=data_objs, identifier=convert_tuple_to_list(ic)
+                        )
+                    )
                 )
                 for ic in self.config["impact_categories"]
             },

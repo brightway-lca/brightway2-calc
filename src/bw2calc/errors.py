@@ -61,6 +61,14 @@ class InconsistentGlobalIndex(BW2CalcError):
     pass
 
 
+class UnknownIndicesArray(BW2CalcError):
+    """A characterization indices array can't be matched to its resource group, so the
+    ``global_index`` to filter it with is unknown. Raised instead of using the array
+    unfiltered, which would add regionalized factors to the global ones."""
+
+    pass
+
+
 class MultipleValues(BW2CalcError):
     """Multiple values are present, but only one value is expected"""
 

@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable, Iterator
 
 import bw_processing as bwp
 import numpy as np
@@ -11,7 +11,7 @@ from scipy import sparse
 from scipy.sparse.linalg import splu
 
 from bw2calc import UMFPACK
-from bw2calc.errors import InconsistentGlobalIndex, InvalidReferenceFlags
+from bw2calc.errors import InconsistentGlobalIndex, InvalidReferenceFlags, UnknownIndicesArray
 
 
 def get_seed(seed=None):
@@ -24,7 +24,7 @@ def get_seed(seed=None):
 def consistent_global_index(packages, matrix="characterization_matrix"):
     """The ``global_index`` of all resource groups of ``matrix``, or ``None``; raises
     ``InconsistentGlobalIndex`` if they have different values. No longer used by bw2calc,
-    which filters each group with its own value (``global_index_filter``)."""
+    which filters each group with its own value (``GlobalIndexFilter``)."""
     global_list = [
         resource.get("global_index")
         for package in packages
@@ -41,46 +41,81 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
     return global_list[0] if global_list else None
 
 
-def global_index_filter(packages, matrix="characterization_matrix") -> Callable | None:
+class GlobalIndexFilter:
     """A ``custom_filter`` for ``matrix_utils`` which keeps, in each resource group of
     ``matrix``, only the rows whose column is that group's own ``global_index`` (the global
     location of the project which processed it). Groups without a ``global_index`` are not
-    filtered. Returns ``None`` if no group has one.
+    filtered.
 
     Each group is filtered with its own value, so packages processed in projects whose global
     location has different ids can be used together; ``consistent_global_index`` required one
     value for all of them.
 
     ``matrix_utils`` calls a filter with a group's indices array only, so the filter finds the
-    group by that array: ``filter_by_attribute`` makes no copies, and the arrays are loaded
-    here, so that a proxy isn't loaded again (as another object) by a filtered package. A
-    group whose indices ``matrix_utils`` copies first (with ``transpose``, which characterization
-    matrices don't use) is not recognized, and not filtered."""
-    by_array, arrays = {}, []
-    for package in packages:
+    group by that array, and must have seen the group's package first. Give the packages to
+    ``matrix_utils`` through ``through``, which registers each one as it passes::
+
+        fltr = GlobalIndexFilter()
+        MappedMatrix(packages=fltr.through(packages), custom_filter=fltr, ...)
+
+    The packages are then iterated only once, so ``packages`` can be a generator.
+
+    Finding the group by its array works because ``filter_by_attribute`` makes no copies, and
+    because the arrays are loaded here, so that a proxy isn't loaded again (as another object)
+    by a filtered package. An array which was not registered raises ``UnknownIndicesArray``,
+    instead of being used unfiltered, which would add regionalized factors to the global ones.
+    This happens to a group whose indices ``matrix_utils`` copies first (with ``transpose``,
+    which characterization matrices don't use)."""
+
+    def __init__(self, matrix: str = "characterization_matrix"):
+        self.matrix = matrix
+        # ``id`` of indices array: ``global_index`` of its group, or ``None``
+        self.by_array: dict[int, int | None] = {}
+        # Kept alive, so that their ids can't be given to other arrays
+        self.arrays: list[np.ndarray] = []
+
+    def register(self, package: bwp.DatapackageBase) -> None:
+        """Load the indices arrays of ``matrix`` in ``package``, and store the ``global_index``
+        of each. ``package`` must be the object given to ``matrix_utils``, or one that it was
+        filtered from."""
         for resource in (
-            package.filter_by_attribute("matrix", matrix)
+            package.filter_by_attribute("matrix", self.matrix)
             .filter_by_attribute("kind", "indices")
             .resources
         ):
-            index = resource.get("global_index")
-            if index is None:
-                continue
             array, _ = package.get_resource(resource["name"])
-            by_array[id(array)] = index
-            # Kept alive, so that their ids can't be given to other arrays
-            arrays.append(array)
-    if not by_array:
-        return None
+            if id(array) not in self.by_array:
+                self.arrays.append(array)
+            self.by_array[id(array)] = resource.get("global_index")
 
-    def keep_global(indices):
-        index = by_array.get(id(indices))
+    def through(self, packages: Iterable[bwp.DatapackageBase]) -> Iterator[bwp.DatapackageBase]:
+        """Yield ``packages`` unchanged, after registering each one."""
+        for package in packages:
+            self.register(package)
+            yield package
+
+    def __call__(self, indices: np.ndarray) -> np.ndarray:
+        try:
+            index = self.by_array[id(indices)]
+        except KeyError:
+            raise UnknownIndicesArray(
+                f"Indices array for `{self.matrix}` ({len(indices)} rows) isn't an array of the "
+                "registered datapackages, so its `global_index` is unknown, and it can't be "
+                "filtered to the global location. Give the datapackages to `matrix_utils` "
+                "through `GlobalIndexFilter.through`; indices which `matrix_utils` copies "
+                "(with `transpose`) are not supported."
+            ) from None
         if index is None:
             return np.ones(len(indices), dtype=bool)
         return indices["col"] == index
 
-    keep_global.arrays = arrays
-    return keep_global
+
+def global_index_filter(packages, matrix="characterization_matrix") -> GlobalIndexFilter:
+    """A ``GlobalIndexFilter`` for ``matrix`` with all ``packages`` already registered."""
+    fltr = GlobalIndexFilter(matrix)
+    for package in packages:
+        fltr.register(package)
+    return fltr
 
 
 def convert_tuple_to_list(obj: Any) -> Any:
