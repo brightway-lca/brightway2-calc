@@ -12,12 +12,7 @@ import numpy as np
 import pytest
 
 from bw2calc import JacobiGMRESLCA
-from bw2calc.errors import (
-    EmptyBiosphere,
-    InconsistentGlobalIndex,
-    NonsquareTechnosphere,
-    OutsideTechnosphere,
-)
+from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere, OutsideTechnosphere
 from bw2calc.lca import LCA, PYPARDISO
 
 fixture_dir = Path(__file__).resolve().parent / "fixtures"
@@ -663,7 +658,7 @@ def test_load_lcia_data_multiple_characterization_packages():
     assert lca.dicts.biosphere[3] == 2
 
 
-def test_load_lcia_data_inconsistent_globals():
+def test_load_lcia_data_different_globals():
     # Activities: 101, 102
     # Products: 1, 2
     # Biosphere flows: 201, 202
@@ -713,8 +708,10 @@ def test_load_lcia_data_inconsistent_globals():
 
     lca = LCA({1: 1}, data_objs=[dp])
     lca.lci()
-    with pytest.raises(InconsistentGlobalIndex):
-        lca.lcia()
+    # Each group keeps the rows of its own global location (processed in projects in which
+    # the global location has different ids)
+    lca.lcia()
+    assert np.allclose(lca.characterization_matrix.diagonal(), [1, 10])
 
 
 def test_load_lcia_data_none_global_value():

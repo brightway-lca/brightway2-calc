@@ -22,6 +22,9 @@ def get_seed(seed=None):
 
 
 def consistent_global_index(packages, matrix="characterization_matrix"):
+    """The ``global_index`` of all resource groups of ``matrix``, or ``None``; raises
+    ``InconsistentGlobalIndex`` if they have different values. No longer used by bw2calc,
+    which filters each group with its own value (``global_index_filter``)."""
     global_list = [
         resource.get("global_index")
         for package in packages
@@ -36,6 +39,48 @@ def consistent_global_index(packages, matrix="characterization_matrix"):
             + " order for filtering for site-generic LCIA to work correctly."
         )
     return global_list[0] if global_list else None
+
+
+def global_index_filter(packages, matrix="characterization_matrix") -> Callable | None:
+    """A ``custom_filter`` for ``matrix_utils`` which keeps, in each resource group of
+    ``matrix``, only the rows whose column is that group's own ``global_index`` (the global
+    location of the project which processed it). Groups without a ``global_index`` are not
+    filtered. Returns ``None`` if no group has one.
+
+    Each group is filtered with its own value, so packages processed in projects whose global
+    location has different ids can be used together; ``consistent_global_index`` required one
+    value for all of them.
+
+    ``matrix_utils`` calls a filter with a group's indices array only, so the filter finds the
+    group by that array: ``filter_by_attribute`` makes no copies, and the arrays are loaded
+    here, so that a proxy isn't loaded again (as another object) by a filtered package. A
+    group whose indices ``matrix_utils`` copies first (with ``transpose``, which characterization
+    matrices don't use) is not recognized, and not filtered."""
+    by_array, arrays = {}, []
+    for package in packages:
+        for resource in (
+            package.filter_by_attribute("matrix", matrix)
+            .filter_by_attribute("kind", "indices")
+            .resources
+        ):
+            index = resource.get("global_index")
+            if index is None:
+                continue
+            array, _ = package.get_resource(resource["name"])
+            by_array[id(array)] = index
+            # Kept alive, so that their ids can't be given to other arrays
+            arrays.append(array)
+    if not by_array:
+        return None
+
+    def keep_global(indices):
+        index = by_array.get(id(indices))
+        if index is None:
+            return np.ones(len(indices), dtype=bool)
+        return indices["col"] == index
+
+    keep_global.arrays = arrays
+    return keep_global
 
 
 def convert_tuple_to_list(obj: Any) -> Any:
