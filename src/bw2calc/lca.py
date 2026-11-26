@@ -18,7 +18,7 @@ from bw2calc.dictionary_manager import DictionaryManager
 from bw2calc.errors import OutsideTechnosphere
 from bw2calc.lca_base import LCABase
 from bw2calc.single_value_diagonal_matrix import SingleValueDiagonalMatrix
-from bw2calc.utils import consistent_global_index, get_datapackage, utc_now, wrap_functional_unit
+from bw2calc.utils import GlobalIndexFilter, get_datapackage, utc_now, wrap_functional_unit
 
 try:
     from bw2data import get_node
@@ -231,12 +231,13 @@ class LCA(LCABase):
         This method will filter out regionalized characterization factors.
 
         """
-        global_index = consistent_global_index(data_objs or self.packages)
-        fltr = (lambda x: x["col"] == global_index) if global_index is not None else None
+        # Each resource group is filtered with its own global index. The packages are
+        # registered as they pass through, so they are iterated only once
+        fltr = GlobalIndexFilter()
 
         try:
             self.characterization_mm = mu.MappedMatrix(
-                packages=data_objs or self.packages,
+                packages=fltr.through(data_objs or self.packages),
                 matrix="characterization_matrix",
                 **self.matrix_kwargs("characterization_matrix"),
                 row_mapper=self.biosphere_mm.row_mapper,
