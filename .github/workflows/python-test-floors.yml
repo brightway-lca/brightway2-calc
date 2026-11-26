@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.15" # the minimum in requires-python
+          python-version: "3.11" # the minimum in requires-python; renovate.json stops Renovate bumping it
       - name: Install every direct dependency at its lowest allowed version
         run: |
           pip install uv
