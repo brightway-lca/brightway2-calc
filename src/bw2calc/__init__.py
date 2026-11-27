@@ -14,7 +14,7 @@ __all__ = [
     "PartitionedMonteCarloLCA",
 ]
 
-__version__ = "3.1.0"
+__version__ = "4.0.0"
 
 
 import platform
