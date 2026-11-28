@@ -8,6 +8,7 @@
 * Python 3.11 is now the minimum supported version; 3.9 and 3.10 have reached end of life, and CI already tested only 3.11 and later. See [brightway2 #92](https://github.com/brightway-lca/brightway2/issues/92)
 * Set minimum versions for dependencies that fail to install or import below them: `numpy >=1.23.2`, `pandas >=1.5.0`, `pydantic >=2`, `scipy >=1.11`, `stats_arrays >=0.5.1`, `threadpoolctl >=3.0.0`, and `xarray >=2023.9.0`, the first release that works with NumPy 2. `fsspec >=2023.3.0` is the floor `bw_processing` sets
 * [#184](https://github.com/brightway-lca/brightway2-calc/issues/184): New `refine` argument of `lu_solver`; `refine=False` turns off UMFPACK's iterative refinement, which makes repeated solves about 3x faster with reference BLAS or OpenBLAS, at the cost of some accuracy on badly scaled matrices. Iterative refinement stays on by default. The new `CalculationConfig(iterative_refinement=False)` passes `refine=False` for `lci(factorize=True)` and every later solve which reuses that factorization, and for `FastSupplyArraysMixin`; solves without `factorize=True`, `FastScoresOnlyMultiLCA.solve_adjoint`, and the reference solves of `IterativeLCA` are still always refined
+* [#184](https://github.com/brightway-lca/brightway2-calc/issues/184): `CalculationConfig(iterative_refinement=False)` now also turns off PARDISO's iterative refinement (`iparm[7] = 0`), in the same places as UMFPACK's
 
 ## 3.1.0 (2026-10-18)
 

@@ -6,6 +6,7 @@ from stats_arrays import LognormalUncertainty
 import bw2calc.calculation_config as cc
 from bw2calc import (
     LCA,
+    PYPARDISO,
     CalculationConfig,
     IterativeLCA,
     JacobiGMRESLCA,
@@ -476,3 +477,65 @@ def test_iterative_refinement_always_on_for_iterative_lca_reference(lu_solver_ca
     lca.lci()
     assert lca.solver_stats["reference"] == 1
     assert lu_solver_calls == [{"copy": False}]
+
+
+# `iparm[6]` is the number of refinement steps PARDISO took in its last solve
+needs_pardiso = pytest.mark.skipif(not PYPARDISO, reason="PARDISO not available")
+
+
+@needs_pardiso
+@pytest.mark.parametrize(
+    "config, refined", [(None, True), ({"iterative_refinement": False}, False)]
+)
+def test_iterative_refinement_pardiso_factorized_lci(config, refined):
+    lca = LCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config)
+    lca.lci(factorize=True)
+    assert (lca._pardiso_solver.iparm[6] > 0) == refined
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(lca.supply_array, expected)
+    lca.lci(demand={2: 1})
+    assert (lca._pardiso_solver.iparm[6] > 0) == refined
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(lca.supply_array, expected)
+
+
+@needs_pardiso
+def test_iterative_refinement_pardiso_only_after_factorize():
+    lca = LCA(
+        {1: 1},
+        data_objs=[lognormal_datapackage()],
+        calculation_config={"iterative_refinement": False},
+    )
+    lca.lci()
+    assert lca._pardiso_solver.iparm[6] > 0
+    lca.lci(factorize=True)
+    assert lca._pardiso_solver.iparm[6] == 0
+    # A new Monte Carlo iteration drops the factorization, as it drops `self.solver`
+    next(lca)
+    assert lca._pardiso_solver.iparm[6] > 0
+
+
+@needs_pardiso
+@pytest.mark.parametrize(
+    "config, refined", [(None, True), ({"iterative_refinement": False}, False)]
+)
+def test_iterative_refinement_pardiso_fast_supply_arrays(monkeypatch, config, refined):
+    class FastLCA(LCA, FastSupplyArraysMixin):
+        pass
+
+    solvers = []
+
+    class RecordingSolver(fast_supply_arrays.PyPardisoSolver):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            solvers.append(self)
+
+    monkeypatch.setattr(fast_supply_arrays, "PyPardisoSolver", RecordingSolver)
+    lca = FastLCA({1: 1}, data_objs=[lognormal_datapackage()], calculation_config=config)
+    lca.load_lci_data()
+    lca.build_demand_array()
+    result = lca.calculate_supply_arrays([lca.demand_array])
+    assert len(solvers) == 1
+    assert (solvers[0].iparm[6] > 0) == refined
+    expected = np.linalg.solve(lca.technosphere_matrix.toarray(), lca.demand_array)
+    assert np.allclose(result[:, 0], expected)

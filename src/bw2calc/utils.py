@@ -275,6 +275,22 @@ def lu_solver(
     return solve
 
 
+def pardiso_refinement(solver: Any, refine: bool) -> None:
+    """Turn PARDISO's iterative refinement on or off for later solves with ``solver``, a
+    ``pypardiso.PyPardisoSolver`` which has already factorized a matrix.
+
+    pypardiso leaves ``iparm`` at 0, so MKL uses its defaults, up to two refinement steps
+    among them, and writes them back into ``iparm`` on the first call. ``refine=False`` keeps
+    those values (``iparm[0] = 1``) but sets the maximum number of steps, ``iparm[7]``, to 0,
+    which skips refinement even when pivots were perturbed (``iparm[13]``).
+    ``refine=True`` undoes that: with ``iparm[0] = 0``, MKL fills in its defaults again."""
+    if refine:
+        solver.iparm[0] = 0
+    else:
+        solver.iparm[0] = 1
+        solver.iparm[7] = 0
+
+
 def reference_entries(mapped_matrix) -> tuple:
     """Return the matrix ``(rows, cols)`` of the entries flagged as reference (production)
     exchanges in the ``reference_array`` resources of ``mapped_matrix``'s groups.

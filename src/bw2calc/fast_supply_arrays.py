@@ -4,7 +4,7 @@ import numpy as np
 from scipy import sparse
 
 from bw2calc import PYPARDISO, UMFPACK
-from bw2calc.utils import lu_solver
+from bw2calc.utils import lu_solver, pardiso_refinement
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoSolver
@@ -85,6 +85,8 @@ class FastSupplyArraysMixin:
 
         solver = PyPardisoSolver()
         solver.factorize(self.technosphere_matrix)
+        if not self.calculation_config.iterative_refinement:
+            pardiso_refinement(solver, False)
 
         for demand_chunk in self._demand_chunks(demands, self.chunk_size):
             b = solver._check_b(self.technosphere_matrix, demand_chunk)

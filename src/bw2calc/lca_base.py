@@ -11,7 +11,7 @@ import numpy as np
 from bw2calc import PYPARDISO, spsolve
 from bw2calc.calculation_config import CalculationConfig
 from bw2calc.errors import EmptyBiosphere, NonsquareTechnosphere
-from bw2calc.utils import lu_solver
+from bw2calc.utils import lu_solver, pardiso_refinement
 
 if PYPARDISO:
     from pypardiso.pardiso_wrapper import PyPardisoError, PyPardisoSolver
@@ -58,6 +58,10 @@ class LCABase(Iterator):
     # solver but shouldn't release it again on every Monte Carlo iteration.
     # See https://github.com/brightway-lca/brightway2-calc/issues/158
     _used_pypardiso = False
+    # Whether ``solve_linear_system`` lets PARDISO refine its solutions. Set from
+    # ``calculation_config.iterative_refinement`` by ``lci(factorize=True)``, as ``self.solver``
+    # is without PARDISO, and reset with it.
+    _pardiso_refine = True
 
     def __getstate__(self) -> dict:
         # A copied solver would point at the same MKL memory as the original, which is freed
@@ -67,19 +71,34 @@ class LCABase(Iterator):
         state.pop("_used_pypardiso", None)
         return state
 
-    def _spsolve(self, matrix, rhs):
+    def _spsolve(self, matrix, rhs, refine: bool = True):
         """Solve ``matrix @ x = rhs`` with this object's own solver.
 
         All direct solves in an LCA class should go through here rather than calling the
         module-level ``spsolve``, so that pypardiso state isn't shared between objects, and
-        so that ``_delete_solver_state`` knows whether there is anything to release."""
+        so that ``_delete_solver_state`` knows whether there is anything to release.
+        ``refine=False`` skips PARDISO's iterative refinement; see
+        ``bw2calc.utils.pardiso_refinement``."""
         if not PYPARDISO:
             return spsolve(matrix, rhs)
-        if self._pardiso_solver is None:
-            self._pardiso_solver = PyPardisoSolver()
-            weakref.finalize(self, _release_pardiso_solver, self._pardiso_solver)
+        solver = self._pardiso_solver
+        if solver is None:
+            solver = self._pardiso_solver = PyPardisoSolver()
+            weakref.finalize(self, _release_pardiso_solver, solver)
         self._used_pypardiso = True
-        return spsolve(matrix, rhs, solver=self._pardiso_solver)
+        if refine:
+            return spsolve(matrix, rhs, solver=solver)
+        # CSR as in `spsolve`, so that it reuses this factorization. Factorizing first fills
+        # in MKL's default `iparm`, which `pardiso_refinement` keeps.
+        matrix = matrix.tocsr()
+        if not solver._is_already_factorized(matrix):
+            solver.factorize(matrix)
+        pardiso_refinement(solver, False)
+        try:
+            return spsolve(matrix, rhs, solver=solver)
+        finally:
+            # Other solves with this solver refine, as they did before
+            pardiso_refinement(solver, True)
 
     def _has(self, name: str) -> bool:
         """Check for an ``LCA`` attribute or its ``MultiLCA`` equivalent."""
@@ -259,7 +278,7 @@ class LCABase(Iterator):
         if hasattr(self, "solver"):
             return self.solver(demand)
         else:
-            return self._spsolve(self.technosphere_matrix, demand)
+            return self._spsolve(self.technosphere_matrix, demand, refine=self._pardiso_refine)
 
     def lci(self, demand: Optional[dict] = None, factorize: bool = False) -> None:
         """
@@ -293,8 +312,12 @@ class LCABase(Iterator):
             self.demand = demand
         else:
             self.build_demand_array()
-        if factorize and not PYPARDISO:
-            self.decompose_technosphere()
+        if factorize:
+            if PYPARDISO:
+                # PARDISO keeps its factorization anyway
+                self._pardiso_refine = self.calculation_config.iterative_refinement
+            else:
+                self.decompose_technosphere()
         self.lci_calculation()
 
     def lcia(self, demand: Optional[dict] = None) -> None:
@@ -470,6 +493,7 @@ class LCABase(Iterator):
         Only touches this object's own state; other LCA objects keep their factorizations."""
         if hasattr(self, "solver"):
             delattr(self, "solver")
+        self._pardiso_refine = True
         if self._pardiso_solver is not None and self._used_pypardiso:
             try:
                 self._pardiso_solver.free_memory()
